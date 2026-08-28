@@ -6,6 +6,7 @@ import '../../core/models.dart';
 import '../../core/storage.dart';
 import '../pos/cart.dart';
 import '../pos/pos_repository.dart';
+import '../workshop/workshop_repository.dart';
 
 enum AuthStatus { loading, unauthenticated, needsCompany, authenticated }
 
@@ -53,6 +54,7 @@ class AuthController extends StateNotifier<AuthState> {
   void _resetSessionData() {
     _ref.invalidate(cashSessionProvider);
     _ref.invalidate(todaySummaryProvider);
+    _ref.invalidate(workOrdersSummaryProvider);
     _ref.read(cartProvider.notifier).clear();
   }
 

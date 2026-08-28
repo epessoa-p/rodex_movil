@@ -60,7 +60,10 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
+            // Sin ofuscar/encoger recursos: más simple y sin riesgo de romper la
+            // app por clases eliminadas (suficiente para la primera entrega).
             isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }

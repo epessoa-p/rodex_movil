@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
 import '../../core/format.dart';
+import '../../core/providers.dart';
+import 'new_purchase_order_screen.dart';
 import 'po_receive_screen.dart';
 import 'purchases_repository.dart';
 
@@ -44,10 +46,27 @@ class _ReceptionsScreenState extends ConsumerState<ReceptionsScreen> {
     if (received == true) _load();
   }
 
+  Future<void> _newOrder() async {
+    final created = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const NewPurchaseOrderScreen()),
+    );
+    if (created == true) _load();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final canCreate =
+        ref.watch(authControllerProvider).me?.can('purchase-orders.create') ??
+            false;
     return Scaffold(
       appBar: AppBar(title: const Text('Recepción de mercadería')),
+      floatingActionButton: canCreate
+          ? FloatingActionButton.extended(
+              onPressed: _newOrder,
+              icon: const Icon(Icons.add),
+              label: const Text('Nueva OC'),
+            )
+          : null,
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null

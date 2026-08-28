@@ -11,6 +11,7 @@ import '../features/clients/clients_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/pos/pos_screen.dart';
 import '../features/pos/sales_history_screen.dart';
+import '../features/purchases/direct_purchase_screen.dart';
 import '../features/purchases/receptions_screen.dart';
 import '../features/purchases/suppliers_screen.dart';
 import '../features/products/products_screen.dart';
@@ -42,6 +43,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
           path: '/purchases/suppliers',
           builder: (_, _) => const SuppliersScreen()),
+      GoRoute(
+          path: '/purchases/direct',
+          builder: (_, _) => const DirectPurchaseScreen()),
       GoRoute(path: '/products', builder: (_, _) => const ProductsScreen()),
       GoRoute(path: '/clients', builder: (_, _) => const ClientsScreen()),
       GoRoute(path: '/cash', builder: (_, _) => const CashScreen()),

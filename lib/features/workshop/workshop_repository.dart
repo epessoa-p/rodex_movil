@@ -33,16 +33,24 @@ class WorkshopRepository {
     required int clientId,
     int? vehicleId,
     Map<String, dynamic>? newVehicle,
+    String? receptionDate,
     String? reportedIssue,
     int? mileage,
+    String? fuelLevel,
+    String? receivedItems,
+    String? notes,
   }) async {
     final body = <String, dynamic>{
       'client_id': clientId,
       'vehicle_mode': newVehicle != null ? 'new' : 'existing',
       'vehicle_id': ?vehicleId,
       'vehicle': ?newVehicle,
+      'reception_date': ?receptionDate,
       'reported_issue': ?reportedIssue,
       'mileage': ?mileage,
+      'fuel_level': ?fuelLevel,
+      'received_items': ?receivedItems,
+      'notes': ?notes,
     };
     final data = await _api.post('/work-orders', body: body);
     return WorkOrder.fromJson((data as Map<String, dynamic>)['data']);
@@ -78,6 +86,12 @@ class WorkshopRepository {
     return WorkOrder.fromJson((data as Map<String, dynamic>)['data']);
   }
 
+  Future<WorkOrder> saveDiagnosis(int orderId, String diagnosis) async {
+    final data = await _api
+        .post('/work-orders/$orderId/diagnosis', body: {'diagnosis': diagnosis});
+    return WorkOrder.fromJson((data as Map<String, dynamic>)['data']);
+  }
+
   Future<WorkOrder> changeStatus(int orderId, String status) async {
     final data = await _api
         .post('/work-orders/$orderId/status', body: {'status': status});
@@ -88,6 +102,12 @@ class WorkshopRepository {
     final data = await _api.post('/work-orders/$orderId/deliver',
         body: {'delivered_to': ?deliveredTo});
     return WorkOrder.fromJson((data as Map<String, dynamic>)['data']);
+  }
+
+  /// Resumen de OTs del día (para el inicio): recibidas hoy y activas.
+  Future<WorkOrdersSummary> todaySummary() async {
+    final data = await _api.get('/work-orders/summary');
+    return WorkOrdersSummary.fromJson((data as Map<String, dynamic>)['data']);
   }
 
   List<Map<String, dynamic>> _list(dynamic data) =>
@@ -102,4 +122,9 @@ final workshopRepositoryProvider = Provider<WorkshopRepository>(
 /// Órdenes activas (para la lista del taller).
 final workOrdersProvider = FutureProvider<List<WorkOrder>>(
   (ref) => ref.read(workshopRepositoryProvider).orders(),
+);
+
+/// Resumen de OTs del día (para la pantalla de inicio).
+final workOrdersSummaryProvider = FutureProvider<WorkOrdersSummary>(
+  (ref) => ref.read(workshopRepositoryProvider).todaySummary(),
 );

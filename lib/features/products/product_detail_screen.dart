@@ -14,12 +14,16 @@ class ProductDetailScreen extends ConsumerStatefulWidget {
   final int productId;
   final String productName;
   final bool showAdd;
+  // Si es true, exige stock > 0 para poder elegir (POS). En false, permite
+  // elegir aunque no haya stock (p. ej. al crear una orden de compra).
+  final bool requireStock;
 
   const ProductDetailScreen({
     super.key,
     required this.productId,
     required this.productName,
     this.showAdd = false,
+    this.requireStock = true,
   });
 
   @override
@@ -182,10 +186,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                   style: FilledButton.styleFrom(
                       minimumSize: const Size.fromHeight(50)),
                   icon: const Icon(Icons.add_shopping_cart),
-                  label: Text(d.currentStock > 0
-                      ? 'Agregar al carrito'
-                      : 'Sin stock'),
-                  onPressed: d.currentStock > 0
+                  label: Text((widget.requireStock && d.currentStock <= 0)
+                      ? 'Sin stock'
+                      : 'Agregar'),
+                  onPressed: (!widget.requireStock || d.currentStock > 0)
                       ? () => Navigator.pop(context, d.toProduct())
                       : null,
                 ),

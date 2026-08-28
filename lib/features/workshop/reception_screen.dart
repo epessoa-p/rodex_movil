@@ -26,18 +26,25 @@ class _ReceptionScreenState extends ConsumerState<ReceptionScreen> {
   final _brand = TextEditingController();
   final _model = TextEditingController();
   final _plate = TextEditingController();
+  final _year = TextEditingController();
+  final _color = TextEditingController();
 
   final _issue = TextEditingController();
   final _mileage = TextEditingController();
+  final _fuel = TextEditingController();
+  final _received = TextEditingController();
+  final _notes = TextEditingController();
+  DateTime _receptionDate = DateTime.now();
   bool _submitting = false;
 
   @override
   void dispose() {
-    _brand.dispose();
-    _model.dispose();
-    _plate.dispose();
-    _issue.dispose();
-    _mileage.dispose();
+    for (final c in [
+      _brand, _model, _plate, _year, _color,
+      _issue, _mileage, _fuel, _received, _notes,
+    ]) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -83,16 +90,25 @@ class _ReceptionScreenState extends ConsumerState<ReceptionScreen> {
       await ref.read(workshopRepositoryProvider).createReception(
             clientId: _client!.id,
             vehicleId: _newVehicle ? null : _vehicleId,
+            receptionDate: _fmtDate(_receptionDate),
             newVehicle: _newVehicle
                 ? {
                     'brand': _brand.text.trim(),
                     'model': _model.text.trim(),
                     'plate': _plate.text.trim(),
+                    if (int.tryParse(_year.text) != null)
+                      'year': int.parse(_year.text),
+                    if (_color.text.trim().isNotEmpty)
+                      'color': _color.text.trim(),
                   }
                 : null,
             reportedIssue:
                 _issue.text.trim().isEmpty ? null : _issue.text.trim(),
             mileage: int.tryParse(_mileage.text),
+            fuelLevel: _fuel.text.trim().isEmpty ? null : _fuel.text.trim(),
+            receivedItems:
+                _received.text.trim().isEmpty ? null : _received.text.trim(),
+            notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
           );
       if (mounted) Navigator.pop(context, true);
     } on ApiException catch (e) {
@@ -105,6 +121,22 @@ class _ReceptionScreenState extends ConsumerState<ReceptionScreen> {
 
   void _snack(String m) => ScaffoldMessenger.of(context)
       .showSnackBar(SnackBar(content: Text(m)));
+
+  /// Formato para el API (YYYY-MM-DD).
+  String _fmtDate(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _receptionDate,
+      firstDate: DateTime(now.year - 2),
+      lastDate: now,
+      helpText: 'Fecha de recepción',
+    );
+    if (picked != null) setState(() => _receptionDate = picked);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -120,6 +152,18 @@ class _ReceptionScreenState extends ConsumerState<ReceptionScreen> {
               title: Text(_client?.fullName ?? 'Elegir cliente *'),
               trailing: const Icon(Icons.chevron_right),
               onTap: _pickClient,
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // Fecha de recepción (por defecto hoy)
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.event_outlined),
+              title: const Text('Fecha de recepción'),
+              subtitle: Text(_fmtDate(_receptionDate)),
+              trailing: const Icon(Icons.edit_calendar_outlined),
+              onTap: _pickDate,
             ),
           ),
           const SizedBox(height: 16),
@@ -177,6 +221,25 @@ class _ReceptionScreenState extends ConsumerState<ReceptionScreen> {
                   controller: _plate,
                   decoration: const InputDecoration(labelText: 'Placa'),
                 ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _year,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: 'Año'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: _color,
+                        decoration: const InputDecoration(labelText: 'Color'),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
 
@@ -190,10 +253,42 @@ class _ReceptionScreenState extends ConsumerState<ReceptionScreen> {
             ),
           ),
           const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _mileage,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Kilometraje'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: _fuel,
+                  decoration:
+                      const InputDecoration(labelText: 'Combustible'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
           TextField(
-            controller: _mileage,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(labelText: 'Kilometraje'),
+            controller: _received,
+            maxLines: 2,
+            decoration: const InputDecoration(
+              labelText: 'Objetos / accesorios recibidos',
+              alignLabelWithHint: true,
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _notes,
+            maxLines: 2,
+            decoration: const InputDecoration(
+              labelText: 'Notas',
+              alignLabelWithHint: true,
+            ),
           ),
           const SizedBox(height: 24),
           FilledButton.icon(

@@ -275,6 +275,26 @@ class DaySummary {
       );
 }
 
+/// Resumen de OTs del día (para el inicio): recibidas hoy y activas.
+class WorkOrdersSummary {
+  final int receivedToday;
+  final int active;
+  final String scope; // 'own' | 'all'
+
+  WorkOrdersSummary({
+    required this.receivedToday,
+    required this.active,
+    required this.scope,
+  });
+
+  factory WorkOrdersSummary.fromJson(Map<String, dynamic> j) =>
+      WorkOrdersSummary(
+        receivedToday: (j['received_today'] as num?)?.toInt() ?? 0,
+        active: (j['active'] as num?)?.toInt() ?? 0,
+        scope: (j['scope'] ?? 'own') as String,
+      );
+}
+
 /// Movimiento de caja (ingreso o gasto) de la sesión abierta.
 class CashMovement {
   final int id;
@@ -435,6 +455,9 @@ class WorkOrder {
   final String? reportedIssue;
   final String? diagnosis;
   final int? mileage;
+  final String? fuelLevel;
+  final String? receivedItems;
+  final String? notes;
   final double subtotalServices;
   final double subtotalParts;
   final double discount;
@@ -456,6 +479,9 @@ class WorkOrder {
     this.reportedIssue,
     this.diagnosis,
     this.mileage,
+    this.fuelLevel,
+    this.receivedItems,
+    this.notes,
     this.subtotalServices = 0,
     this.subtotalParts = 0,
     this.discount = 0,
@@ -478,6 +504,9 @@ class WorkOrder {
         reportedIssue: j['reported_issue'] as String?,
         diagnosis: j['diagnosis'] as String?,
         mileage: (j['mileage'] as num?)?.toInt(),
+        fuelLevel: j['fuel_level'] as String?,
+        receivedItems: j['received_items'] as String?,
+        notes: j['notes'] as String?,
         subtotalServices: _toDouble(j['subtotal_services']),
         subtotalParts: _toDouble(j['subtotal_parts']),
         discount: _toDouble(j['discount']),

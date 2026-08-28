@@ -33,6 +33,7 @@ _Última actualización: 2026-08-25_
 
 ### Inicio (Home) ✅ / 🟡
 - ✅ Accesos: Nueva venta, Productos, Clientes, Taller, Caja.
+- ✅ **Navigation Drawer** (botón hamburguesa): menú lateral con todos los accesos (Ventas, Productos, Clientes, Taller, Caja, Recepción, Proveedores, Cajas admin, Ajustes, Cerrar sesión), gateados por permiso/plan.
 - ✅ Estado de caja (abierta/cerrada).
 - ✅ Ocultar accesos según permisos/plan (`me.can()/planAllows()`).
 - ✅ **Resumen del día** (ventas/monto de hoy) en el inicio. Endpoint `GET /sales/summary`; respeta "solo las mías" salvo `sales.view-all-records`.
@@ -73,13 +74,14 @@ _Última actualización: 2026-08-25_
 ### Compras 🟡  (plan:purchases)
 - ✅ **Recepción de mercadería**: lista de OC por recibir (enviadas/parciales) → recibir cantidades por línea en un almacén. Suma stock, avanza la OC y **genera la compra (cuenta por pagar)**. Endpoints `GET /purchase-orders`, `GET /purchase-orders/{id}`, `POST /purchase-orders/{id}/receive`. Gateado por `plan:purchases` + `goods-receipts.create`.
 - ✅ **Proveedores**: directorio (listar/buscar) y **alta rápida** (nombre, NIT, contacto, teléfono, email). Endpoints `GET /suppliers`, `POST /suppliers`. Gateado por `plan:purchases` + `suppliers.view/create`.
-- ⬜ **Órdenes de compra**: crear una OC desde el móvil.
+- ✅ **Órdenes de compra**: crear una OC desde el móvil (proveedor + productos con cantidad y costo). Queda en estado *enviada* (lista para recibir). Desde Recepción → "Nueva OC". Endpoint `POST /purchase-orders`. Gateado por `purchase-orders.create`.
+- ✅ **Compra directa** (contado, un paso): proveedor + almacén + productos → registra la **compra**, **suma stock** y **paga desde caja** (gasto). Requiere caja abierta. Tile en el Inicio + drawer. Endpoint `POST /purchases/direct`. Gateado por `purchases.create`.
 - ⬜ **Cuentas por pagar**: ver saldos a proveedores y registrar un pago (más administrativo).
 
 ### Taller (Órdenes de trabajo) ✅ / 🟡
-- ✅ Listar órdenes.
-- ✅ **Recepción** de vehículo (crea la OT).
-- ✅ Detalle de la OT: agregar/quitar **servicios** y **repuestos**, cambiar **estado**, **entregar**.
+- ✅ Listar órdenes (incluye **entregadas**; oculta solo las anuladas).
+- ✅ **Recepción** de vehículo (crea la OT) con los campos del web: cliente, vehículo (existente o nuevo con marca/modelo/placa/**año/color**), **kilometraje**, **combustible**, **falla reportada**, **objetos/accesorios recibidos** y **notas**. Asigna la **sucursal** del personal (para el descuento de stock en la entrega). Se muestran en el detalle de la OT.
+- ✅ Detalle de la OT: agregar/quitar **servicios** y **repuestos**, cambiar **estado**, **entregar**, y **diagnóstico** editable (estados recibida/diagnosticada/en_proceso/terminada; recibida→diagnosticada al guardar). Endpoint `POST /work-orders/{id}/diagnosis`.
 - ✅ **Cobro/pago** de la OT al **contado** (entrega + cobro + descuento de stock, endpoint `deliver`). ⬜ Falta cobro a **crédito/cuotas** desde el móvil.
 - ⬜ Asignar mecánico desde el detalle (existe alta rápida en web).
 - ⬜ Fotos de recepción (subir desde el teléfono).
@@ -111,10 +113,10 @@ Existen en la web pero todavía no tienen pantallas en el móvil. Se evalúan se
 - **Caja — gestión (plan:cash):** `GET/POST /cash-registers`, `GET /cash-registers/form-data`,
   `PUT /cash-registers/{id}` (crear/asignar cajas a personal).
 - **Inventario (plan:inventory):** `POST /products/{id}/stock-adjust` (ajuste de stock, `products.edit`), `POST /products` + `GET /product-form-data` (alta rápida, `products.create`).
-- **Compras (plan:purchases):** `GET/POST /suppliers`, `GET /purchase-orders`, `GET /purchase-orders/{id}`, `POST /purchase-orders/{id}/receive` (recepción → stock + CxP).
+- **Compras (plan:purchases):** `GET/POST /suppliers`, `GET/POST /purchase-orders`, `GET /purchase-orders/{id}`, `POST /purchase-orders/{id}/receive` (recepción → stock + CxP).
 - **Taller (plan:workshop):** `GET /mechanics`, `GET /vehicles`, `GET /work-orders`,
   `GET /work-orders/{id}`, `POST /work-orders`, servicios/repuestos (add/remove),
-  `POST /work-orders/{id}/status`, `POST /work-orders/{id}/deliver`.
+  `POST /work-orders/{id}/diagnosis`, `POST /work-orders/{id}/status`, `POST /work-orders/{id}/deliver`.
 
 > Para lo que aún falta (venta a crédito, descuento por línea, reimprimir recibo, ficha de producto
 > con stock/origen/modelos, cobro de OT a crédito, y los módulos ⬜ del mapa de cobertura) habrá que

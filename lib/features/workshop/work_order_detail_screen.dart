@@ -202,6 +202,9 @@ class _WorkOrderDetailScreenState
               _header(o),
               const SizedBox(height: 16),
 
+              _diagnosisSection(o),
+              const SizedBox(height: 8),
+
               _section('Servicios', o.services.isEmpty
                   ? [const ListTile(dense: true, title: Text('Sin servicios'))]
                   : [
@@ -270,16 +273,86 @@ class _WorkOrderDetailScreenState
               const SizedBox(height: 6),
               Text('Cliente: ${o.client ?? '-'}'),
               Text('Vehículo: ${o.vehicle ?? '-'}'),
-              if (o.reportedIssue != null && o.reportedIssue!.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Text('Falla: ${o.reportedIssue}',
-                      style: const TextStyle(color: Colors.black54)),
-                ),
+              if (o.mechanic != null && o.mechanic!.isNotEmpty)
+                Text('Mecánico: ${o.mechanic}'),
+              _recepLine('Kilometraje',
+                  o.mileage != null ? '${o.mileage}' : null),
+              _recepLine('Combustible', o.fuelLevel),
+              _recepLine('Falla reportada', o.reportedIssue),
+              _recepLine('Objetos / accesorios', o.receivedItems),
+              _recepLine('Notas', o.notes),
             ],
           ),
         ),
       );
+
+  /// Línea de recepción: solo se muestra si hay valor.
+  Widget _recepLine(String label, String? value) {
+    if (value == null || value.trim().isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Text('$label: $value',
+          style: const TextStyle(color: Colors.black54)),
+    );
+  }
+
+  Widget _diagnosisSection(WorkOrder o) {
+    final has = o.diagnosis != null && o.diagnosis!.trim().isNotEmpty;
+    return _section('Diagnóstico', [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(has ? o.diagnosis! : 'Sin diagnóstico registrado.',
+                style: TextStyle(color: has ? null : Colors.black54)),
+            if (!_closed) ...[
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: _busy ? null : () => _editDiagnosis(o),
+                icon: const Icon(Icons.edit_note),
+                label: Text(has ? 'Editar diagnóstico' : 'Agregar diagnóstico'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    ]);
+  }
+
+  Future<void> _editDiagnosis(WorkOrder o) async {
+    final ctrl = TextEditingController(text: o.diagnosis ?? '');
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Diagnóstico'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          minLines: 3,
+          maxLines: 6,
+          decoration: const InputDecoration(
+              hintText: 'Diagnóstico técnico…', border: OutlineInputBorder()),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancelar')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Guardar')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final text = ctrl.text.trim();
+    if (text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Escribe el diagnóstico.')));
+      return;
+    }
+    await _run(() => _repo.saveDiagnosis(o.id, text));
+  }
 
   Widget _section(String title, List<Widget> children) => Card(
         child: Column(

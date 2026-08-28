@@ -158,6 +158,42 @@ class PurchasesRepository {
     return Supplier.fromJson((data as Map<String, dynamic>)['data']);
   }
 
+  /// Compra directa (contado): registra la compra, suma stock y paga desde caja.
+  /// Devuelve un resumen (código, proveedor, total). `items` = [{product_id, quantity, unit_cost}].
+  Future<Map<String, dynamic>> directPurchase({
+    required int supplierId,
+    required int warehouseId,
+    required List<Map<String, dynamic>> items,
+    String? invoiceNumber,
+    String? notes,
+  }) async {
+    final data = await _api.post('/purchases/direct', body: {
+      'supplier_id': supplierId,
+      'warehouse_id': warehouseId,
+      'items': items,
+      'invoice_number': ?invoiceNumber,
+      'notes': ?notes,
+    });
+    return (data as Map<String, dynamic>)['data'] as Map<String, dynamic>;
+  }
+
+  /// Crea una orden de compra (queda 'sent', lista para recibir).
+  /// `items` = [{product_id, quantity, unit_cost}].
+  Future<PoSummary> createPurchaseOrder({
+    required int supplierId,
+    required List<Map<String, dynamic>> items,
+    String? expectedDate,
+    String? notes,
+  }) async {
+    final data = await _api.post('/purchase-orders', body: {
+      'supplier_id': supplierId,
+      'items': items,
+      'expected_date': ?expectedDate,
+      'notes': ?notes,
+    });
+    return PoSummary.fromJson((data as Map<String, dynamic>)['data']);
+  }
+
   Future<List<PoSummary>> receivableOrders() async {
     final data = await _api.get('/purchase-orders');
     return (((data as Map<String, dynamic>)['data'] as List?) ?? [])

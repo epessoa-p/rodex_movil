@@ -12,7 +12,10 @@ import 'product_detail_screen.dart';
 /// producto lo devuelve (para el POS); si no, es solo consulta.
 class ProductsScreen extends ConsumerStatefulWidget {
   final void Function(Product)? onPick;
-  const ProductsScreen({super.key, this.onPick});
+  // Exige stock > 0 para elegir (POS). En false permite elegir sin stock
+  // (p. ej. al crear una orden de compra).
+  final bool requireStock;
+  const ProductsScreen({super.key, this.onPick, this.requireStock = true});
 
   @override
   ConsumerState<ProductsScreen> createState() => _ProductsScreenState();
@@ -46,6 +49,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
           productId: p.id,
           productName: p.name,
           showAdd: picking,
+          requireStock: widget.requireStock,
         ),
       ),
     );

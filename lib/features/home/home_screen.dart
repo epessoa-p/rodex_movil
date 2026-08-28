@@ -6,6 +6,8 @@ import '../../core/format.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
 import '../pos/pos_repository.dart';
+import '../workshop/workshop_repository.dart';
+import 'app_drawer.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -21,8 +23,10 @@ class HomeScreen extends ConsumerWidget {
 
     final canSell = me.planAllows('sales') &&
         me.canAny(['pos.access', 'sales.create']);
+    final canWorkshop = me.planAllows('workshop') && me.can('workshop.view');
 
     return Scaffold(
+      drawer: const AppDrawer(),
       appBar: AppBar(
         title: Text(me.company?.name ?? 'Rodex'),
         actions: [
@@ -37,6 +41,7 @@ class HomeScreen extends ConsumerWidget {
         onRefresh: () async {
           ref.invalidate(cashSessionProvider);
           ref.invalidate(todaySummaryProvider);
+          ref.invalidate(workOrdersSummaryProvider);
         },
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -45,6 +50,11 @@ class HomeScreen extends ConsumerWidget {
             if (canSell) ...[
               const SizedBox(height: 12),
               _DaySummaryCard(summary: ref.watch(todaySummaryProvider)),
+            ],
+            if (canWorkshop) ...[
+              const SizedBox(height: 12),
+              _WorkOrdersSummaryCard(
+                  summary: ref.watch(workOrdersSummaryProvider)),
             ],
             const SizedBox(height: 20),
             Text('Acciones', style: Theme.of(context).textTheme.titleMedium),
@@ -71,14 +81,6 @@ class HomeScreen extends ConsumerWidget {
                     color: Colors.indigo,
                     onTap: () => context.push('/products'),
                   ),
-                if (me.planAllows('sales') &&
-                    me.canAny(['sales.view', 'pos.access']))
-                  _ActionTile(
-                    icon: Icons.receipt_long_outlined,
-                    label: 'Ventas',
-                    color: Colors.blue,
-                    onTap: () => context.push('/sales'),
-                  ),
                 if (me.can('clients.view') || canSell)
                   _ActionTile(
                     icon: Icons.people_alt_outlined,
@@ -93,20 +95,12 @@ class HomeScreen extends ConsumerWidget {
                     color: Colors.deepPurple,
                     onTap: () => context.push('/workshop'),
                   ),
-                if (me.planAllows('purchases') &&
-                    me.canAny(['goods-receipts.create', 'goods-receipts.view', 'purchase-orders.view']))
+                if (me.planAllows('purchases') && me.can('purchases.create'))
                   _ActionTile(
-                    icon: Icons.local_shipping_outlined,
-                    label: 'Recepción',
+                    icon: Icons.shopping_bag_outlined,
+                    label: 'Compra directa',
                     color: Colors.brown,
-                    onTap: () => context.push('/purchases/receptions'),
-                  ),
-                if (me.planAllows('purchases') && me.can('suppliers.view'))
-                  _ActionTile(
-                    icon: Icons.storefront_outlined,
-                    label: 'Proveedores',
-                    color: Colors.blueGrey,
-                    onTap: () => context.push('/purchases/suppliers'),
+                    onTap: () => context.push('/purchases/direct'),
                   ),
                 if (me.canAny(['cash.operate', 'pos.access']))
                   _ActionTile(
@@ -220,6 +214,60 @@ class _DaySummaryCard extends StatelessWidget {
                 ),
               ),
               Text(money(s.salesTotal),
+                  style: const TextStyle(
+                      fontSize: 20, fontWeight: FontWeight.w800)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WorkOrdersSummaryCard extends StatelessWidget {
+  final AsyncValue<WorkOrdersSummary> summary;
+  const _WorkOrdersSummaryCard({required this.summary});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: summary.when(
+          loading: () => const SizedBox(
+              height: 48,
+              child: Center(child: CircularProgressIndicator())),
+          error: (e, _) => Row(children: const [
+            Icon(Icons.error_outline, color: Colors.red),
+            SizedBox(width: 8),
+            Expanded(child: Text('No se pudo cargar el resumen')),
+          ]),
+          data: (s) => Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: Colors.deepPurple.withValues(alpha: .15),
+                child: const Icon(Icons.build_circle_outlined,
+                    color: Colors.deepPurple),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      s.scope == 'all' ? 'OTs de hoy' : 'Mis OTs de hoy',
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    Text(
+                      '${s.receivedToday} ${s.receivedToday == 1 ? 'recibida' : 'recibidas'} · ${s.active} ${s.active == 1 ? 'activa' : 'activas'}',
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.outline,
+                          fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+              Text('${s.active}',
                   style: const TextStyle(
                       fontSize: 20, fontWeight: FontWeight.w800)),
             ],

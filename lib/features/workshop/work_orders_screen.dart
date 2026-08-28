@@ -14,6 +14,8 @@ class WorkOrdersScreen extends ConsumerWidget {
         'diagnosticada' => Colors.indigo,
         'en_proceso' => Colors.orange,
         'terminada' => Colors.green,
+        'entregada' => Colors.teal,
+        'anulada' => Colors.red,
         _ => Colors.grey,
       };
 
