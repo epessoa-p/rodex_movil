@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/config.dart';
 import '../../core/models.dart';
@@ -42,6 +43,19 @@ class SettingsScreen extends ConsumerWidget {
                     leading: const Icon(Icons.storefront_outlined),
                     title: const Text('Empresa'),
                     subtitle: Text(me.company!.name),
+                  ),
+                  const Divider(height: 1),
+                ],
+
+                // ── Administración ──
+                if (me.planAllows('cash') && me.can('cash-registers.view')) ...[
+                  const _SectionTitle('Administración'),
+                  ListTile(
+                    leading: const Icon(Icons.point_of_sale_outlined),
+                    title: const Text('Cajas'),
+                    subtitle: const Text('Crear y asignar cajas al personal'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/cash-registers'),
                   ),
                   const Divider(height: 1),
                 ],

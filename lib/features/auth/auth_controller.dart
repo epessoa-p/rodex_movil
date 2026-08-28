@@ -4,6 +4,8 @@ import '../../core/api_client.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
 import '../../core/storage.dart';
+import '../pos/cart.dart';
+import '../pos/pos_repository.dart';
 
 enum AuthStatus { loading, unauthenticated, needsCompany, authenticated }
 
@@ -41,8 +43,18 @@ class AuthState {
 class AuthController extends StateNotifier<AuthState> {
   final ApiClient _api;
   final SecureStore _store;
+  final Ref _ref;
 
-  AuthController(this._api, this._store) : super(const AuthState.loading());
+  AuthController(this._api, this._store, this._ref)
+      : super(const AuthState.loading());
+
+  /// Limpia los datos cacheados de la sesión anterior (caja, resumen del día,
+  /// carrito) para que al cambiar de usuario/empresa no se muestren stale.
+  void _resetSessionData() {
+    _ref.invalidate(cashSessionProvider);
+    _ref.invalidate(todaySummaryProvider);
+    _ref.read(cartProvider.notifier).clear();
+  }
 
   /// Al iniciar la app: si hay token guardado, intenta restaurar la sesión.
   Future<void> bootstrap() async {
@@ -97,6 +109,8 @@ class AuthController extends StateNotifier<AuthState> {
       final me = MeContext.fromJson(data);
       // Moneda por empresa: ajusta el formateo de precios/totales de la app.
       setCurrencySymbol(me.company?.currency);
+      // Nueva sesión/empresa: descarta los datos cacheados del usuario anterior.
+      _resetSessionData();
       state = AuthState(
         status: AuthStatus.authenticated,
         me: me,
@@ -122,6 +136,7 @@ class AuthController extends StateNotifier<AuthState> {
     } catch (_) {/* best-effort */}
     await _clear();
     state = const AuthState(status: AuthStatus.unauthenticated);
+    _resetSessionData();
   }
 
   Future<void> _clear() async {

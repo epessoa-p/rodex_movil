@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/format.dart';
 import '../../core/models.dart';
+import '../../core/providers.dart';
 import '../pos/pos_repository.dart';
+import 'new_product_screen.dart';
 import 'product_detail_screen.dart';
 
 /// Buscador de productos reutilizable. Si [onPick] está definido, al tocar un
@@ -50,6 +52,20 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     if (picked != null && widget.onPick != null) widget.onPick!(picked);
   }
 
+  /// Alta rápida de producto. Si se abrió desde el POS, el producto creado se
+  /// agrega al carrito; si es consulta, refresca la lista.
+  Future<void> _newProduct() async {
+    final product = await Navigator.of(context).push<Product>(
+      MaterialPageRoute(builder: (_) => const NewProductScreen()),
+    );
+    if (product == null) return;
+    if (widget.onPick != null) {
+      widget.onPick!(product);
+    } else {
+      _load(_search.text);
+    }
+  }
+
   Future<void> _load(String q) async {
     setState(() => _loading = true);
     try {
@@ -74,8 +90,17 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
   @override
   Widget build(BuildContext context) {
     final picking = widget.onPick != null;
+    final canCreate =
+        ref.watch(authControllerProvider).me?.can('products.create') ?? false;
     return Scaffold(
       appBar: AppBar(title: Text(picking ? 'Agregar producto' : 'Productos')),
+      floatingActionButton: canCreate
+          ? FloatingActionButton.extended(
+              onPressed: _newProduct,
+              icon: const Icon(Icons.add),
+              label: const Text('Nuevo'),
+            )
+          : null,
       body: Column(
         children: [
           Padding(

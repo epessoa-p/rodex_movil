@@ -115,6 +115,15 @@ class Product {
       );
 }
 
+/// Opción genérica id + nombre (categorías, marcas, almacenes, etc.).
+class IdName {
+  final int id;
+  final String name;
+  IdName({required this.id, required this.name});
+  factory IdName.fromJson(Map<String, dynamic> j) =>
+      IdName(id: j['id'] as int, name: (j['name'] ?? '') as String);
+}
+
 /// Stock de un producto en un almacén (para la ficha).
 class WarehouseStock {
   final int id;

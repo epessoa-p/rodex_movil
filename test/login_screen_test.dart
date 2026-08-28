@@ -14,7 +14,7 @@ void main() {
         overrides: [
           // Controlador sin bootstrap() para no tocar el almacenamiento seguro.
           authControllerProvider.overrideWith(
-            (ref) => AuthController(ApiClient(), SecureStore()),
+            (ref) => AuthController(ApiClient(), SecureStore(), ref),
           ),
         ],
         child: const MaterialApp(home: LoginScreen()),

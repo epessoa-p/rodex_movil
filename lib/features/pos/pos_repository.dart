@@ -14,6 +14,46 @@ class PosRepository {
     return _list(data).map((e) => Product.fromJson(e)).toList();
   }
 
+  /// Catálogos para el alta rápida de producto (categorías, marcas, almacenes).
+  Future<ProductCatalogs> productFormData() async {
+    final data = await _api.get('/product-form-data');
+    final d = (data as Map<String, dynamic>)['data'] as Map<String, dynamic>;
+    List<IdName> opts(String k) => ((d[k] as List?) ?? [])
+        .map((e) => IdName.fromJson(e as Map<String, dynamic>))
+        .toList();
+    return ProductCatalogs(
+      categories: opts('categories'),
+      brands: opts('brands'),
+      warehouses: opts('warehouses'),
+    );
+  }
+
+  /// Alta rápida de producto. Devuelve el producto creado (para agregarlo al POS).
+  Future<Product> createProduct({
+    required String name,
+    required double price,
+    double? cost,
+    String? unit,
+    String? barcode,
+    int? categoryId,
+    int? brandId,
+    double? initialStock,
+    int? warehouseId,
+  }) async {
+    final data = await _api.post('/products', body: {
+      'name': name,
+      'price': price,
+      'cost': ?cost,
+      'unit': ?unit,
+      'barcode': ?barcode,
+      'category_id': ?categoryId,
+      'brand_id': ?brandId,
+      'initial_stock': ?initialStock,
+      'warehouse_id': ?warehouseId,
+    });
+    return Product.fromJson((data as Map<String, dynamic>)['data']);
+  }
+
   /// Ficha completa de un producto (precio, stock por almacén, origen, modelos).
   Future<ProductDetail> productDetail(int id) async {
     final data = await _api.get('/products/$id');
@@ -172,6 +212,18 @@ class PosRepository {
   List<Map<String, dynamic>> _list(dynamic data) =>
       (((data as Map<String, dynamic>)['data'] as List?) ?? [])
           .cast<Map<String, dynamic>>();
+}
+
+/// Catálogos para el alta rápida de producto.
+class ProductCatalogs {
+  final List<IdName> categories;
+  final List<IdName> brands;
+  final List<IdName> warehouses;
+  const ProductCatalogs({
+    required this.categories,
+    required this.brands,
+    required this.warehouses,
+  });
 }
 
 /// Página de resultados del historial de ventas (para el scroll infinito).

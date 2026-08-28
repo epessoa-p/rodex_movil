@@ -12,7 +12,7 @@ _Última actualización: 2026-08-25_
 
 ## Base / arquitectura ✅
 
-- ✅ Stack: `dio`, `flutter_riverpod`, `go_router`, `flutter_secure_storage`, `intl`, `mobile_scanner`.
+- ✅ Stack: `dio`, `flutter_riverpod`, `go_router`, `flutter_secure_storage`, `intl`, `mobile_scanner`, `share_plus`.
 - ✅ Cliente API con token (`Authorization: Bearer`) + header **`X-Company-Id`** (multi-empresa).
 - ✅ Manejo de errores JSON (401 → logout, 402/403 → mensaje de plan/permiso, 409 → elegir empresa).
 - ✅ Almacenamiento seguro del token + empresa (`flutter_secure_storage`).
@@ -46,13 +46,14 @@ _Última actualización: 2026-08-25_
 - ⬜ **Venta a crédito / cuotas** (hoy solo contado).
 - ✅ **Descuento global** en la UI del POS (campo antes de cobrar; el total refleja el descuento). ⬜ Descuento por línea.
 - ✅ **Historial de ventas** (lista paginada con búsqueda + scroll infinito; abre el recibo). Endpoint `GET /sales`. Respeta "solo las mías" salvo permiso `sales.view-all-records`.
-- ⬜ Reimprimir/compartir recibo (PDF/imagen/WhatsApp).
+- ✅ **Compartir recibo** de venta (texto formateado con empresa, código, fecha, cliente, ítems y totales) por WhatsApp / cualquier app (`share_plus`). Disponible en el recibo tras cobrar y desde el historial de ventas. ⬜ Compartir recibo de **OT** / versión PDF.
 - ⬜ Ver **stock/precio** del producto al escanear/seleccionar.
 
 ### Caja ✅ / 🟡
 - ✅ Ver sesión actual, **abrir** (elegir caja + monto) y **cerrar** (monto contado).
 - ✅ Ver **movimientos** de la sesión (ingresos/gastos) y registrar **gasto** simple (operativo/servicio/transporte) desde caja. Endpoints `GET /cash/movements`, `POST /cash/expense`.
 - ✅ **Resumen de cierre**: esperado vs contado con **diferencia en vivo** al cerrar; el resumen (inicial, ingresos, gastos, esperado) se ve en la pantalla.
+- ✅ **Crear caja y asignarla a un personal** (Ajustes → Administración → Cajas): listar/crear/editar cajas con sucursal + personal asignado. Requisito para que ese personal pueda abrir caja. Endpoints `GET/POST /cash-registers`, `GET /cash-registers/form-data`, `PUT /cash-registers/{id}`. Gateado por `plan:cash` + `cash-registers.view/create/edit`.
 - ⬜ Gastos con integración (pago a proveedor/CxP, pago a personal) — se manejan en el web.
 
 ### Clientes ✅
@@ -66,7 +67,8 @@ _Última actualización: 2026-08-25_
 - ⬜ Ver la ficha también al **escanear** (hoy el escáner agrega directo, por velocidad).
 - ✅ **Ajuste rápido de stock** desde la ficha (**entrada / salida / fijar** en un almacén, con motivo). Gateado por permiso `products.edit`. Endpoint `POST /products/{id}/stock-adjust`.
 - ⬜ Alertas de **stock bajo**.
-- ⬜ Crear/editar productos y gestión completa (kardex, almacenes, importar) → se hace en el **web**.
+- ✅ **Alta rápida de producto** (nombre, precio, costo, código de barras, unidad, categoría/marca opcionales y **stock inicial** en un almacén). SKU autogenerado por empresa. Desde **Productos → "Nuevo"** (gateado por `products.create`); si se abre desde el POS, el producto creado se agrega al carrito. Endpoints `POST /products`, `GET /product-form-data`.
+- ⬜ Editar productos y gestión completa (kardex, almacenes, importar) → se hace en el **web**.
 
 ### Compras 🟡  (plan:purchases)
 - ✅ **Recepción de mercadería**: lista de OC por recibir (enviadas/parciales) → recibir cantidades por línea en un almacén. Suma stock, avanza la OC y **genera la compra (cuenta por pagar)**. Endpoints `GET /purchase-orders`, `GET /purchase-orders/{id}`, `POST /purchase-orders/{id}/receive`. Gateado por `plan:purchases` + `goods-receipts.create`.
@@ -104,9 +106,11 @@ Existen en la web pero todavía no tienen pantallas en el móvil. Se evalúan se
 - **Auth:** `POST /login`, `POST /logout`, `GET /me`.
 - **POS / Ventas (plan:sales):** `GET /products`, `GET /products/{id}` (ficha), `GET/POST /clients`,
   `POST /sales`, `GET /sales` (historial), `GET /sales/summary` (resumen del día), `GET /sales/{id}`.
-- **Caja (plan:sales + cash.operate):** `GET /cash/current-session`, `GET /cash/registers`,
+- **Caja — operación (plan:sales + cash.operate):** `GET /cash/current-session`, `GET /cash/registers`,
   `POST /cash/open`, `POST /cash/close`, `GET /cash/movements`, `POST /cash/expense`.
-- **Inventario (plan:inventory):** `POST /products/{id}/stock-adjust` (ajuste de stock, permiso `products.edit`).
+- **Caja — gestión (plan:cash):** `GET/POST /cash-registers`, `GET /cash-registers/form-data`,
+  `PUT /cash-registers/{id}` (crear/asignar cajas a personal).
+- **Inventario (plan:inventory):** `POST /products/{id}/stock-adjust` (ajuste de stock, `products.edit`), `POST /products` + `GET /product-form-data` (alta rápida, `products.create`).
 - **Compras (plan:purchases):** `GET/POST /suppliers`, `GET /purchase-orders`, `GET /purchase-orders/{id}`, `POST /purchase-orders/{id}/receive` (recepción → stock + CxP).
 - **Taller (plan:workshop):** `GET /mechanics`, `GET /vehicles`, `GET /work-orders`,
   `GET /work-orders/{id}`, `POST /work-orders`, servicios/repuestos (add/remove),
@@ -121,18 +125,21 @@ Existen en la web pero todavía no tienen pantallas en el móvil. Se evalúan se
 ## Pendientes técnicos / calidad
 
 - ⬜ Probar el **escáner en Android físico** (cámara real; el emulador no sirve).
-- ⬜ Íconos/splash y nombre de la app (branding).
+- 🟡 Branding: **nombre "Rodex"** ✅ y **applicationId `net.sczsoft.rodex`** ✅. Íconos/splash: config lista (`flutter_launcher_icons`/`flutter_native_splash`), **falta el logo** en `assets/branding/icon.png` y correr los generadores.
 - ⬜ Manejo de **sin conexión** (hoy es online; el plan lo dejó fuera por ahora).
 - ✅ Pantalla de **ajustes/perfil** (empresa activa, cambiar empresa, cerrar sesión, versión).
 - ⬜ Tests de widget (login, carrito) y `flutter analyze` en CI.
-- ⬜ Build de release firmado (keystore) para distribuir el APK.
+- 🟡 Build de release firmado: **config de firma lista** (`build.gradle.kts` lee `android/key.properties`, con fallback a debug; plantilla en `key.properties.example`). **Falta** crear el keystore y el `key.properties` con las contraseñas, y correr `flutter build apk --release`.
 
 ---
 
 ## Sugerencia de próximos pasos (orden por valor)
 
-1. Cobro de OT a **crédito/cuotas** desde el móvil (hoy solo contado).
-2. Descuento **por línea** en el POS.
-3. Ficha de producto también al **escanear**.
-4. **Compras** — crear OC / cuentas por pagar (más administrativo, evaluar).
-5. Probar el escáner en físico · branding (íconos/splash) · release firmado.
+Enfoque: **primera entrega** con flujo completo sin web (el setup empresa/almacén/sucursal/cargos
+queda en web con super_admin; la **creación de cajas + asignación a personal** ya está en el móvil).
+
+1. **Empaque**: ícono/splash/nombre + **APK de release firmado** (keystore) — necesario para entregar.
+2. Compartir recibo de **OT** (taller) y/o versión **PDF** imprimible.
+3. Venta a **crédito/cuotas** (POS) y cobro de OT a crédito.
+4. Descuento **por línea** · ficha de producto también al **escanear** · probar escáner en físico.
+5. Editar producto desde el móvil (hoy solo alta + ajuste de stock).

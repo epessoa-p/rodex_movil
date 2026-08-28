@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../features/auth/auth_controller.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/select_company_screen.dart';
+import '../features/cash/cash_registers_screen.dart';
 import '../features/cash/cash_screen.dart';
 import '../features/clients/clients_screen.dart';
 import '../features/home/home_screen.dart';
@@ -44,6 +45,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/products', builder: (_, _) => const ProductsScreen()),
       GoRoute(path: '/clients', builder: (_, _) => const ClientsScreen()),
       GoRoute(path: '/cash', builder: (_, _) => const CashScreen()),
+      GoRoute(
+          path: '/cash-registers',
+          builder: (_, _) => const CashRegistersScreen()),
       GoRoute(path: '/workshop', builder: (_, _) => const WorkOrdersScreen()),
       GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
     ],

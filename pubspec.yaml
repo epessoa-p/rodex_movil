@@ -15,11 +15,34 @@ dependencies:
   go_router: ^17.4.0
   intl: ^0.20.3
   mobile_scanner: ^7.0.0
+  share_plus: ^13.3.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: ^2.4.6
 
 flutter:
   uses-material-design: true
+
+# ── Ícono de la app ───────────────────────────────────────────────────────
+# Coloca el logo en assets/branding/icon.png (PNG cuadrado, 1024x1024, fondo
+# sólido o transparente) y genera los íconos con:
+#   dart run flutter_launcher_icons
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/branding/icon.png"
+  min_sdk_android: 21
+
+# ── Splash (pantalla de carga) ────────────────────────────────────────────
+# Genera el splash con:
+#   dart run flutter_native_splash:create
+flutter_native_splash:
+  color: "#FFFFFF"
+  image: "assets/branding/icon.png"
+  android_12:
+    color: "#FFFFFF"
+    image: "assets/branding/icon.png"

@@ -13,5 +13,6 @@ final authControllerProvider =
   return AuthController(
     ref.read(apiClientProvider),
     ref.read(secureStoreProvider),
+    ref,
   )..bootstrap();
 });

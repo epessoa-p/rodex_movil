@@ -1,0 +1,13 @@
+# Copia este archivo a `key.properties` (en la misma carpeta android/) y completa
+# con los datos del keystore de release. NO subir key.properties ni el .jks al repo.
+#
+# Crear el keystore (una sola vez) con keytool (viene con el JDK):
+#   keytool -genkey -v -keystore rodex-release.jks -storetype JKS \
+#     -keyalg RSA -keysize 2048 -validity 10000 -alias rodex
+#
+# Deja el .jks en android/app/ (o usa una ruta absoluta en storeFile).
+
+storePassword=CAMBIA_ESTO
+keyPassword=CAMBIA_ESTO
+keyAlias=rodex
+storeFile=rodex-release.jks
