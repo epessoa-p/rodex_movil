@@ -94,6 +94,10 @@ class AppDrawer extends ConsumerWidget {
                       '/purchases/suppliers',
                       show: me.planAllows('purchases') &&
                           me.can('suppliers.view')),
+                  _item(context, Icons.account_balance, 'Tesorería',
+                      '/treasury',
+                      show: me.planAllows('purchases') &&
+                          me.can('treasury.view')),
                   if (me.planAllows('cash') && me.can('cash-registers.view'))
                     const Divider(),
                   _item(context, Icons.point_of_sale_outlined, 'Cajas (admin)',

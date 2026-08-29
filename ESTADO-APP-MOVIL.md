@@ -78,6 +78,10 @@ _Última actualización: 2026-08-25_
 - ✅ **Compra directa** (contado, un paso): proveedor + almacén + productos → registra la **compra**, **suma stock** y **paga desde caja** (gasto). Requiere caja abierta. Tile en el Inicio + drawer. Endpoint `POST /purchases/direct`. Gateado por `purchases.create`.
 - ⬜ **Cuentas por pagar**: ver saldos a proveedores y registrar un pago (más administrativo).
 
+### Finanzas — Tesorería ✅  (plan:purchases)
+- ✅ **Cuentas** (efectivo/banco): listar con saldo + **saldo total**; crear cuenta (nombre, tipo, banco/N° cuenta, **saldo de apertura** opcional). Tile en el Inicio + drawer. Endpoints `GET/POST /treasury/accounts`. Gateado por `treasury.view` (ver) / `treasury.manage` (crear).
+- ✅ **Ingresos/gastos** por cuenta: detalle con saldo, botones **Ingreso** (aporte de capital / ajuste +) y **Gasto** (gasto / ajuste −), e historial de movimientos. Valida que el gasto no supere el saldo. Endpoints `GET /treasury/accounts/{id}`, `POST /treasury/accounts/{id}/movements`. Gateado por `treasury.manage`.
+
 ### Taller (Órdenes de trabajo) ✅ / 🟡
 - ✅ Listar órdenes (incluye **entregadas**; oculta solo las anuladas).
 - ✅ **Recepción** de vehículo (crea la OT) con los campos del web: cliente, vehículo (existente o nuevo con marca/modelo/placa/**año/color**), **kilometraje**, **combustible**, **falla reportada**, **objetos/accesorios recibidos** y **notas**. Asigna la **sucursal** del personal (para el descuento de stock en la entrega). Se muestran en el detalle de la OT.
@@ -92,7 +96,6 @@ _Última actualización: 2026-08-25_
 
 Existen en la web pero todavía no tienen pantallas en el móvil. Se evalúan según la necesidad del piso:
 
-- ⬜ **Finanzas — Tesorería** (`purchases`): cuentas bancarias, transferencias. Administrativo → escritorio. (La **Caja** es la parte financiera que sí está en el móvil.)
 - ⬜ **Motos / concesionaria** (`motos`): venta de motos, unidades, entregas, garantías.
 - ⬜ **Alquileres** (`rentals`): contratos, calendario, entregas/devoluciones, cobros.
 - ⬜ **Fidelización** (`loyalty`): puntos y canje (el **canje en el POS** sí es evaluable para móvil).
@@ -113,7 +116,8 @@ Existen en la web pero todavía no tienen pantallas en el móvil. Se evalúan se
 - **Caja — gestión (plan:cash):** `GET/POST /cash-registers`, `GET /cash-registers/form-data`,
   `PUT /cash-registers/{id}` (crear/asignar cajas a personal).
 - **Inventario (plan:inventory):** `POST /products/{id}/stock-adjust` (ajuste de stock, `products.edit`), `POST /products` + `GET /product-form-data` (alta rápida, `products.create`).
-- **Compras (plan:purchases):** `GET/POST /suppliers`, `GET/POST /purchase-orders`, `GET /purchase-orders/{id}`, `POST /purchase-orders/{id}/receive` (recepción → stock + CxP).
+- **Compras (plan:purchases):** `GET/POST /suppliers`, `GET/POST /purchase-orders`, `GET /purchase-orders/{id}`, `POST /purchase-orders/{id}/receive` (recepción → stock + CxP), `POST /purchases/direct` (compra directa → stock + gasto de caja).
+- **Tesorería (plan:purchases):** `GET/POST /treasury/accounts`, `GET /treasury/accounts/{id}`, `POST /treasury/accounts/{id}/movements` (ingreso/gasto).
 - **Taller (plan:workshop):** `GET /mechanics`, `GET /vehicles`, `GET /work-orders`,
   `GET /work-orders/{id}`, `POST /work-orders`, servicios/repuestos (add/remove),
   `POST /work-orders/{id}/diagnosis`, `POST /work-orders/{id}/status`, `POST /work-orders/{id}/deliver`.

@@ -102,6 +102,13 @@ class HomeScreen extends ConsumerWidget {
                     color: Colors.brown,
                     onTap: () => context.push('/purchases/direct'),
                   ),
+                if (me.planAllows('purchases') && me.can('treasury.view'))
+                  _ActionTile(
+                    icon: Icons.account_balance,
+                    label: 'Tesorería',
+                    color: Colors.teal,
+                    onTap: () => context.push('/treasury'),
+                  ),
                 if (me.canAny(['cash.operate', 'pos.access']))
                   _ActionTile(
                     icon: Icons.savings_outlined,
