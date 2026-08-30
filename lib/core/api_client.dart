@@ -69,6 +69,9 @@ class ApiClient {
   Future<dynamic> put(String path, {Object? body}) =>
       _request(() => _dio.put(path, data: body));
 
+  Future<dynamic> delete(String path, {Object? body}) =>
+      _request(() => _dio.delete(path, data: body));
+
   Future<dynamic> _request(Future<Response> Function() run) async {
     try {
       final res = await run();

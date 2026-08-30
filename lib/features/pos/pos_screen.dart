@@ -56,6 +56,60 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     // El carrito es un provider compartido: al volver ya refleja lo escaneado.
   }
 
+  /// Editor de descuento por producto (monto sobre la línea).
+  Future<void> _editLineDiscount(CartLine l) async {
+    final cart = ref.read(cartProvider.notifier);
+    final ctrl = TextEditingController(
+        text: l.discount > 0 ? _trimNum(l.discount) : '');
+    final value = await showDialog<double>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.product.name,
+            maxLines: 2, overflow: TextOverflow.ellipsis),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${qty(l.quantity)} × ${money(l.product.price)} = ${money(l.gross)}',
+                style: const TextStyle(color: Colors.black54)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: ctrl,
+              autofocus: true,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                labelText: 'Descuento del producto',
+                prefixText: '$currencySymbol ',
+                helperText: 'Máx ${money(l.gross)}',
+                border: const OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          if (l.discount > 0)
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, 0.0),
+              child: const Text('Quitar'),
+            ),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar')),
+          FilledButton(
+            onPressed: () => Navigator.pop(
+                ctx, double.tryParse(ctrl.text.replaceAll(',', '.')) ?? 0),
+            child: const Text('Aplicar'),
+          ),
+        ],
+      ),
+    );
+    if (value != null) cart.setDiscount(l.product.id, value);
+  }
+
+  static String _trimNum(double v) =>
+      v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toString();
+
   Future<void> _pickClient() async {
     await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => ClientsScreen(
@@ -140,12 +194,35 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                           final l = lines[i];
                           return ListTile(
                             title: Text(l.product.name),
-                            subtitle: Text(
-                                '${money(l.product.price)} c/u  ·  ${money(l.subtotal)}'),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                    '${money(l.product.price)} c/u  ·  ${money(l.subtotal)}'),
+                                if (l.discount > 0)
+                                  Text('Desc. ${money(l.discount)}',
+                                      style: const TextStyle(
+                                          color: Colors.red, fontSize: 12)),
+                              ],
+                            ),
+                            onTap: () => _editLineDiscount(l),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 IconButton(
+                                  tooltip: 'Descuento',
+                                  visualDensity: VisualDensity.compact,
+                                  icon: Icon(
+                                    l.discount > 0
+                                        ? Icons.sell
+                                        : Icons.sell_outlined,
+                                    color: l.discount > 0 ? Colors.red : null,
+                                    size: 20,
+                                  ),
+                                  onPressed: () => _editLineDiscount(l),
+                                ),
+                                IconButton(
+                                  visualDensity: VisualDensity.compact,
                                   icon:
                                       const Icon(Icons.remove_circle_outline),
                                   onPressed: () => cart.setQuantity(
@@ -155,6 +232,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                                     style: const TextStyle(
                                         fontWeight: FontWeight.w700)),
                                 IconButton(
+                                  visualDensity: VisualDensity.compact,
                                   icon: const Icon(Icons.add_circle_outline),
                                   onPressed: () => cart.setQuantity(
                                       l.product.id, l.quantity + 1),
@@ -167,6 +245,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
               ),
               _CheckoutBar(
                 subtotal: cart.total,
+                lineDiscount: cart.lineDiscountTotal,
                 discount: _effectiveDiscount(cart.total),
                 discountCtrl: _discountCtrl,
                 onDiscountChanged: _onDiscountChanged,
@@ -209,6 +288,7 @@ class _ClientBar extends StatelessWidget {
 
 class _CheckoutBar extends StatelessWidget {
   final double subtotal;
+  final double lineDiscount;
   final double discount;
   final TextEditingController discountCtrl;
   final ValueChanged<String> onDiscountChanged;
@@ -220,6 +300,7 @@ class _CheckoutBar extends StatelessWidget {
 
   const _CheckoutBar({
     required this.subtotal,
+    required this.lineDiscount,
     required this.discount,
     required this.discountCtrl,
     required this.onDiscountChanged,
@@ -273,7 +354,7 @@ class _CheckoutBar extends StatelessWidget {
                     keyboardType: const TextInputType.numberWithOptions(
                         decimal: true),
                     decoration: InputDecoration(
-                      labelText: 'Descuento',
+                      labelText: 'Descuento general',
                       prefixText: '$currencySymbol ',
                       isDense: true,
                       border: const OutlineInputBorder(),
@@ -288,6 +369,10 @@ class _CheckoutBar extends StatelessWidget {
                         style: TextStyle(color: Colors.black54, fontSize: 12)),
                     Text(money(subtotal),
                         style: const TextStyle(fontWeight: FontWeight.w600)),
+                    if (lineDiscount > 0)
+                      Text('Desc. productos ${money(lineDiscount)}',
+                          style:
+                              const TextStyle(color: Colors.red, fontSize: 11)),
                   ],
                 ),
               ],

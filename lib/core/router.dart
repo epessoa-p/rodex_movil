@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../features/auth/auth_controller.dart';
 import '../features/auth/login_screen.dart';
+import '../features/agenda/agenda_screen.dart';
 import '../features/auth/select_company_screen.dart';
 import '../features/cash/cash_registers_screen.dart';
 import '../features/cash/cash_screen.dart';
@@ -54,6 +55,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           path: '/cash-registers',
           builder: (_, _) => const CashRegistersScreen()),
       GoRoute(path: '/workshop', builder: (_, _) => const WorkOrdersScreen()),
+      GoRoute(path: '/agenda', builder: (_, _) => const AgendaScreen()),
       GoRoute(path: '/treasury', builder: (_, _) => const TreasuryScreen()),
       GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
     ],

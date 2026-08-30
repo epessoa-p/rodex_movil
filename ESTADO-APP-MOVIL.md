@@ -45,7 +45,8 @@ _Última actualización: 2026-08-25_
 - ✅ Cliente opcional (elegir / alta rápida).
 - ✅ Cobro **contado** → crea la venta → **recibo**.
 - ⬜ **Venta a crédito / cuotas** (hoy solo contado).
-- ✅ **Descuento global** en la UI del POS (campo antes de cobrar; el total refleja el descuento). ⬜ Descuento por línea.
+- ✅ **Descuento por producto** (por línea): botón/etiqueta en cada ítem del carrito → monto de descuento (acotado al bruto de la línea); se muestra en el ítem, en el resumen ("Desc. productos") y en el **recibo**. Se envía como `items[].discount` (el backend ya lo soportaba).
+- ✅ **Descuento general** de la venta (campo antes de cobrar, aparte del de producto; el total resta ambos).
 - ✅ **Historial de ventas** (lista paginada con búsqueda + scroll infinito; abre el recibo). Endpoint `GET /sales`. Respeta "solo las mías" salvo permiso `sales.view-all-records`.
 - ✅ **Compartir recibo** de venta (texto formateado con empresa, código, fecha, cliente, ítems y totales) por WhatsApp / cualquier app (`share_plus`). Disponible en el recibo tras cobrar y desde el historial de ventas. ⬜ Compartir recibo de **OT** / versión PDF.
 - ⬜ Ver **stock/precio** del producto al escanear/seleccionar.
@@ -88,7 +89,16 @@ _Última actualización: 2026-08-25_
 - ✅ Detalle de la OT: agregar/quitar **servicios** y **repuestos**, cambiar **estado**, **entregar**, y **diagnóstico** editable (estados recibida/diagnosticada/en_proceso/terminada; recibida→diagnosticada al guardar). Endpoint `POST /work-orders/{id}/diagnosis`.
 - ✅ **Cobro/pago** de la OT al **contado** (entrega + cobro + descuento de stock, endpoint `deliver`). ⬜ Falta cobro a **crédito/cuotas** desde el móvil.
 - ⬜ Asignar mecánico desde el detalle (existe alta rápida en web).
-- ⬜ Fotos de recepción (subir desde el teléfono).
+- ✅ **Fotos de la OT**: en el detalle, galería de fotos con **agregar** (cámara o galería, varias a la vez), **ver** a pantalla completa y **eliminar**. Usa la tabla existente `work_order_photos` (misma que la recepción web). Endpoints `GET/POST /work-orders/{id}/photos`, `DELETE /work-orders/{id}/photos/{photo}`. Se muestran también las fotos cargadas desde la recepción del web.
+
+### Agenda / Citas ✅  (plan:workshop) — módulo nuevo (web + móvil)
+- ✅ **Vistas Día / Semana / Mes** (conmutador). **Día**: tira de semana + línea de tiempo + resumen (total/programadas/confirmadas/completadas). **Semana**: 7 columnas (lun-dom) con las citas de cada día. **Mes**: calendario con conteo por día; al tocar un día abre su vista. Endpoint de rango `GET /appointments/range?from=&to=`.
+- ✅ **Agendar cita**: cliente **registrado** (con su vehículo) o **rápido** (nombre+teléfono), servicio, mecánico, fecha/hora, duración (30 min–4 h), motivo y notas.
+- ✅ **Editar/reprogramar**, **cambiar estado** (programada/confirmada/completada/cancelada/no asistió) y **eliminar**.
+- ✅ **Convertir a OT**: crea la Orden de Trabajo desde la cita (requiere cliente registrado + vehículo); marca la cita como completada y enlaza la OT. Gateado por `workshop.create`.
+- Permisos: `appointments.view/create/edit/delete` (feature de plan: `workshop`). Tile en el Inicio + drawer.
+- **En la web**: nueva sección *Taller → Agenda* con vista de día bonita (tira de semana, línea de tiempo, modal de alta/edición, acciones y convertir a OT).
+- **DB**: tabla `appointments` → script `rodex_web/database/sql/20260829_agenda_v1.sql` (incluye permisos y asignación a roles admin/gerente).
 
 ---
 
@@ -118,9 +128,11 @@ Existen en la web pero todavía no tienen pantallas en el móvil. Se evalúan se
 - **Inventario (plan:inventory):** `POST /products/{id}/stock-adjust` (ajuste de stock, `products.edit`), `POST /products` + `GET /product-form-data` (alta rápida, `products.create`).
 - **Compras (plan:purchases):** `GET/POST /suppliers`, `GET/POST /purchase-orders`, `GET /purchase-orders/{id}`, `POST /purchase-orders/{id}/receive` (recepción → stock + CxP), `POST /purchases/direct` (compra directa → stock + gasto de caja).
 - **Tesorería (plan:purchases):** `GET/POST /treasury/accounts`, `GET /treasury/accounts/{id}`, `POST /treasury/accounts/{id}/movements` (ingreso/gasto).
-- **Taller (plan:workshop):** `GET /mechanics`, `GET /vehicles`, `GET /work-orders`,
+- **Taller (plan:workshop):** `GET /mechanics`, `GET /vehicles`, `GET /work-orders`, `GET /work-orders/summary` (resumen del día para el inicio),
   `GET /work-orders/{id}`, `POST /work-orders`, servicios/repuestos (add/remove),
-  `POST /work-orders/{id}/diagnosis`, `POST /work-orders/{id}/status`, `POST /work-orders/{id}/deliver`.
+  `POST /work-orders/{id}/diagnosis`, `POST /work-orders/{id}/status`, `POST /work-orders/{id}/deliver`,
+  `GET/POST /work-orders/{id}/photos`, `DELETE /work-orders/{id}/photos/{photo}` (fotos de la OT).
+- **Agenda / Citas (plan:workshop):** `GET /appointments` (día, `?date=`), `GET /appointments/range` (semana/mes, `?from=&to=`), `GET /appointments/meta` (servicios+mecánicos), `POST /appointments`, `PUT /appointments/{id}`, `POST /appointments/{id}/status`, `POST /appointments/{id}/convert` (→ OT), `DELETE /appointments/{id}`.
 
 > Para lo que aún falta (venta a crédito, descuento por línea, reimprimir recibo, ficha de producto
 > con stock/origen/modelos, cobro de OT a crédito, y los módulos ⬜ del mapa de cobertura) habrá que

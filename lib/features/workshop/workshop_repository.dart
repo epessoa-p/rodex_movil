@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
@@ -39,6 +40,7 @@ class WorkshopRepository {
     String? fuelLevel,
     String? receivedItems,
     String? notes,
+    int? appointmentId,
   }) async {
     final body = <String, dynamic>{
       'client_id': clientId,
@@ -51,6 +53,7 @@ class WorkshopRepository {
       'fuel_level': ?fuelLevel,
       'received_items': ?receivedItems,
       'notes': ?notes,
+      'appointment_id': ?appointmentId,
     };
     final data = await _api.post('/work-orders', body: body);
     return WorkOrder.fromJson((data as Map<String, dynamic>)['data']);
@@ -102,6 +105,30 @@ class WorkshopRepository {
     final data = await _api.post('/work-orders/$orderId/deliver',
         body: {'delivered_to': ?deliveredTo});
     return WorkOrder.fromJson((data as Map<String, dynamic>)['data']);
+  }
+
+  /// Fotos de una OT.
+  Future<List<WoPhoto>> photos(int orderId) async {
+    final data = await _api.get('/work-orders/$orderId/photos');
+    return _list(data).map((e) => WoPhoto.fromJson(e)).toList();
+  }
+
+  /// Sube una o varias fotos (rutas de archivos locales) a la OT.
+  Future<List<WoPhoto>> uploadPhotos(int orderId, List<String> paths) async {
+    final form = FormData();
+    for (final p in paths) {
+      form.files.add(MapEntry(
+        'photos[]',
+        await MultipartFile.fromFile(p, filename: p.split(RegExp(r'[\\/]')).last),
+      ));
+    }
+    final data = await _api.post('/work-orders/$orderId/photos', body: form);
+    return _list(data).map((e) => WoPhoto.fromJson(e)).toList();
+  }
+
+  /// Elimina una foto de la OT.
+  Future<void> deletePhoto(int orderId, int photoId) async {
+    await _api.delete('/work-orders/$orderId/photos/$photoId');
   }
 
   /// Resumen de OTs del día (para el inicio): recibidas hoy y activas.

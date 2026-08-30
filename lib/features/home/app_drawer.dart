@@ -76,6 +76,10 @@ class AppDrawer extends ConsumerWidget {
                   _item(context, Icons.build_circle_outlined, 'Taller',
                       '/workshop',
                       show: me.planAllows('workshop') && me.can('workshop.view')),
+                  _item(context, Icons.calendar_month_outlined, 'Agenda',
+                      '/agenda',
+                      show: me.planAllows('workshop') &&
+                          me.can('appointments.view')),
                   _item(context, Icons.savings_outlined, 'Caja', '/cash',
                       show: me.canAny(['cash.operate', 'pos.access'])),
                   _item(context, Icons.shopping_bag_outlined, 'Compra directa',

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/api_client.dart';
 import '../../core/format.dart';
@@ -202,6 +203,9 @@ class _WorkOrderDetailScreenState
               _header(o),
               const SizedBox(height: 16),
 
+              _photosSection(o),
+              const SizedBox(height: 8),
+
               _diagnosisSection(o),
               const SizedBox(height: 8),
 
@@ -259,6 +263,212 @@ class _WorkOrderDetailScreenState
       ),
     );
   }
+
+  final _picker = ImagePicker();
+
+  Future<void> _reloadOrder() async {
+    final o = await _repo.order(widget.orderId);
+    if (mounted) setState(() { _order = o; _busy = false; });
+  }
+
+  Future<void> _addPhotos() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Tomar foto'),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Elegir de la galería'),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null) return;
+
+    List<XFile> files = [];
+    try {
+      if (source == ImageSource.camera) {
+        final f = await _picker.pickImage(
+            source: ImageSource.camera, imageQuality: 70, maxWidth: 1600);
+        if (f != null) files = [f];
+      } else {
+        files =
+            await _picker.pickMultiImage(imageQuality: 70, maxWidth: 1600);
+      }
+    } catch (e) {
+      _snack('No se pudo acceder a las fotos: $e');
+      return;
+    }
+    if (files.isEmpty) return;
+
+    setState(() => _busy = true);
+    try {
+      await _repo.uploadPhotos(widget.orderId, files.map((f) => f.path).toList());
+      await _reloadOrder();
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() => _busy = false);
+        _snack(e.message);
+      }
+    }
+  }
+
+  Future<void> _deletePhoto(WoPhoto p) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar foto'),
+        content: const Text('¿Eliminar esta foto de la orden?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancelar')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    setState(() => _busy = true);
+    try {
+      await _repo.deletePhoto(widget.orderId, p.id);
+      await _reloadOrder();
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() => _busy = false);
+        _snack(e.message);
+      }
+    }
+  }
+
+  void _viewPhoto(WoPhoto p) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        insetPadding: const EdgeInsets.all(12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppBar(
+              automaticallyImplyLeading: false,
+              title: Text(p.fileName ?? 'Foto', maxLines: 1),
+              actions: [
+                IconButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    icon: const Icon(Icons.close)),
+              ],
+            ),
+            Flexible(
+              child: InteractiveViewer(
+                child: Image.network(p.url,
+                    errorBuilder: (_, _, _) => const Padding(
+                          padding: EdgeInsets.all(40),
+                          child: Icon(Icons.broken_image_outlined, size: 48),
+                        )),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _snack(String m) => ScaffoldMessenger.of(context)
+      .showSnackBar(SnackBar(content: Text(m)));
+
+  Widget _photosSection(WorkOrder o) => Card(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Fotos',
+                      style: TextStyle(fontWeight: FontWeight.w700)),
+                  if (!_closed)
+                    TextButton.icon(
+                      onPressed: _busy ? null : _addPhotos,
+                      icon: const Icon(Icons.add_a_photo_outlined, size: 18),
+                      label: const Text('Agregar'),
+                    ),
+                ],
+              ),
+              if (o.photos.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Text('Sin fotos.',
+                      style: TextStyle(color: Colors.black54)),
+                )
+              else
+                SizedBox(
+                  height: 92,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: o.photos.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 8),
+                    itemBuilder: (_, i) {
+                      final p = o.photos[i];
+                      return Stack(
+                        children: [
+                          GestureDetector(
+                            onTap: () => _viewPhoto(p),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Image.network(
+                                p.url,
+                                width: 92,
+                                height: 92,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => Container(
+                                  width: 92,
+                                  height: 92,
+                                  color: Colors.black12,
+                                  child: const Icon(
+                                      Icons.broken_image_outlined),
+                                ),
+                              ),
+                            ),
+                          ),
+                          if (!_closed)
+                            Positioned(
+                              top: -6,
+                              right: -6,
+                              child: IconButton(
+                                iconSize: 18,
+                                icon: const CircleAvatar(
+                                  radius: 11,
+                                  backgroundColor: Colors.black54,
+                                  child: Icon(Icons.close,
+                                      size: 13, color: Colors.white),
+                                ),
+                                onPressed:
+                                    _busy ? null : () => _deletePhoto(p),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
 
   Widget _header(WorkOrder o) => Card(
         child: Padding(

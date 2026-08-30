@@ -7,8 +7,18 @@ import '../clients/clients_screen.dart';
 import 'workshop_repository.dart';
 
 /// Recepción: alta de una orden de trabajo (cliente + vehículo + falla).
+/// Puede venir precargada desde una cita de la agenda (con el cliente ya
+/// elegido); en ese caso se enlaza la cita al crear la OT.
 class ReceptionScreen extends ConsumerStatefulWidget {
-  const ReceptionScreen({super.key});
+  final Client? prefillClient;
+  final int? appointmentId;
+  final String? prefillIssue;
+  const ReceptionScreen({
+    super.key,
+    this.prefillClient,
+    this.appointmentId,
+    this.prefillIssue,
+  });
 
   @override
   ConsumerState<ReceptionScreen> createState() => _ReceptionScreenState();
@@ -36,6 +46,26 @@ class _ReceptionScreenState extends ConsumerState<ReceptionScreen> {
   final _notes = TextEditingController();
   DateTime _receptionDate = DateTime.now();
   bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.prefillIssue != null) _issue.text = widget.prefillIssue!;
+    final c = widget.prefillClient;
+    if (c != null) {
+      _client = c;
+      // Carga los vehículos del cliente; si no tiene, arranca en "nuevo".
+      Future.microtask(() async {
+        final vs = await ref.read(workshopRepositoryProvider).vehicles(c.id);
+        if (mounted) {
+          setState(() {
+            _vehicles = vs;
+            _newVehicle = vs.isEmpty;
+          });
+        }
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -109,6 +139,7 @@ class _ReceptionScreenState extends ConsumerState<ReceptionScreen> {
             receivedItems:
                 _received.text.trim().isEmpty ? null : _received.text.trim(),
             notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
+            appointmentId: widget.appointmentId,
           );
       if (mounted) Navigator.pop(context, true);
     } on ApiException catch (e) {

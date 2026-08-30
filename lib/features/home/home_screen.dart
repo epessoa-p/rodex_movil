@@ -95,6 +95,13 @@ class HomeScreen extends ConsumerWidget {
                     color: Colors.deepPurple,
                     onTap: () => context.push('/workshop'),
                   ),
+                if (me.planAllows('workshop') && me.can('appointments.view'))
+                  _ActionTile(
+                    icon: Icons.calendar_month_outlined,
+                    label: 'Agenda',
+                    color: Colors.pink,
+                    onTap: () => context.push('/agenda'),
+                  ),
                 if (me.planAllows('purchases') && me.can('purchases.create'))
                   _ActionTile(
                     icon: Icons.shopping_bag_outlined,

@@ -354,12 +354,14 @@ class SaleItem {
   final String name;
   final double quantity;
   final double unitPrice;
+  final double discount;
   final double subtotal;
 
   SaleItem({
     required this.name,
     required this.quantity,
     required this.unitPrice,
+    this.discount = 0,
     required this.subtotal,
   });
 
@@ -367,6 +369,7 @@ class SaleItem {
         name: (j['name'] ?? '') as String,
         quantity: _toDouble(j['quantity']),
         unitPrice: _toDouble(j['unit_price']),
+        discount: _toDouble(j['discount']),
         subtotal: _toDouble(j['subtotal']),
       );
 }
@@ -463,6 +466,7 @@ class WorkOrder {
   final double discount;
   final List<WoService> services;
   final List<WoPart> parts;
+  final List<WoPhoto> photos;
 
   WorkOrder({
     required this.id,
@@ -487,6 +491,7 @@ class WorkOrder {
     this.discount = 0,
     this.services = const [],
     this.parts = const [],
+    this.photos = const [],
   });
 
   factory WorkOrder.fromJson(Map<String, dynamic> j) => WorkOrder(
@@ -516,6 +521,22 @@ class WorkOrder {
         parts: ((j['parts'] as List?) ?? [])
             .map((e) => WoPart.fromJson(e as Map<String, dynamic>))
             .toList(),
+        photos: ((j['photos'] as List?) ?? [])
+            .map((e) => WoPhoto.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+}
+
+/// Foto de una orden de trabajo.
+class WoPhoto {
+  final int id;
+  final String url;
+  final String? fileName;
+  WoPhoto({required this.id, required this.url, this.fileName});
+  factory WoPhoto.fromJson(Map<String, dynamic> j) => WoPhoto(
+        id: j['id'] as int,
+        url: (j['url'] ?? '') as String,
+        fileName: j['file_name'] as String?,
       );
 }
 

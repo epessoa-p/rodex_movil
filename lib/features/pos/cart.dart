@@ -6,12 +6,23 @@ class CartLine {
   final Product product;
   final double quantity;
 
-  CartLine(this.product, this.quantity);
+  /// Descuento por línea (monto en la moneda), aplicado a este ítem.
+  final double discount;
 
-  double get subtotal => product.price * quantity;
+  CartLine(this.product, this.quantity, {this.discount = 0});
 
-  CartLine copyWith({double? quantity}) =>
-      CartLine(product, quantity ?? this.quantity);
+  /// Importe bruto de la línea (sin descuento).
+  double get gross => product.price * quantity;
+
+  /// Importe de la línea con el descuento aplicado (nunca negativo).
+  double get subtotal {
+    final v = gross - discount;
+    return v < 0 ? 0 : v;
+  }
+
+  CartLine copyWith({double? quantity, double? discount}) =>
+      CartLine(product, quantity ?? this.quantity,
+          discount: discount ?? this.discount);
 }
 
 /// Carrito del POS (venta en construcción).
@@ -38,13 +49,30 @@ class Cart extends StateNotifier<List<CartLine>> {
     ];
   }
 
+  /// Fija el descuento (monto) de una línea; se acota entre 0 y el bruto.
+  void setDiscount(int productId, double discount) {
+    state = [
+      for (final l in state)
+        if (l.product.id == productId)
+          l.copyWith(discount: discount.clamp(0, l.gross).toDouble())
+        else
+          l,
+    ];
+  }
+
   void remove(int productId) {
     state = state.where((l) => l.product.id != productId).toList();
   }
 
   void clear() => state = const [];
 
+  /// Total neto (suma de líneas con su descuento aplicado).
   double get total => state.fold(0, (sum, l) => sum + l.subtotal);
+
+  /// Suma de descuentos por línea (para mostrarlo en el resumen).
+  double get lineDiscountTotal =>
+      state.fold(0, (sum, l) => sum + l.discount.clamp(0, l.gross));
+
   int get count => state.length;
 
   List<Map<String, dynamic>> toItems() => [
@@ -53,6 +81,7 @@ class Cart extends StateNotifier<List<CartLine>> {
             'product_id': l.product.id,
             'quantity': l.quantity,
             'unit_price': l.product.price,
+            'discount': l.discount.clamp(0, l.gross),
           }
       ];
 }

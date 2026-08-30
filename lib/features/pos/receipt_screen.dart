@@ -62,12 +62,21 @@ class ReceiptScreen extends ConsumerWidget {
                   for (final it in sale.items)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                              child: Text(
-                                  '${qty(it.quantity)} x ${it.name}')),
-                          Text(money(it.subtotal)),
+                          Row(
+                            children: [
+                              Expanded(
+                                  child: Text(
+                                      '${qty(it.quantity)} x ${it.name}')),
+                              Text(money(it.subtotal)),
+                            ],
+                          ),
+                          if (it.discount > 0)
+                            Text('   Desc. -${money(it.discount)}',
+                                style: const TextStyle(
+                                    color: Colors.red, fontSize: 11)),
                         ],
                       ),
                     ),
@@ -130,6 +139,7 @@ String buildReceiptText(Sale sale, {String? company}) {
   b.writeln(line);
   for (final it in sale.items) {
     b.writeln('${qty(it.quantity)} x ${it.name}');
+    if (it.discount > 0) b.writeln('    Desc. -${money(it.discount)}');
     b.writeln('    ${money(it.subtotal)}');
   }
   b.writeln(line);
