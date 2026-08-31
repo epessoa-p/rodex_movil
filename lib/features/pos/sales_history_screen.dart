@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/api_client.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
+import '../../core/providers.dart';
 import 'pos_repository.dart';
 import 'receipt_screen.dart';
 
@@ -112,8 +114,19 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final me = ref.watch(authControllerProvider).me;
+    final canSell = (me?.planAllows('sales') ?? false) &&
+        (me?.canAny(['pos.access', 'sales.create']) ?? false);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Ventas')),
+      floatingActionButton: canSell
+          ? FloatingActionButton.extended(
+              onPressed: () => context.push('/pos'),
+              icon: const Icon(Icons.point_of_sale),
+              label: const Text('Nueva venta'),
+            )
+          : null,
       body: Column(
         children: [
           Padding(

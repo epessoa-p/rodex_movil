@@ -45,11 +45,17 @@ class _ReceptionScreenState extends ConsumerState<ReceptionScreen> {
   final _received = TextEditingController();
   final _notes = TextEditingController();
   DateTime _receptionDate = DateTime.now();
+
+  // Mecánico (opcional)
+  List<Mechanic> _mechanics = [];
+  int? _mechanicId;
+
   bool _submitting = false;
 
   @override
   void initState() {
     super.initState();
+    _loadMechanics();
     if (widget.prefillIssue != null) _issue.text = widget.prefillIssue!;
     final c = widget.prefillClient;
     if (c != null) {
@@ -76,6 +82,15 @@ class _ReceptionScreenState extends ConsumerState<ReceptionScreen> {
       c.dispose();
     }
     super.dispose();
+  }
+
+  Future<void> _loadMechanics() async {
+    try {
+      final ms = await ref.read(workshopRepositoryProvider).mechanics();
+      if (mounted) setState(() => _mechanics = ms);
+    } on ApiException {
+      // sin mecánicos: el campo queda vacío (es opcional)
+    }
   }
 
   Future<void> _pickClient() async {
@@ -119,6 +134,7 @@ class _ReceptionScreenState extends ConsumerState<ReceptionScreen> {
     try {
       await ref.read(workshopRepositoryProvider).createReception(
             clientId: _client!.id,
+            mechanicId: _mechanicId,
             vehicleId: _newVehicle ? null : _vehicleId,
             receptionDate: _fmtDate(_receptionDate),
             newVehicle: _newVehicle
@@ -274,6 +290,24 @@ class _ReceptionScreenState extends ConsumerState<ReceptionScreen> {
               ],
             ),
 
+          const SizedBox(height: 16),
+          DropdownButtonFormField<int?>(
+            initialValue: _mechanicId,
+            isExpanded: true,
+            decoration: InputDecoration(
+              labelText: 'Mecánico',
+              prefixIcon: const Icon(Icons.engineering_outlined),
+              helperText: _mechanics.isEmpty
+                  ? 'No hay mecánicos registrados (créalos en la web).'
+                  : null,
+            ),
+            items: [
+              const DropdownMenuItem(value: null, child: Text('Sin asignar')),
+              for (final m in _mechanics)
+                DropdownMenuItem(value: m.id, child: Text(m.name)),
+            ],
+            onChanged: (v) => setState(() => _mechanicId = v),
+          ),
           const SizedBox(height: 16),
           TextField(
             controller: _issue,

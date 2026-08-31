@@ -338,6 +338,48 @@ class _WorkOrderDetailScreenState
     if (mounted) setState(() { _order = o; _busy = false; });
   }
 
+  Future<void> _assignMechanic() async {
+    List<Mechanic> mechs;
+    try {
+      mechs = await _repo.mechanics();
+    } on ApiException catch (e) {
+      _snack(e.message);
+      return;
+    }
+    if (!mounted) return;
+    if (mechs.isEmpty) {
+      _snack('No hay mecánicos. Créalos en Mecánicos.');
+      return;
+    }
+    final current = _order?.mechanic;
+    final picked = await showModalBottomSheet<int>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.person_off_outlined),
+              title: const Text('Sin asignar'),
+              onTap: () => Navigator.pop(ctx, -1),
+            ),
+            const Divider(height: 1),
+            for (final m in mechs)
+              ListTile(
+                leading: const Icon(Icons.engineering_outlined),
+                title: Text(m.name),
+                trailing: current == m.name ? const Icon(Icons.check) : null,
+                onTap: () => Navigator.pop(ctx, m.id),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (picked == null) return;
+    await _run(() => _repo.assignMechanic(widget.orderId, picked == -1 ? null : picked));
+  }
+
   Future<void> _addPhotos() async {
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
@@ -550,8 +592,26 @@ class _WorkOrderDetailScreenState
               const SizedBox(height: 6),
               Text('Cliente: ${o.client ?? '-'}'),
               Text('Vehículo: ${o.vehicle ?? '-'}'),
-              if (o.mechanic != null && o.mechanic!.isNotEmpty)
-                Text('Mecánico: ${o.mechanic}'),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                        'Mecánico: ${(o.mechanic != null && o.mechanic!.isNotEmpty) ? o.mechanic : 'Sin asignar'}'),
+                  ),
+                  if (!_closed)
+                    TextButton.icon(
+                      style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 8)),
+                      icon: const Icon(Icons.engineering_outlined, size: 18),
+                      label: Text(
+                          (o.mechanic != null && o.mechanic!.isNotEmpty)
+                              ? 'Cambiar'
+                              : 'Asignar'),
+                      onPressed: _busy ? null : _assignMechanic,
+                    ),
+                ],
+              ),
               _recepLine('Kilometraje',
                   o.mileage != null ? '${o.mileage}' : null),
               _recepLine('Combustible', o.fuelLevel),

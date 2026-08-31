@@ -39,7 +39,7 @@ _Última actualización: 2026-08-25_
 - ✅ **Resumen del día** (ventas/monto de hoy) en el inicio. Endpoint `GET /sales/summary`; respeta "solo las mías" salvo `sales.view-all-records`.
 
 ### POS / Ventas 🟡
-- ✅ Carrito (agregar, +/− cantidad, vaciar, total).
+- ✅ Carrito (agregar, +/− cantidad, vaciar, total). El acceso **"Nueva venta"** ya no está en el drawer: es un **botón dentro del listado de Ventas** (y el tile del Inicio).
 - ✅ Agregar producto por **búsqueda** (nombre/código).
 - ✅ Agregar por **escáner de código de barras** (mobile_scanner, escaneo continuo + linterna).
 - ✅ Cliente opcional (elegir / alta rápida).
@@ -79,17 +79,26 @@ _Última actualización: 2026-08-25_
 - ✅ **Compra directa** (contado, un paso): proveedor + almacén + productos → registra la **compra**, **suma stock** y **paga el gasto**. **Origen del pago elegible: Caja** (requiere caja abierta) **o una cuenta de Tesorería** (valida saldo; registra el movimiento y descuenta el saldo de la cuenta). El selector Caja/Tesorería aparece si el usuario tiene `treasury.view`. Tile en el Inicio + drawer. Endpoint `POST /purchases/direct` (`payment_source` = cash|treasury, `treasury_account_id`). Gateado por `purchases.create`.
 - ⬜ **Cuentas por pagar**: ver saldos a proveedores y registrar un pago (más administrativo).
 
+### Mecánicos (administración) ✅  (plan:workshop)
+- ✅ **Pantalla de Mecánicos** en el menú: listado (activos e inactivos) y **alta/edición con todos los campos** (nombre, especialidad, teléfono, **% de comisión**, activo). Gateado por `mechanics.view/create/edit`. Endpoints `GET /mechanics/all`, `POST /mechanics`, `PUT /mechanics/{id}`.
+- ✅ **Mecánico en la recepción** (dropdown "Mecánico", opcional) — alimenta la comisión.
+
+### Pago a mecánicos ✅  (plan:workshop) — módulo nuevo (web + móvil)
+- ✅ **Liquidación por OT**: por mecánico se listan sus **OTs entregadas** con comisión (% × mano de obra), separadas en **Pendientes** y **Pagadas** (con fecha de pago). Se sabe exactamente qué OT se pagó y cuál no.
+- ✅ **Pagar seleccionando OTs**: eliges las OTs pendientes (o todas) → total = Σ comisiones + **bono** opcional; esas OTs quedan **pagadas y vinculadas al pago** (comisión congelada). **Origen Caja o Tesorería** (caja requiere sesión abierta, tesorería valida saldo). Registra el gasto (`expense_payroll` caja / `payroll` tesorería).
+- Permisos: `mechanic-payments.view` / `mechanic-payments.pay`. En el drawer. Endpoints `GET /mechanic-payments`, `GET /mechanic-payments/{id}` (detalle OTs), `POST /mechanic-payments` (`work_order_ids[]` + `bonus`). **También en la web** (Taller → *Pago a mecánicos* → detalle del mecánico). **DB:** scripts `20260831_mechanic_payments.sql` **y** `20260831b_mechanic_commission_by_ot.sql`.
+
 ### Finanzas — Tesorería ✅  (plan:purchases)
 - ✅ **Cuentas** (efectivo/banco): listar con saldo + **saldo total**; crear cuenta (nombre, tipo, banco/N° cuenta, **saldo de apertura** opcional). Tile en el Inicio + drawer. Endpoints `GET/POST /treasury/accounts`. Gateado por `treasury.view` (ver) / `treasury.manage` (crear).
 - ✅ **Ingresos/gastos** por cuenta: detalle con saldo, botones **Ingreso** (aporte de capital / ajuste +) y **Gasto** (gasto / ajuste −), e historial de movimientos. Valida que el gasto no supere el saldo. Endpoints `GET /treasury/accounts/{id}`, `POST /treasury/accounts/{id}/movements`. Gateado por `treasury.manage`.
 
 ### Taller (Órdenes de trabajo) ✅ / 🟡
 - ✅ Listar órdenes (incluye **entregadas**; oculta solo las anuladas).
-- ✅ **Recepción** de vehículo (crea la OT) con los campos del web: cliente, vehículo (existente o nuevo con marca/modelo/placa/**año/color**), **kilometraje**, **combustible**, **falla reportada**, **objetos/accesorios recibidos** y **notas**. Asigna la **sucursal** del personal (para el descuento de stock en la entrega). Se muestran en el detalle de la OT.
+- ✅ **Recepción** de vehículo (crea la OT) con los campos del web: cliente, **mecánico** (opcional), vehículo (existente o nuevo con marca/modelo/placa/**año/color**), **kilometraje**, **combustible**, **falla reportada**, **objetos/accesorios recibidos** y **notas**. (El `mechanic_id` es la base de la comisión.) Asigna la **sucursal** del personal (para el descuento de stock en la entrega). Se muestran en el detalle de la OT.
 - ✅ Detalle de la OT: agregar/quitar **servicios** y **repuestos**, cambiar **estado**, **entregar**, y **diagnóstico** editable (estados recibida/diagnosticada/en_proceso/terminada; recibida→diagnosticada al guardar). Endpoint `POST /work-orders/{id}/diagnosis`.
 - ✅ **Cobro/pago** de la OT al **contado** (entrega + cobro + descuento de stock, endpoint `deliver`). ⬜ Falta cobro a **crédito/cuotas** desde el móvil.
 - ✅ **Compartir recibo de la OT en PDF** (ticket 80 mm: empresa, código, fecha, cliente/vehículo/mecánico, diagnóstico, servicios, repuestos, subtotales, descuento, total/pagado/saldo y estado de pago). En el menú **Compartir** del detalle, junto al enlace de seguimiento. Usa `pdf` + `printing`.
-- ⬜ Asignar mecánico desde el detalle (existe alta rápida en web).
+- ✅ **Asignar/cambiar mecánico desde el detalle** de la OT (botón en el encabezado → elige mecánico o "Sin asignar"). Endpoint `POST /work-orders/{id}/mechanic`. Solo si la OT no está entregada/anulada.
 - ✅ **Fotos de la OT**: en el detalle, galería de fotos con **agregar** (cámara o galería, varias a la vez), **ver** a pantalla completa y **eliminar**. Usa la tabla existente `work_order_photos` (misma que la recepción web). Endpoints `GET/POST /work-orders/{id}/photos`, `DELETE /work-orders/{id}/photos/{photo}`. Se muestran también las fotos cargadas desde la recepción del web.
 - ✅ **Enlace de seguimiento para el cliente**: botón "Compartir seguimiento" en el detalle de la OT → genera/entrega una URL pública (`/ot/{token}`, token único) y la comparte (`share_plus`). El cliente abre el enlace **sin login** y ve una **página web de seguimiento** (estado con línea de avance, vehículo, fechas, mecánico, falla, diagnóstico, detalle y total). Endpoint `GET /work-orders/{id}/share`. **DB:** script `20260829_work_order_public_token.sql` (columna `public_token`).
 

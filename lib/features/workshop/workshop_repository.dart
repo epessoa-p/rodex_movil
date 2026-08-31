@@ -25,6 +25,47 @@ class WorkshopRepository {
     return _list(data).map((e) => Mechanic.fromJson(e)).toList();
   }
 
+  /// Listado completo de mecánicos (incluye inactivos) para administrar.
+  Future<List<MechanicFull>> mechanicsFull() async {
+    final data = await _api.get('/mechanics/all');
+    return _list(data).map((e) => MechanicFull.fromJson(e)).toList();
+  }
+
+  Future<MechanicFull> createMechanic({
+    required String name,
+    String? specialty,
+    String? phone,
+    double? commissionRate,
+    bool active = true,
+  }) async {
+    final data = await _api.post('/mechanics', body: {
+      'name': name,
+      'specialty': ?specialty,
+      'phone': ?phone,
+      'commission_rate': ?commissionRate,
+      'active': active,
+    });
+    return MechanicFull.fromJson((data as Map<String, dynamic>)['data']);
+  }
+
+  Future<MechanicFull> updateMechanic(
+    int id, {
+    required String name,
+    String? specialty,
+    String? phone,
+    double? commissionRate,
+    bool active = true,
+  }) async {
+    final data = await _api.put('/mechanics/$id', body: {
+      'name': name,
+      'specialty': ?specialty,
+      'phone': ?phone,
+      'commission_rate': ?commissionRate,
+      'active': active,
+    });
+    return MechanicFull.fromJson((data as Map<String, dynamic>)['data']);
+  }
+
   Future<List<VehicleOption>> vehicles(int clientId) async {
     final data = await _api.get('/vehicles', query: {'client_id': clientId});
     return _list(data).map((e) => VehicleOption.fromJson(e)).toList();
@@ -34,6 +75,7 @@ class WorkshopRepository {
     required int clientId,
     int? vehicleId,
     Map<String, dynamic>? newVehicle,
+    int? mechanicId,
     String? receptionDate,
     String? reportedIssue,
     int? mileage,
@@ -47,6 +89,7 @@ class WorkshopRepository {
       'vehicle_mode': newVehicle != null ? 'new' : 'existing',
       'vehicle_id': ?vehicleId,
       'vehicle': ?newVehicle,
+      'mechanic_id': ?mechanicId,
       'reception_date': ?receptionDate,
       'reported_issue': ?reportedIssue,
       'mileage': ?mileage,
@@ -86,6 +129,13 @@ class WorkshopRepository {
       'quantity': quantity,
       'unit_price': unitPrice,
     });
+    return WorkOrder.fromJson((data as Map<String, dynamic>)['data']);
+  }
+
+  /// Asigna (o quita, con null) el mecánico de una OT.
+  Future<WorkOrder> assignMechanic(int orderId, int? mechanicId) async {
+    final data = await _api.post('/work-orders/$orderId/mechanic',
+        body: {'mechanic_id': mechanicId});
     return WorkOrder.fromJson((data as Map<String, dynamic>)['data']);
   }
 
@@ -149,8 +199,41 @@ class WorkshopRepository {
           .cast<Map<String, dynamic>>();
 }
 
+/// Mecánico con todos sus campos (para la administración).
+class MechanicFull {
+  final int id;
+  final String name;
+  final String? specialty;
+  final String? phone;
+  final double commissionRate;
+  final bool active;
+
+  MechanicFull({
+    required this.id,
+    required this.name,
+    this.specialty,
+    this.phone,
+    required this.commissionRate,
+    required this.active,
+  });
+
+  factory MechanicFull.fromJson(Map<String, dynamic> j) => MechanicFull(
+        id: j['id'] as int,
+        name: (j['name'] ?? '') as String,
+        specialty: j['specialty'] as String?,
+        phone: j['phone'] as String?,
+        commissionRate: (j['commission_rate'] as num?)?.toDouble() ?? 0,
+        active: (j['active'] as bool?) ?? true,
+      );
+}
+
 final workshopRepositoryProvider = Provider<WorkshopRepository>(
   (ref) => WorkshopRepository(ref.read(apiClientProvider)),
+);
+
+/// Listado completo de mecánicos (administración).
+final mechanicsFullProvider = FutureProvider<List<MechanicFull>>(
+  (ref) => ref.read(workshopRepositoryProvider).mechanicsFull(),
 );
 
 /// Órdenes activas (para la lista del taller).

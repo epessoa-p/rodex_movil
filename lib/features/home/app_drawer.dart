@@ -60,8 +60,6 @@ class AppDrawer extends ConsumerWidget {
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: [
-                  _item(context, Icons.point_of_sale, 'Nueva venta', '/pos',
-                      show: canSell),
                   _item(context, Icons.receipt_long_outlined, 'Ventas',
                       '/sales',
                       show: me.planAllows('sales') &&
@@ -80,6 +78,14 @@ class AppDrawer extends ConsumerWidget {
                       '/agenda',
                       show: me.planAllows('workshop') &&
                           me.can('appointments.view')),
+                  _item(context, Icons.engineering_outlined, 'Mecánicos',
+                      '/mechanics',
+                      show: me.planAllows('workshop') &&
+                          me.can('mechanics.view')),
+                  _item(context, Icons.payments_outlined, 'Pago a mecánicos',
+                      '/mechanic-payments',
+                      show: me.planAllows('workshop') &&
+                          me.can('mechanic-payments.view')),
                   _item(context, Icons.savings_outlined, 'Caja', '/cash',
                       show: me.canAny(['cash.operate', 'pos.access'])),
                   _item(context, Icons.shopping_bag_outlined, 'Compra directa',
