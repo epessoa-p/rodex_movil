@@ -107,6 +107,13 @@ class WorkshopRepository {
     return WorkOrder.fromJson((data as Map<String, dynamic>)['data']);
   }
 
+  /// Enlace público de seguimiento de la OT (para compartir al cliente).
+  Future<String> shareLink(int orderId) async {
+    final data = await _api.get('/work-orders/$orderId/share');
+    final d = (data as Map<String, dynamic>)['data'] as Map<String, dynamic>;
+    return (d['url'] ?? '') as String;
+  }
+
   /// Fotos de una OT.
   Future<List<WoPhoto>> photos(int orderId) async {
     final data = await _api.get('/work-orders/$orderId/photos');

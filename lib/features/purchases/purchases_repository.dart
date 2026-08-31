@@ -164,12 +164,16 @@ class PurchasesRepository {
     required int supplierId,
     required int warehouseId,
     required List<Map<String, dynamic>> items,
+    String paymentSource = 'cash', // 'cash' | 'treasury'
+    int? treasuryAccountId,
     String? invoiceNumber,
     String? notes,
   }) async {
     final data = await _api.post('/purchases/direct', body: {
       'supplier_id': supplierId,
       'warehouse_id': warehouseId,
+      'payment_source': paymentSource,
+      'treasury_account_id': ?treasuryAccountId,
       'items': items,
       'invoice_number': ?invoiceNumber,
       'notes': ?notes,

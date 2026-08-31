@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:printing/printing.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../core/api_client.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
+import '../../core/providers.dart';
 import '../products/products_screen.dart';
+import 'work_order_pdf.dart';
 import 'workshop_repository.dart';
 
 class WorkOrderDetailScreen extends ConsumerStatefulWidget {
@@ -194,7 +198,32 @@ class _WorkOrderDetailScreenState
     final o = _order!;
 
     return Scaffold(
-      appBar: AppBar(title: Text(o.code)),
+      appBar: AppBar(
+        title: Text(o.code),
+        actions: [
+          PopupMenuButton<String>(
+            tooltip: 'Compartir',
+            icon: const Icon(Icons.share_outlined),
+            enabled: !_busy,
+            onSelected: (v) =>
+                v == 'receipt' ? _shareReceipt() : _shareTracking(),
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'receipt',
+                child: ListTile(
+                    leading: Icon(Icons.picture_as_pdf_outlined),
+                    title: Text('Compartir recibo (PDF)')),
+              ),
+              PopupMenuItem(
+                value: 'tracking',
+                child: ListTile(
+                    leading: Icon(Icons.link),
+                    title: Text('Compartir seguimiento (link)')),
+              ),
+            ],
+          ),
+        ],
+      ),
       body: Stack(
         children: [
           ListView(
@@ -265,6 +294,44 @@ class _WorkOrderDetailScreenState
   }
 
   final _picker = ImagePicker();
+
+  Future<void> _shareTracking() async {
+    final o = _order;
+    if (o == null) return;
+    setState(() => _busy = true);
+    try {
+      final url = await _repo.shareLink(o.id);
+      if (!mounted) return;
+      setState(() => _busy = false);
+      final veh = o.vehicle != null ? ' (${o.vehicle})' : '';
+      await SharePlus.instance.share(ShareParams(
+        text: 'Sigue el estado de tu orden ${o.code}$veh aquí:\n$url',
+      ));
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() => _busy = false);
+        _snack(e.message);
+      }
+    }
+  }
+
+  Future<void> _shareReceipt() async {
+    final o = _order;
+    if (o == null) return;
+    setState(() => _busy = true);
+    try {
+      final company = ref.read(authControllerProvider).me?.company?.name;
+      final bytes = await buildWorkOrderPdf(o, company: company);
+      if (!mounted) return;
+      setState(() => _busy = false);
+      await Printing.sharePdf(bytes: bytes, filename: '${o.code}.pdf');
+    } catch (e) {
+      if (mounted) {
+        setState(() => _busy = false);
+        _snack('No se pudo generar el PDF: $e');
+      }
+    }
+  }
 
   Future<void> _reloadOrder() async {
     final o = await _repo.order(widget.orderId);

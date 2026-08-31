@@ -455,6 +455,7 @@ class WorkOrder {
   final String? client;
   final String? vehicle;
   final String? mechanic;
+  final String? receptionDate;
   final String? reportedIssue;
   final String? diagnosis;
   final int? mileage;
@@ -480,6 +481,7 @@ class WorkOrder {
     this.client,
     this.vehicle,
     this.mechanic,
+    this.receptionDate,
     this.reportedIssue,
     this.diagnosis,
     this.mileage,
@@ -506,6 +508,7 @@ class WorkOrder {
         client: j['client'] as String?,
         vehicle: j['vehicle'] as String?,
         mechanic: j['mechanic'] as String?,
+        receptionDate: j['reception_date'] as String?,
         reportedIssue: j['reported_issue'] as String?,
         diagnosis: j['diagnosis'] as String?,
         mileage: (j['mileage'] as num?)?.toInt(),

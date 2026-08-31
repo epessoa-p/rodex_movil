@@ -48,7 +48,7 @@ _Última actualización: 2026-08-25_
 - ✅ **Descuento por producto** (por línea): botón/etiqueta en cada ítem del carrito → monto de descuento (acotado al bruto de la línea); se muestra en el ítem, en el resumen ("Desc. productos") y en el **recibo**. Se envía como `items[].discount` (el backend ya lo soportaba).
 - ✅ **Descuento general** de la venta (campo antes de cobrar, aparte del de producto; el total resta ambos).
 - ✅ **Historial de ventas** (lista paginada con búsqueda + scroll infinito; abre el recibo). Endpoint `GET /sales`. Respeta "solo las mías" salvo permiso `sales.view-all-records`.
-- ✅ **Compartir recibo** de venta (texto formateado con empresa, código, fecha, cliente, ítems y totales) por WhatsApp / cualquier app (`share_plus`). Disponible en el recibo tras cobrar y desde el historial de ventas. ⬜ Compartir recibo de **OT** / versión PDF.
+- ✅ **Compartir recibo** de venta como **PDF** (ticket 80 mm con empresa, código, fecha, cliente, ítems/descuentos y totales) vía `pdf` + `printing`; opción alterna de **texto** (WhatsApp, etc.). Disponible en el recibo tras cobrar y desde el historial de ventas.
 - ⬜ Ver **stock/precio** del producto al escanear/seleccionar.
 
 ### Caja ✅ / 🟡
@@ -76,7 +76,7 @@ _Última actualización: 2026-08-25_
 - ✅ **Recepción de mercadería**: lista de OC por recibir (enviadas/parciales) → recibir cantidades por línea en un almacén. Suma stock, avanza la OC y **genera la compra (cuenta por pagar)**. Endpoints `GET /purchase-orders`, `GET /purchase-orders/{id}`, `POST /purchase-orders/{id}/receive`. Gateado por `plan:purchases` + `goods-receipts.create`.
 - ✅ **Proveedores**: directorio (listar/buscar) y **alta rápida** (nombre, NIT, contacto, teléfono, email). Endpoints `GET /suppliers`, `POST /suppliers`. Gateado por `plan:purchases` + `suppliers.view/create`.
 - ✅ **Órdenes de compra**: crear una OC desde el móvil (proveedor + productos con cantidad y costo). Queda en estado *enviada* (lista para recibir). Desde Recepción → "Nueva OC". Endpoint `POST /purchase-orders`. Gateado por `purchase-orders.create`.
-- ✅ **Compra directa** (contado, un paso): proveedor + almacén + productos → registra la **compra**, **suma stock** y **paga desde caja** (gasto). Requiere caja abierta. Tile en el Inicio + drawer. Endpoint `POST /purchases/direct`. Gateado por `purchases.create`.
+- ✅ **Compra directa** (contado, un paso): proveedor + almacén + productos → registra la **compra**, **suma stock** y **paga el gasto**. **Origen del pago elegible: Caja** (requiere caja abierta) **o una cuenta de Tesorería** (valida saldo; registra el movimiento y descuenta el saldo de la cuenta). El selector Caja/Tesorería aparece si el usuario tiene `treasury.view`. Tile en el Inicio + drawer. Endpoint `POST /purchases/direct` (`payment_source` = cash|treasury, `treasury_account_id`). Gateado por `purchases.create`.
 - ⬜ **Cuentas por pagar**: ver saldos a proveedores y registrar un pago (más administrativo).
 
 ### Finanzas — Tesorería ✅  (plan:purchases)
@@ -88,8 +88,10 @@ _Última actualización: 2026-08-25_
 - ✅ **Recepción** de vehículo (crea la OT) con los campos del web: cliente, vehículo (existente o nuevo con marca/modelo/placa/**año/color**), **kilometraje**, **combustible**, **falla reportada**, **objetos/accesorios recibidos** y **notas**. Asigna la **sucursal** del personal (para el descuento de stock en la entrega). Se muestran en el detalle de la OT.
 - ✅ Detalle de la OT: agregar/quitar **servicios** y **repuestos**, cambiar **estado**, **entregar**, y **diagnóstico** editable (estados recibida/diagnosticada/en_proceso/terminada; recibida→diagnosticada al guardar). Endpoint `POST /work-orders/{id}/diagnosis`.
 - ✅ **Cobro/pago** de la OT al **contado** (entrega + cobro + descuento de stock, endpoint `deliver`). ⬜ Falta cobro a **crédito/cuotas** desde el móvil.
+- ✅ **Compartir recibo de la OT en PDF** (ticket 80 mm: empresa, código, fecha, cliente/vehículo/mecánico, diagnóstico, servicios, repuestos, subtotales, descuento, total/pagado/saldo y estado de pago). En el menú **Compartir** del detalle, junto al enlace de seguimiento. Usa `pdf` + `printing`.
 - ⬜ Asignar mecánico desde el detalle (existe alta rápida en web).
 - ✅ **Fotos de la OT**: en el detalle, galería de fotos con **agregar** (cámara o galería, varias a la vez), **ver** a pantalla completa y **eliminar**. Usa la tabla existente `work_order_photos` (misma que la recepción web). Endpoints `GET/POST /work-orders/{id}/photos`, `DELETE /work-orders/{id}/photos/{photo}`. Se muestran también las fotos cargadas desde la recepción del web.
+- ✅ **Enlace de seguimiento para el cliente**: botón "Compartir seguimiento" en el detalle de la OT → genera/entrega una URL pública (`/ot/{token}`, token único) y la comparte (`share_plus`). El cliente abre el enlace **sin login** y ve una **página web de seguimiento** (estado con línea de avance, vehículo, fechas, mecánico, falla, diagnóstico, detalle y total). Endpoint `GET /work-orders/{id}/share`. **DB:** script `20260829_work_order_public_token.sql` (columna `public_token`).
 
 ### Agenda / Citas ✅  (plan:workshop) — módulo nuevo (web + móvil)
 - ✅ **Vistas Día / Semana / Mes** (conmutador). **Día**: tira de semana + línea de tiempo + resumen (total/programadas/confirmadas/completadas). **Semana**: 7 columnas (lun-dom) con las citas de cada día. **Mes**: calendario con conteo por día; al tocar un día abre su vista. Endpoint de rango `GET /appointments/range?from=&to=`.
@@ -131,7 +133,8 @@ Existen en la web pero todavía no tienen pantallas en el móvil. Se evalúan se
 - **Taller (plan:workshop):** `GET /mechanics`, `GET /vehicles`, `GET /work-orders`, `GET /work-orders/summary` (resumen del día para el inicio),
   `GET /work-orders/{id}`, `POST /work-orders`, servicios/repuestos (add/remove),
   `POST /work-orders/{id}/diagnosis`, `POST /work-orders/{id}/status`, `POST /work-orders/{id}/deliver`,
-  `GET/POST /work-orders/{id}/photos`, `DELETE /work-orders/{id}/photos/{photo}` (fotos de la OT).
+  `GET/POST /work-orders/{id}/photos`, `DELETE /work-orders/{id}/photos/{photo}` (fotos de la OT),
+  `GET /work-orders/{id}/share` (enlace público de seguimiento). Vista pública sin auth: `GET /ot/{token}`.
 - **Agenda / Citas (plan:workshop):** `GET /appointments` (día, `?date=`), `GET /appointments/range` (semana/mes, `?from=&to=`), `GET /appointments/meta` (servicios+mecánicos), `POST /appointments`, `PUT /appointments/{id}`, `POST /appointments/{id}/status`, `POST /appointments/{id}/convert` (→ OT), `DELETE /appointments/{id}`.
 
 > Para lo que aún falta (venta a crédito, descuento por línea, reimprimir recibo, ficha de producto

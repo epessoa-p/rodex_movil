@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api_client.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
+import '../../core/providers.dart';
 import '../pos/pos_repository.dart';
 import '../products/products_screen.dart';
+import '../treasury/treasury_repository.dart';
 import 'purchases_repository.dart';
 
 class _Line {
@@ -34,6 +36,10 @@ class _DirectPurchaseScreenState extends ConsumerState<DirectPurchaseScreen> {
   int? _warehouseId;
   final _notes = TextEditingController();
   final List<_Line> _lines = [];
+  // Origen del pago: 'cash' (caja) o 'treasury' (cuenta de tesorería).
+  String _source = 'cash';
+  List<TreasuryAccount> _accounts = [];
+  int? _treasuryAccountId;
   bool _loading = true;
   bool _saving = false;
   Object? _error;
@@ -50,17 +56,32 @@ class _DirectPurchaseScreenState extends ConsumerState<DirectPurchaseScreen> {
     super.dispose();
   }
 
+  bool get _canTreasury =>
+      ref.read(authControllerProvider).me?.can('treasury.view') ?? false;
+
   Future<void> _load() async {
     try {
       final suppliers = await ref.read(purchasesRepositoryProvider).suppliers();
       final catalogs = await ref.read(posRepositoryProvider).productFormData();
+      // Cuentas de tesorería (solo si el usuario puede verlas).
+      List<TreasuryAccount> accounts = [];
+      if (_canTreasury) {
+        try {
+          accounts =
+              (await ref.read(treasuryRepositoryProvider).accounts()).accounts;
+        } on ApiException {
+          accounts = [];
+        }
+      }
       if (mounted) {
         setState(() {
           _suppliers = suppliers;
           _warehouses = catalogs.warehouses;
+          _accounts = accounts;
           _supplierId = suppliers.isNotEmpty ? suppliers.first.id : null;
           _warehouseId =
               catalogs.warehouses.isNotEmpty ? catalogs.warehouses.first.id : null;
+          _treasuryAccountId = accounts.isNotEmpty ? accounts.first.id : null;
           _loading = false;
         });
       }
@@ -134,12 +155,18 @@ class _DirectPurchaseScreenState extends ConsumerState<DirectPurchaseScreen> {
     if (_supplierId == null) return _snack('Elige un proveedor.');
     if (_warehouseId == null) return _snack('Elige un almacén.');
     if (_lines.isEmpty) return _snack('Agrega al menos un producto.');
+    if (_source == 'treasury' && _treasuryAccountId == null) {
+      return _snack('Elige la cuenta de tesorería.');
+    }
 
     setState(() => _saving = true);
     try {
       final res = await ref.read(purchasesRepositoryProvider).directPurchase(
             supplierId: _supplierId!,
             warehouseId: _warehouseId!,
+            paymentSource: _source,
+            treasuryAccountId:
+                _source == 'treasury' ? _treasuryAccountId : null,
             items: [
               for (final l in _lines)
                 {
@@ -150,6 +177,9 @@ class _DirectPurchaseScreenState extends ConsumerState<DirectPurchaseScreen> {
             ],
             notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
           );
+      // Refresca saldos de tesorería / caja tras el gasto.
+      ref.invalidate(treasuryAccountsProvider);
+      ref.invalidate(cashSessionProvider);
       if (!mounted) return;
       Navigator.pop(context, true);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -191,7 +221,7 @@ class _DirectPurchaseScreenState extends ConsumerState<DirectPurchaseScreen> {
                   : ListView(
                       padding: const EdgeInsets.all(16),
                       children: [
-                        const _Note(),
+                        _Note(source: _source),
                         const SizedBox(height: 12),
                         DropdownButtonFormField<int>(
                           initialValue: _supplierId,
@@ -220,6 +250,54 @@ class _DirectPurchaseScreenState extends ConsumerState<DirectPurchaseScreen> {
                           ],
                           onChanged: (v) => setState(() => _warehouseId = v),
                         ),
+                        if (_canTreasury) ...[
+                          const SizedBox(height: 16),
+                          const Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text('Pagar con',
+                                style: TextStyle(fontWeight: FontWeight.w700)),
+                          ),
+                          const SizedBox(height: 6),
+                          SegmentedButton<String>(
+                            segments: const [
+                              ButtonSegment(
+                                  value: 'cash',
+                                  label: Text('Caja'),
+                                  icon: Icon(Icons.savings_outlined)),
+                              ButtonSegment(
+                                  value: 'treasury',
+                                  label: Text('Tesorería'),
+                                  icon: Icon(Icons.account_balance)),
+                            ],
+                            selected: {_source},
+                            onSelectionChanged: (s) =>
+                                setState(() => _source = s.first),
+                          ),
+                          if (_source == 'treasury') ...[
+                            const SizedBox(height: 12),
+                            if (_accounts.isEmpty)
+                              const Text(
+                                  'No hay cuentas de tesorería. Crea una en Tesorería.',
+                                  style: TextStyle(color: Colors.red))
+                            else
+                              DropdownButtonFormField<int>(
+                                initialValue: _treasuryAccountId,
+                                isExpanded: true,
+                                decoration: const InputDecoration(
+                                    labelText: 'Cuenta',
+                                    border: OutlineInputBorder()),
+                                items: [
+                                  for (final a in _accounts)
+                                    DropdownMenuItem(
+                                        value: a.id,
+                                        child: Text(
+                                            '${a.name} · ${money(a.balance)}')),
+                                ],
+                                onChanged: (v) =>
+                                    setState(() => _treasuryAccountId = v),
+                              ),
+                          ],
+                        ],
                         const SizedBox(height: 16),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -305,24 +383,26 @@ class _DirectPurchaseScreenState extends ConsumerState<DirectPurchaseScreen> {
 }
 
 class _Note extends StatelessWidget {
-  const _Note();
+  final String source;
+  const _Note({required this.source});
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.amber.withValues(alpha: .12),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: const Row(children: [
-          Icon(Icons.info_outline, color: Colors.amber, size: 20),
-          SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'Registra la compra, suma el stock al almacén y paga desde la caja '
-              'abierta (gasto). Necesitas tener la caja abierta.',
-              style: TextStyle(fontSize: 12),
-            ),
-          ),
-        ]),
-      );
+  Widget build(BuildContext context) {
+    final text = source == 'treasury'
+        ? 'Registra la compra, suma el stock al almacén y paga desde la cuenta '
+            'de tesorería elegida (gasto).'
+        : 'Registra la compra, suma el stock al almacén y paga desde la caja '
+            'abierta (gasto). Necesitas tener la caja abierta.';
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.amber.withValues(alpha: .12),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(children: [
+        const Icon(Icons.info_outline, color: Colors.amber, size: 20),
+        const SizedBox(width: 8),
+        Expanded(child: Text(text, style: const TextStyle(fontSize: 12))),
+      ]),
+    );
+  }
 }
