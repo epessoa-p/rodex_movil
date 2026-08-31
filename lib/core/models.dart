@@ -467,6 +467,7 @@ class WorkOrder {
   final double balance;
   final double paidAmount;
   final String? client;
+  final String? clientPhone;
   final String? vehicle;
   final String? mechanic;
   final String? receptionDate;
@@ -493,6 +494,7 @@ class WorkOrder {
     required this.balance,
     required this.paidAmount,
     this.client,
+    this.clientPhone,
     this.vehicle,
     this.mechanic,
     this.receptionDate,
@@ -520,6 +522,7 @@ class WorkOrder {
         balance: _toDouble(j['balance']),
         paidAmount: _toDouble(j['paid_amount']),
         client: j['client'] as String?,
+        clientPhone: j['client_phone'] as String?,
         vehicle: j['vehicle'] as String?,
         mechanic: j['mechanic'] as String?,
         receptionDate: j['reception_date'] as String?,
@@ -549,11 +552,13 @@ class WoPhoto {
   final int id;
   final String url;
   final String? fileName;
-  WoPhoto({required this.id, required this.url, this.fileName});
+  final String? caption;
+  WoPhoto({required this.id, required this.url, this.fileName, this.caption});
   factory WoPhoto.fromJson(Map<String, dynamic> j) => WoPhoto(
         id: j['id'] as int,
         url: (j['url'] ?? '') as String,
         fileName: j['file_name'] as String?,
+        caption: j['caption'] as String?,
       );
 }
 

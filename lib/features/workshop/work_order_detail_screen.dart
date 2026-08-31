@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api_client.dart';
 import '../../core/format.dart';
@@ -464,6 +465,7 @@ class _WorkOrderDetailScreenState
   }
 
   void _viewPhoto(WoPhoto p) {
+    final hasCaption = p.caption != null && p.caption!.trim().isNotEmpty;
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
@@ -475,6 +477,15 @@ class _WorkOrderDetailScreenState
               automaticallyImplyLeading: false,
               title: Text(p.fileName ?? 'Foto', maxLines: 1),
               actions: [
+                if (!_closed)
+                  IconButton(
+                    tooltip: 'Comentario',
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _editCaption(p);
+                    },
+                    icon: const Icon(Icons.comment_outlined),
+                  ),
                 IconButton(
                     onPressed: () => Navigator.pop(ctx),
                     icon: const Icon(Icons.close)),
@@ -489,10 +500,93 @@ class _WorkOrderDetailScreenState
                         )),
               ),
             ),
+            if (hasCaption)
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text(p.caption!),
+              ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _editCaption(WoPhoto p) async {
+    final ctrl = TextEditingController(text: p.caption ?? '');
+    final saved = await showDialog<String?>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Comentario de la foto'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          minLines: 2,
+          maxLines: 4,
+          maxLength: 500,
+          decoration: const InputDecoration(
+            hintText: 'Ej: Cambiar esta pieza gastada por una nueva',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+              child: const Text('Guardar')),
+        ],
+      ),
+    );
+    if (saved == null) return;
+    setState(() => _busy = true);
+    try {
+      await _repo.updatePhotoCaption(
+          widget.orderId, p.id, saved.isEmpty ? null : saved);
+      await _reloadOrder();
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() => _busy = false);
+        _snack(e.message);
+      }
+    }
+  }
+
+  String _waNumber(String phone) {
+    var d = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    if (d.startsWith('0')) d = d.substring(1);
+    if (d.length == 8) d = '591$d';
+    return d;
+  }
+
+  Future<void> _whatsapp(WorkOrder o) async {
+    final phone = o.clientPhone;
+    if (phone == null || phone.trim().isEmpty) {
+      _snack('Este cliente no tiene teléfono registrado.');
+      return;
+    }
+    final company = ref.read(authControllerProvider).me?.company?.name ?? '';
+    final veh = o.vehicle != null ? ' (${o.vehicle})' : '';
+    final msg =
+        'Hola ${o.client ?? ''}, le escribimos${company.isNotEmpty ? ' de $company' : ''} '
+        'sobre su orden de trabajo ${o.code}$veh.';
+    final url = Uri.parse(
+        'https://wa.me/${_waNumber(phone)}?text=${Uri.encodeComponent(msg)}');
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      _snack('No se pudo abrir WhatsApp.');
+    }
+  }
+
+  Future<void> _call(WorkOrder o) async {
+    final phone = o.clientPhone;
+    if (phone == null || phone.trim().isEmpty) {
+      _snack('Este cliente no tiene teléfono registrado.');
+      return;
+    }
+    final url = Uri.parse('tel:${phone.replaceAll(RegExp(r'[^0-9+]'), '')}');
+    if (!await launchUrl(url)) {
+      _snack('No se pudo iniciar la llamada.');
+    }
   }
 
   void _snack(String m) => ScaffoldMessenger.of(context)
@@ -525,51 +619,94 @@ class _WorkOrderDetailScreenState
                 )
               else
                 SizedBox(
-                  height: 92,
+                  height: 132,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount: o.photos.length,
-                    separatorBuilder: (_, _) => const SizedBox(width: 8),
+                    separatorBuilder: (_, _) => const SizedBox(width: 10),
                     itemBuilder: (_, i) {
                       final p = o.photos[i];
-                      return Stack(
-                        children: [
-                          GestureDetector(
-                            onTap: () => _viewPhoto(p),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: Image.network(
-                                p.url,
-                                width: 92,
-                                height: 92,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) => Container(
-                                  width: 92,
-                                  height: 92,
-                                  color: Colors.black12,
-                                  child: const Icon(
-                                      Icons.broken_image_outlined),
+                      final hasCaption =
+                          p.caption != null && p.caption!.trim().isNotEmpty;
+                      return SizedBox(
+                        width: 96,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Stack(
+                              children: [
+                                GestureDetector(
+                                  onTap: () => _viewPhoto(p),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: Image.network(
+                                      p.url,
+                                      width: 96,
+                                      height: 96,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, _, _) => Container(
+                                        width: 96,
+                                        height: 96,
+                                        color: Colors.black12,
+                                        child: const Icon(
+                                            Icons.broken_image_outlined),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                if (!_closed)
+                                  Positioned(
+                                    top: -6,
+                                    right: -6,
+                                    child: IconButton(
+                                      iconSize: 18,
+                                      icon: const CircleAvatar(
+                                        radius: 11,
+                                        backgroundColor: Colors.black54,
+                                        child: Icon(Icons.close,
+                                            size: 13, color: Colors.white),
+                                      ),
+                                      onPressed:
+                                          _busy ? null : () => _deletePhoto(p),
+                                    ),
+                                  ),
+                                if (hasCaption)
+                                  const Positioned(
+                                    left: 4,
+                                    bottom: 4,
+                                    child: CircleAvatar(
+                                      radius: 9,
+                                      backgroundColor: Colors.black54,
+                                      child: Icon(Icons.comment,
+                                          size: 10, color: Colors.white),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            Expanded(
+                              child: InkWell(
+                                onTap: _closed ? null : () => _editCaption(p),
+                                child: Text(
+                                  hasCaption
+                                      ? p.caption!
+                                      : (_closed ? '' : 'Comentar…'),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: hasCaption
+                                        ? Colors.black87
+                                        : Colors.blue,
+                                    fontStyle: hasCaption
+                                        ? FontStyle.normal
+                                        : FontStyle.italic,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                          if (!_closed)
-                            Positioned(
-                              top: -6,
-                              right: -6,
-                              child: IconButton(
-                                iconSize: 18,
-                                icon: const CircleAvatar(
-                                  radius: 11,
-                                  backgroundColor: Colors.black54,
-                                  child: Icon(Icons.close,
-                                      size: 13, color: Colors.white),
-                                ),
-                                onPressed:
-                                    _busy ? null : () => _deletePhoto(p),
-                              ),
-                            ),
-                        ],
+                          ],
+                        ),
                       );
                     },
                   ),
@@ -590,7 +727,23 @@ class _WorkOrderDetailScreenState
                       color: Theme.of(context).colorScheme.primary,
                       fontWeight: FontWeight.w700)),
               const SizedBox(height: 6),
-              Text('Cliente: ${o.client ?? '-'}'),
+              Row(
+                children: [
+                  Expanded(child: Text('Cliente: ${o.client ?? '-'}')),
+                  IconButton(
+                    tooltip: 'WhatsApp',
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.chat, color: Color(0xFF25D366)),
+                    onPressed: () => _whatsapp(o),
+                  ),
+                  IconButton(
+                    tooltip: 'Llamar',
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.call_outlined),
+                    onPressed: () => _call(o),
+                  ),
+                ],
+              ),
               Text('Vehículo: ${o.vehicle ?? '-'}'),
               Row(
                 children: [

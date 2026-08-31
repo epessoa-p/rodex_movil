@@ -69,6 +69,11 @@ class DashboardScreen extends ConsumerWidget {
           title: const Text('Dashboard'),
           bottom: TabBar(
             isScrollable: tabs.length > 2,
+            labelColor: Theme.of(context).colorScheme.onPrimary,
+            unselectedLabelColor:
+                Theme.of(context).colorScheme.onPrimary.withValues(alpha: .65),
+            indicatorColor: Theme.of(context).colorScheme.onPrimary,
+            labelStyle: const TextStyle(fontWeight: FontWeight.w700),
             tabs: [for (final t in tabs) Tab(text: t.label)],
           ),
         ),
@@ -113,9 +118,9 @@ class _ModuleTabState extends ConsumerState<_ModuleTab>
           padding: const EdgeInsets.all(16),
           children: [
             SegmentedButton<bool>(
-              segments: const [
-                ButtonSegment(value: true, label: Text('Monto')),
-                ButtonSegment(value: false, label: Text('Cantidad')),
+              segments: [
+                ButtonSegment(value: true, label: Text('Monto ($currencySymbol)')),
+                const ButtonSegment(value: false, label: Text('Cantidad')),
               ],
               selected: {_amount},
               onSelectionChanged: (v) => setState(() => _amount = v.first),
@@ -130,6 +135,12 @@ class _ModuleTabState extends ConsumerState<_ModuleTab>
               ],
             ),
             const SizedBox(height: 20),
+            _WeekCompareCard(
+              points: s.weekCompare,
+              amount: _amount,
+              color: widget.def.color,
+            ),
+            const SizedBox(height: 16),
             _ChartCard(
               title: 'Comparativa semanal (últimas ${s.weekly.length})',
               points: s.weekly,
@@ -224,8 +235,7 @@ class _ChartCard extends StatelessWidget {
                   gridData: const FlGridData(show: false),
                   borderData: FlBorderData(show: false),
                   titlesData: FlTitlesData(
-                    leftTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
+                    leftTitles: _yAxisTitles(maxY),
                     rightTitles: const AxisTitles(
                         sideTitles: SideTitles(showTitles: false)),
                     topTitles: const AxisTitles(
@@ -278,4 +288,163 @@ class _ChartCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Comparativa día por día: semana anterior (claro) vs. semana actual (color).
+class _WeekCompareCard extends StatelessWidget {
+  final List<WeekComparePoint> points;
+  final bool amount;
+  final Color color;
+  const _WeekCompareCard(
+      {required this.points, required this.amount, required this.color});
+
+  double _cur(WeekComparePoint p) =>
+      amount ? p.currentAmount : p.currentCount.toDouble();
+  double _prev(WeekComparePoint p) =>
+      amount ? p.prevAmount : p.prevCount.toDouble();
+
+  @override
+  Widget build(BuildContext context) {
+    final prevColor = color.withValues(alpha: .35);
+    double maxV = 0;
+    for (final p in points) {
+      maxV = [maxV, _cur(p), _prev(p)].reduce((a, b) => a > b ? a : b);
+    }
+    final maxY = maxV <= 0 ? 1.0 : maxV * 1.25;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 14, 12, 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Semana anterior vs. actual (por día)',
+                style: TextStyle(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                _legend(prevColor, 'Semana anterior'),
+                const SizedBox(width: 16),
+                _legend(color, 'Semana actual'),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 190,
+              child: BarChart(
+                BarChartData(
+                  alignment: BarChartAlignment.spaceAround,
+                  maxY: maxY,
+                  gridData: const FlGridData(show: false),
+                  borderData: FlBorderData(show: false),
+                  titlesData: FlTitlesData(
+                    leftTitles: _yAxisTitles(maxY),
+                    rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
+                    topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false)),
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 22,
+                        getTitlesWidget: (v, meta) {
+                          final i = v.toInt();
+                          if (i < 0 || i >= points.length) {
+                            return const SizedBox.shrink();
+                          }
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(points[i].label,
+                                style: const TextStyle(fontSize: 9)),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  barTouchData: BarTouchData(
+                    touchTooltipData: BarTouchTooltipData(
+                      getTooltipItem: (group, gi, rod, ri) {
+                        final v = amount ? money(rod.toY) : rod.toY.toInt().toString();
+                        final serie = ri == 0 ? 'Anterior' : 'Actual';
+                        return BarTooltipItem('$serie: $v',
+                            const TextStyle(color: Colors.white, fontSize: 11));
+                      },
+                    ),
+                  ),
+                  barGroups: [
+                    for (int i = 0; i < points.length; i++)
+                      BarChartGroupData(
+                        x: i,
+                        barsSpace: 2,
+                        barRods: [
+                          BarChartRodData(
+                              toY: _prev(points[i]),
+                              color: prevColor,
+                              width: 8,
+                              borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(3))),
+                          BarChartRodData(
+                              toY: _cur(points[i]),
+                              color: color,
+                              width: 8,
+                              borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(3))),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _legend(Color c, String label) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+              width: 12,
+              height: 12,
+              decoration:
+                  BoxDecoration(color: c, borderRadius: BorderRadius.circular(3))),
+          const SizedBox(width: 5),
+          Text(label, style: const TextStyle(fontSize: 12)),
+        ],
+      );
+}
+
+/// Etiqueta compacta para el eje Y (número; la moneda va en el tab "Monto").
+String _axisLabel(double v) {
+  String n;
+  final a = v.abs();
+  if (a >= 1000000) {
+    n = '${(v / 1000000).toStringAsFixed(v % 1000000 == 0 ? 0 : 1)}M';
+  } else if (a >= 1000) {
+    n = '${(v / 1000).toStringAsFixed(v % 1000 == 0 ? 0 : 1)}k';
+  } else {
+    n = v.toStringAsFixed(0);
+  }
+  return n;
+}
+
+/// Títulos del eje Y (valores de monto o cantidad).
+AxisTitles _yAxisTitles(double maxY) {
+  final interval = maxY <= 0 ? 1.0 : maxY / 4;
+  return AxisTitles(
+    sideTitles: SideTitles(
+      showTitles: true,
+      reservedSize: 44,
+      interval: interval,
+      getTitlesWidget: (v, meta) {
+        if (v <= 0) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(right: 4),
+          child: Text(_axisLabel(v),
+              style: const TextStyle(fontSize: 9, color: Colors.black54)),
+        );
+      },
+    ),
+  );
 }

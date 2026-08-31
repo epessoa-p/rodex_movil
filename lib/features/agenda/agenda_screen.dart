@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api_client.dart';
 import '../../core/models.dart';
@@ -360,6 +361,26 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
               ].whereType<String>().join(' · ')),
             ),
             const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.chat, color: Color(0xFF25D366)),
+              title: const Text('Contactar por WhatsApp'),
+              subtitle: a.displayPhone != null && a.displayPhone!.isNotEmpty
+                  ? Text(a.displayPhone!)
+                  : const Text('Sin teléfono registrado'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _whatsapp(a);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.call_outlined),
+              title: const Text('Llamar'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _call(a);
+              },
+            ),
+            const Divider(height: 1),
             if (canEdit)
               ListTile(
                 leading: const Icon(Icons.edit_outlined),
@@ -496,6 +517,52 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
       _refreshAfterAction();
     } on ApiException catch (e) {
       _snack(e.message);
+    }
+  }
+
+  /// Normaliza el número para wa.me (solo dígitos; Bolivia si son 8 locales).
+  String _waNumber(String phone) {
+    var d = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    if (d.startsWith('0')) d = d.substring(1);
+    if (d.length == 8) d = '591$d';
+    return d;
+  }
+
+  String _dateText(String iso) {
+    final d = DateTime.tryParse(iso);
+    if (d == null) return iso;
+    return '${_dowFull[d.weekday - 1]} ${d.day} de ${_months[d.month - 1]}';
+  }
+
+  Future<void> _whatsapp(Appointment a) async {
+    final phone = a.displayPhone;
+    if (phone == null || phone.trim().isEmpty) {
+      _snack('Este cliente no tiene teléfono registrado.');
+      return;
+    }
+    final company = ref.read(authControllerProvider).me?.company?.name ?? '';
+    final servicio =
+        (a.title != null && a.title!.isNotEmpty) ? ' (${a.title})' : '';
+    final msg =
+        'Hola ${a.displayName}, le escribimos${company.isNotEmpty ? ' de $company' : ''} '
+        'para confirmar su cita del ${_dateText(a.date)} a las ${a.time}$servicio. '
+        '¿Podría confirmarnos, por favor?';
+    final url = Uri.parse(
+        'https://wa.me/${_waNumber(phone)}?text=${Uri.encodeComponent(msg)}');
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      _snack('No se pudo abrir WhatsApp.');
+    }
+  }
+
+  Future<void> _call(Appointment a) async {
+    final phone = a.displayPhone;
+    if (phone == null || phone.trim().isEmpty) {
+      _snack('Este cliente no tiene teléfono registrado.');
+      return;
+    }
+    final url = Uri.parse('tel:${phone.replaceAll(RegExp(r'[^0-9+]'), '')}');
+    if (!await launchUrl(url)) {
+      _snack('No se pudo iniciar la llamada.');
     }
   }
 

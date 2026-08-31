@@ -17,11 +17,39 @@ class SeriesPoint {
       );
 }
 
-/// Serie comparativa: semanal + mensual.
+/// Un día en la comparativa semana anterior vs. actual.
+class WeekComparePoint {
+  final String label;
+  final double currentAmount;
+  final int currentCount;
+  final double prevAmount;
+  final int prevCount;
+  WeekComparePoint({
+    required this.label,
+    required this.currentAmount,
+    required this.currentCount,
+    required this.prevAmount,
+    required this.prevCount,
+  });
+
+  factory WeekComparePoint.fromJson(Map<String, dynamic> j) => WeekComparePoint(
+        label: (j['label'] ?? '') as String,
+        currentAmount: (j['current_amount'] as num?)?.toDouble() ?? 0,
+        currentCount: (j['current_count'] as num?)?.toInt() ?? 0,
+        prevAmount: (j['prev_amount'] as num?)?.toDouble() ?? 0,
+        prevCount: (j['prev_count'] as num?)?.toInt() ?? 0,
+      );
+}
+
+/// Serie comparativa: semanal + mensual + comparación día por día de la semana.
 class DashboardSeries {
   final List<SeriesPoint> weekly;
   final List<SeriesPoint> monthly;
-  DashboardSeries({required this.weekly, required this.monthly});
+  final List<WeekComparePoint> weekCompare;
+  DashboardSeries(
+      {required this.weekly,
+      required this.monthly,
+      required this.weekCompare});
 
   factory DashboardSeries.fromJson(Map<String, dynamic> j) => DashboardSeries(
         weekly: ((j['weekly'] as List?) ?? [])
@@ -29,6 +57,9 @@ class DashboardSeries {
             .toList(),
         monthly: ((j['monthly'] as List?) ?? [])
             .map((e) => SeriesPoint.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        weekCompare: ((j['week_compare'] as List?) ?? [])
+            .map((e) => WeekComparePoint.fromJson(e as Map<String, dynamic>))
             .toList(),
       );
 }

@@ -183,6 +183,14 @@ class WorkshopRepository {
     return _list(data).map((e) => WoPhoto.fromJson(e)).toList();
   }
 
+  /// Actualiza el comentario de una foto. Devuelve la lista de fotos.
+  Future<List<WoPhoto>> updatePhotoCaption(
+      int orderId, int photoId, String? caption) async {
+    final data = await _api.put('/work-orders/$orderId/photos/$photoId',
+        body: {'caption': caption ?? ''});
+    return _list(data).map((e) => WoPhoto.fromJson(e)).toList();
+  }
+
   /// Elimina una foto de la OT.
   Future<void> deletePhoto(int orderId, int photoId) async {
     await _api.delete('/work-orders/$orderId/photos/$photoId');
