@@ -11,6 +11,9 @@ class Company {
   final String? themePrimary;
   final String? themeAccent;
 
+  /// Orden de los tabs del dashboard (ej. "ventas,taller,compras").
+  final String dashboardOrder;
+
   Company({
     required this.id,
     required this.name,
@@ -18,7 +21,15 @@ class Company {
     this.logoUrl,
     this.themePrimary,
     this.themeAccent,
+    this.dashboardOrder = 'ventas,taller,compras',
   });
+
+  /// Módulos en el orden configurado (solo claves válidas).
+  List<String> get dashboardModules => dashboardOrder
+      .split(',')
+      .map((e) => e.trim())
+      .where((e) => ['ventas', 'taller', 'compras'].contains(e))
+      .toList();
 
   factory Company.fromJson(Map<String, dynamic> j) => Company(
         id: j['id'] as int,
@@ -29,6 +40,9 @@ class Company {
         logoUrl: j['logo_url'] as String?,
         themePrimary: j['theme_primary'] as String?,
         themeAccent: j['theme_accent'] as String?,
+        dashboardOrder: (j['dashboard_order'] as String?)?.trim().isNotEmpty == true
+            ? (j['dashboard_order'] as String).trim()
+            : 'ventas,taller,compras',
       );
 }
 

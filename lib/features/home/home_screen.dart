@@ -46,7 +46,12 @@ class HomeScreen extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            _CashCard(session: session),
+            _CashCard(
+              session: session,
+              onTap: me.canAny(['cash.operate', 'pos.access'])
+                  ? () => context.push('/cash')
+                  : null,
+            ),
             if (canSell) ...[
               const SizedBox(height: 12),
               _DaySummaryCard(summary: ref.watch(todaySummaryProvider)),
@@ -81,13 +86,6 @@ class HomeScreen extends ConsumerWidget {
                     color: Colors.indigo,
                     onTap: () => context.push('/products'),
                   ),
-                if (me.can('clients.view') || canSell)
-                  _ActionTile(
-                    icon: Icons.people_alt_outlined,
-                    label: 'Clientes',
-                    color: Colors.teal,
-                    onTap: () => context.push('/clients'),
-                  ),
                 if (me.planAllows('workshop') && me.can('workshop.view'))
                   _ActionTile(
                     icon: Icons.build_circle_outlined,
@@ -116,13 +114,6 @@ class HomeScreen extends ConsumerWidget {
                     color: Colors.teal,
                     onTap: () => context.push('/treasury'),
                   ),
-                if (me.canAny(['cash.operate', 'pos.access']))
-                  _ActionTile(
-                    icon: Icons.savings_outlined,
-                    label: 'Caja',
-                    color: Colors.orange,
-                    onTap: () => context.push('/cash'),
-                  ),
               ],
             ),
           ],
@@ -134,50 +125,57 @@ class HomeScreen extends ConsumerWidget {
 
 class _CashCard extends StatelessWidget {
   final AsyncValue<CashSession?> session;
-  const _CashCard({required this.session});
+  final VoidCallback? onTap;
+  const _CashCard({required this.session, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: session.when(
-          loading: () => const SizedBox(
-              height: 48,
-              child: Center(child: CircularProgressIndicator())),
-          error: (e, _) => Row(children: [
-            const Icon(Icons.error_outline, color: Colors.red),
-            const SizedBox(width: 8),
-            Expanded(child: Text('$e')),
-          ]),
-          data: (s) => Row(
-            children: [
-              CircleAvatar(
-                backgroundColor:
-                    (s != null ? Colors.green : Colors.grey).withValues(alpha: .15),
-                child: Icon(Icons.savings_outlined,
-                    color: s != null ? Colors.green : Colors.grey),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(s != null ? 'Caja abierta' : 'Caja cerrada',
-                        style:
-                            const TextStyle(fontWeight: FontWeight.w700)),
-                    Text(
-                      s != null
-                          ? '${s.cashRegister ?? ''} · ${s.branch ?? ''}  ·  Esperado ${money(s.expectedAmount)}'
-                          : 'Abre tu caja para poder vender',
-                      style: TextStyle(
-                          color: Theme.of(context).colorScheme.outline,
-                          fontSize: 13),
-                    ),
-                  ],
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: session.when(
+            loading: () => const SizedBox(
+                height: 48,
+                child: Center(child: CircularProgressIndicator())),
+            error: (e, _) => Row(children: [
+              const Icon(Icons.error_outline, color: Colors.red),
+              const SizedBox(width: 8),
+              Expanded(child: Text('$e')),
+            ]),
+            data: (s) => Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: (s != null ? Colors.green : Colors.grey)
+                      .withValues(alpha: .15),
+                  child: Icon(Icons.savings_outlined,
+                      color: s != null ? Colors.green : Colors.grey),
                 ),
-              ),
-            ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(s != null ? 'Caja abierta' : 'Caja cerrada',
+                          style: const TextStyle(fontWeight: FontWeight.w700)),
+                      Text(
+                        s != null
+                            ? '${s.cashRegister ?? ''} · ${s.branch ?? ''}  ·  Esperado ${money(s.expectedAmount)}'
+                            : 'Abre tu caja para poder vender',
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.outline,
+                            fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+                if (onTap != null)
+                  Icon(Icons.chevron_right,
+                      color: Theme.of(context).colorScheme.outline),
+              ],
+            ),
           ),
         ),
       ),

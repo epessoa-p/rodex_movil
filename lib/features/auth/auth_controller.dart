@@ -134,6 +134,19 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
+  /// Recarga `me` sin resetear la sesión (tras editar datos de la empresa).
+  Future<void> refreshMe() async {
+    if (state.status != AuthStatus.authenticated) return;
+    try {
+      final data = await _api.get('/me') as Map<String, dynamic>;
+      final me = MeContext.fromJson(data);
+      setCurrencySymbol(me.company?.currency);
+      state = AuthState(status: AuthStatus.authenticated, me: me);
+    } on ApiException {
+      // Silencioso: mantiene el estado actual si falla.
+    }
+  }
+
   Future<void> logout() async {
     try {
       await _api.post('/logout');

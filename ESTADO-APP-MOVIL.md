@@ -79,13 +79,24 @@ _Última actualización: 2026-08-25_
 - ✅ **Compra directa** (contado, un paso): proveedor + almacén + productos → registra la **compra**, **suma stock** y **paga el gasto**. **Origen del pago elegible: Caja** (requiere caja abierta) **o una cuenta de Tesorería** (valida saldo; registra el movimiento y descuenta el saldo de la cuenta). El selector Caja/Tesorería aparece si el usuario tiene `treasury.view`. Tile en el Inicio + drawer. Endpoint `POST /purchases/direct` (`payment_source` = cash|treasury, `treasury_account_id`). Gateado por `purchases.create`.
 - ⬜ **Cuentas por pagar**: ver saldos a proveedores y registrar un pago (más administrativo).
 
+### Dashboard / Análisis ✅  (móvil)
+- ✅ **Dashboard con tabs** (Ventas, Taller, Compras — según plan + permiso `*-dashboard.view`). Una sola vista con `TabBar`. Orden de los tabs configurable en **Mi empresa**.
+- ✅ Cada tab: selector **Monto / Cantidad**, **KPI** (semana y mes vs. periodo anterior con variación %) y **gráficos de barras** de comparativa **semanal (últimas 8)** y **mensual (últimos 6)** con `fl_chart`.
+- Endpoints `GET /dashboard/sales|workshop|purchases` (series {label, amount, count}), gateados por plan + `*-dashboard.view`. Drawer → *Dashboard*.
+- La **web** ya tenía dashboards (Ventas/Taller/Compras) gateados por permiso y en el menú (sin cambios).
+
+### Mi empresa ✅  (administrativo)
+- ✅ **Módulo "Mi empresa"** (web + móvil): la empresa activa edita **teléfono, dirección, foto/logo** y la **vigencia del enlace de seguimiento** (días tras entregar; **0 = sin caducidad**, default 1). Gateado por `company-profile.view/edit`. Endpoints `GET /company-profile`, `POST /company-profile` (multipart logo). Web: Administración → *Mi empresa*. Móvil: drawer → *Mi empresa*.
+- ✅ **Caducidad del enlace de seguimiento**: el link `/ot/{token}` deja de servir `tracking_link_days` días después de `delivered_at` (muestra "enlace expirado"). **DB:** columna `companies.tracking_link_days` (script `20260831c_company_profile.sql`).
+
 ### Mecánicos (administración) ✅  (plan:workshop)
 - ✅ **Pantalla de Mecánicos** en el menú: listado (activos e inactivos) y **alta/edición con todos los campos** (nombre, especialidad, teléfono, **% de comisión**, activo). Gateado por `mechanics.view/create/edit`. Endpoints `GET /mechanics/all`, `POST /mechanics`, `PUT /mechanics/{id}`.
 - ✅ **Mecánico en la recepción** (dropdown "Mecánico", opcional) — alimenta la comisión.
 
 ### Pago a mecánicos ✅  (plan:workshop) — módulo nuevo (web + móvil)
-- ✅ **Liquidación por OT**: por mecánico se listan sus **OTs entregadas** con comisión (% × mano de obra), separadas en **Pendientes** y **Pagadas** (con fecha de pago). Se sabe exactamente qué OT se pagó y cuál no.
-- ✅ **Pagar seleccionando OTs**: eliges las OTs pendientes (o todas) → total = Σ comisiones + **bono** opcional; esas OTs quedan **pagadas y vinculadas al pago** (comisión congelada). **Origen Caja o Tesorería** (caja requiere sesión abierta, tesorería valida saldo). Registra el gasto (`expense_payroll` caja / `payroll` tesorería).
+- ✅ **Liquidación por OT**: por mecánico se listan sus **OTs entregadas** con comisión (% × mano de obra). **Pendientes** (seleccionables) y **Pagos realizados** agrupados (cada pago se despliega mostrando sus OTs). Se sabe exactamente qué OT se pagó y cuál no.
+- ✅ **Comprobante de pago en PDF**: cada pago tiene **Compartir comprobante** (empresa, mecánico, fecha, método/origen, OTs con comisión, total, notas y firma). Móvil: PDF nativo (`printing`). Web: página imprimible (`workshop.mechanic-payments.receipt`).
+- ✅ **Pagar seleccionando OTs**: eliges las OTs pendientes (o todas); el **Total a pagar** es un **campo editable** prellenado con la Σ de comisiones (se puede ajustar). Esas OTs quedan **pagadas y vinculadas al pago** (comisión congelada) sin importar el monto exacto pagado. **Origen Caja o Tesorería** (caja requiere sesión abierta, tesorería valida saldo). Registra el gasto (`expense_payroll` caja / `payroll` tesorería).
 - Permisos: `mechanic-payments.view` / `mechanic-payments.pay`. En el drawer. Endpoints `GET /mechanic-payments`, `GET /mechanic-payments/{id}` (detalle OTs), `POST /mechanic-payments` (`work_order_ids[]` + `bonus`). **También en la web** (Taller → *Pago a mecánicos* → detalle del mecánico). **DB:** scripts `20260831_mechanic_payments.sql` **y** `20260831b_mechanic_commission_by_ot.sql`.
 
 ### Finanzas — Tesorería ✅  (plan:purchases)

@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:printing/printing.dart';
 
 import '../../core/api_client.dart';
 import '../../core/format.dart';
 import '../../core/providers.dart';
 import '../pos/pos_repository.dart';
 import '../treasury/treasury_repository.dart';
+import 'mechanic_payment_pdf.dart';
 import 'mechanic_payments_repository.dart';
+import 'work_order_detail_screen.dart';
+
+const _dowFull = [
+  'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'
+];
 
 /// Detalle de un mecánico: OTs pendientes (seleccionables para pagar) y pagadas.
 class MechanicPaymentDetailScreen extends ConsumerStatefulWidget {
@@ -22,11 +29,21 @@ class _MechanicPaymentDetailScreenState
     extends ConsumerState<MechanicPaymentDetailScreen> {
   final Set<int> _selected = {};
 
+  /// Fecha con el día en texto: "Lunes 25/08/2026".
   String _fmtDate(String? iso) {
     if (iso == null) return '';
     final d = DateTime.tryParse(iso);
     if (d == null) return iso;
-    return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+    final day = _dowFull[d.weekday - 1];
+    return '${day[0].toUpperCase()}${day.substring(1)} '
+        '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+  }
+
+  Future<void> _openOrder(int orderId) async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => WorkOrderDetailScreen(orderId: orderId),
+    ));
+    if (mounted) ref.invalidate(mechanicDetailProvider(widget.mechanicId));
   }
 
   @override
@@ -109,32 +126,100 @@ class _MechanicPaymentDetailScreenState
                                   style: const TextStyle(
                                       fontWeight: FontWeight.w600)),
                               subtitle: Text(_fmtDate(o.date)),
-                              secondary: Text(money(o.commission),
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w700)),
+                              secondary: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(money(o.commission),
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w700)),
+                                  IconButton(
+                                    tooltip: 'Ver detalle',
+                                    visualDensity: VisualDensity.compact,
+                                    icon: const Icon(Icons.visibility_outlined,
+                                        size: 20),
+                                    onPressed: () => _openOrder(o.orderId),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                       const SizedBox(height: 16),
-                      Text('Pagadas (${d.paid.length})',
+                      Text('Pagos realizados (${d.payments.length})',
                           style: const TextStyle(fontWeight: FontWeight.w700)),
-                      if (d.paid.isEmpty)
+                      if (d.payments.isEmpty)
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 12),
-                          child: Text('Aún no hay OTs pagadas.',
+                          child: Text('Aún no hay pagos.',
                               style: TextStyle(color: Colors.black54)),
                         )
                       else
-                        for (final o in d.paid)
+                        for (final p in d.payments)
                           Card(
                             margin: const EdgeInsets.only(bottom: 6),
-                            child: ListTile(
-                              dense: true,
+                            child: ExpansionTile(
                               leading: const Icon(Icons.check_circle,
                                   color: Colors.green),
-                              title: Text(o.code),
+                              title: Text(_fmtDate(p.date),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w700)),
                               subtitle: Text(
-                                  'Pagada el ${_fmtDate(o.paymentDate)}'),
-                              trailing: Text(money(o.commission)),
+                                  '${p.orders.length} OT(s) · ${(p.method ?? 'efectivo')} · ${p.sourceLabel}'),
+                              trailing: Text(money(p.amount),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.green)),
+                              childrenPadding:
+                                  const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                              children: [
+                                for (final o in p.orders)
+                                  Padding(
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 2),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                              '${o.code}  ·  ${_fmtDate(o.date)}',
+                                              style: const TextStyle(
+                                                  fontSize: 13)),
+                                        ),
+                                        Text(money(o.commission),
+                                            style:
+                                                const TextStyle(fontSize: 13)),
+                                        const SizedBox(width: 6),
+                                        IconButton(
+                                          tooltip: 'Ver detalle',
+                                          visualDensity: VisualDensity.compact,
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(),
+                                          icon: const Icon(
+                                              Icons.visibility_outlined,
+                                              size: 18),
+                                          onPressed: () => _openOrder(o.orderId),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                if (p.notes != null && p.notes!.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 4),
+                                    child: Text(p.notes!,
+                                        style: const TextStyle(
+                                            fontSize: 12,
+                                            fontStyle: FontStyle.italic,
+                                            color: Colors.black54)),
+                                  ),
+                                const SizedBox(height: 6),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: OutlinedButton.icon(
+                                    icon: const Icon(Icons.share_outlined,
+                                        size: 18),
+                                    label: const Text('Compartir comprobante'),
+                                    onPressed: () => _shareReceipt(p, d.name),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                       const SizedBox(height: 90),
@@ -201,6 +286,21 @@ class _MechanicPaymentDetailScreenState
         ),
       );
 
+  Future<void> _shareReceipt(MechanicPaymentItem pago, String mechanicName) async {
+    try {
+      final company = ref.read(authControllerProvider).me?.company?.name;
+      final bytes = await buildMechanicPaymentPdf(pago,
+          mechanicName: mechanicName, company: company);
+      await Printing.sharePdf(
+          bytes: bytes, filename: 'comprobante-${pago.id}.pdf');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('No se pudo generar el PDF: $e')));
+      }
+    }
+  }
+
   Future<void> _openPay(MechanicDetail d, double selectedTotal) async {
     final ok = await showModalBottomSheet<bool>(
       context: context,
@@ -238,7 +338,8 @@ class _PaySheet extends ConsumerStatefulWidget {
 }
 
 class _PaySheetState extends ConsumerState<_PaySheet> {
-  final _bonus = TextEditingController();
+  late final TextEditingController _amount =
+      TextEditingController(text: widget.commissionTotal.toStringAsFixed(2));
   final _notes = TextEditingController();
   String _source = 'cash';
   List<TreasuryAccount> _accounts = [];
@@ -248,10 +349,6 @@ class _PaySheetState extends ConsumerState<_PaySheet> {
 
   bool get _canTreasury =>
       ref.read(authControllerProvider).me?.can('treasury.view') ?? false;
-
-  double get _total =>
-      widget.commissionTotal +
-      (double.tryParse(_bonus.text.replaceAll(',', '.')) ?? 0);
 
   @override
   void initState() {
@@ -280,12 +377,17 @@ class _PaySheetState extends ConsumerState<_PaySheet> {
 
   @override
   void dispose() {
-    _bonus.dispose();
+    _amount.dispose();
     _notes.dispose();
     super.dispose();
   }
 
   Future<void> _save() async {
+    final amount = double.tryParse(_amount.text.replaceAll(',', '.')) ?? 0;
+    if (amount <= 0) {
+      _snack('Ingresa un monto válido.');
+      return;
+    }
     if (_source == 'treasury' && _accountId == null) {
       _snack('Elige la cuenta de tesorería.');
       return;
@@ -295,7 +397,7 @@ class _PaySheetState extends ConsumerState<_PaySheet> {
       await ref.read(mechanicPaymentsRepositoryProvider).pay(
             mechanicId: widget.mechanicId,
             workOrderIds: widget.workOrderIds,
-            bonus: double.tryParse(_bonus.text.replaceAll(',', '.')) ?? 0,
+            amount: amount,
             paymentSource: _source,
             treasuryAccountId: _source == 'treasury' ? _accountId : null,
             notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
@@ -327,38 +429,28 @@ class _PaySheetState extends ConsumerState<_PaySheet> {
         children: [
           const Text('Registrar pago',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('${widget.workOrderIds.length} OT(s) · comisión'),
-              Text(money(widget.commissionTotal)),
+              Text('${widget.workOrderIds.length} OT(s) · comisión',
+                  style: const TextStyle(color: Colors.black54, fontSize: 13)),
+              Text(money(widget.commissionTotal),
+                  style: const TextStyle(color: Colors.black54, fontSize: 13)),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           TextField(
-            controller: _bonus,
+            controller: _amount,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            onChanged: (_) => setState(() {}),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
             decoration: InputDecoration(
-              labelText: 'Bono / extra (opcional)',
+              labelText: 'Total a pagar',
+              helperText:
+                  'Se propone la comisión de las OTs; puedes ajustarlo. Las OTs quedan vinculadas al pago.',
               prefixText: '$currencySymbol ',
-              isDense: true,
               border: const OutlineInputBorder(),
             ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Total a pagar',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-              Text(money(_total),
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 18,
-                      color: Colors.green)),
-            ],
           ),
           const SizedBox(height: 14),
           const Text('Pagar con', style: TextStyle(fontWeight: FontWeight.w700)),

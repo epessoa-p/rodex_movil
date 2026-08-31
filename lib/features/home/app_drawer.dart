@@ -16,6 +16,10 @@ class AppDrawer extends ConsumerWidget {
 
     final canSell =
         me.planAllows('sales') && me.canAny(['pos.access', 'sales.create']);
+    final canDashboard =
+        (me.planAllows('sales') && me.can('sales-dashboard.view')) ||
+            (me.planAllows('workshop') && me.can('workshop-dashboard.view')) ||
+            (me.planAllows('purchases') && me.can('purchases-dashboard.view'));
     final initial =
         me.user.name.isNotEmpty ? me.user.name[0].toUpperCase() : '?';
 
@@ -60,6 +64,9 @@ class AppDrawer extends ConsumerWidget {
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: [
+                  _item(context, Icons.insights_outlined, 'Dashboard',
+                      '/dashboard',
+                      show: canDashboard),
                   _item(context, Icons.receipt_long_outlined, 'Ventas',
                       '/sales',
                       show: me.planAllows('sales') &&
@@ -71,13 +78,6 @@ class AppDrawer extends ConsumerWidget {
                   _item(context, Icons.people_alt_outlined, 'Clientes',
                       '/clients',
                       show: me.can('clients.view') || canSell),
-                  _item(context, Icons.build_circle_outlined, 'Taller',
-                      '/workshop',
-                      show: me.planAllows('workshop') && me.can('workshop.view')),
-                  _item(context, Icons.calendar_month_outlined, 'Agenda',
-                      '/agenda',
-                      show: me.planAllows('workshop') &&
-                          me.can('appointments.view')),
                   _item(context, Icons.engineering_outlined, 'Mecánicos',
                       '/mechanics',
                       show: me.planAllows('workshop') &&
@@ -88,10 +88,6 @@ class AppDrawer extends ConsumerWidget {
                           me.can('mechanic-payments.view')),
                   _item(context, Icons.savings_outlined, 'Caja', '/cash',
                       show: me.canAny(['cash.operate', 'pos.access'])),
-                  _item(context, Icons.shopping_bag_outlined, 'Compra directa',
-                      '/purchases/direct',
-                      show: me.planAllows('purchases') &&
-                          me.can('purchases.create')),
                   _item(context, Icons.local_shipping_outlined, 'Recepción',
                       '/purchases/receptions',
                       show: me.planAllows('purchases') &&
@@ -115,6 +111,9 @@ class AppDrawer extends ConsumerWidget {
                       show: me.planAllows('cash') &&
                           me.can('cash-registers.view')),
                   const Divider(),
+                  _item(context, Icons.business_outlined, 'Mi empresa',
+                      '/company-profile',
+                      show: me.can('company-profile.view')),
                   _item(context, Icons.settings_outlined, 'Ajustes',
                       '/settings'),
                 ],

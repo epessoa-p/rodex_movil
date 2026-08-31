@@ -6,6 +6,8 @@ import '../features/auth/auth_controller.dart';
 import '../features/auth/login_screen.dart';
 import '../features/agenda/agenda_screen.dart';
 import '../features/auth/select_company_screen.dart';
+import '../features/company/company_profile_screen.dart';
+import '../features/dashboard/dashboard_screen.dart';
 import '../features/cash/cash_registers_screen.dart';
 import '../features/cash/cash_screen.dart';
 import '../features/clients/clients_screen.dart';
@@ -39,6 +41,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           path: '/select-company',
           builder: (_, _) => const SelectCompanyScreen()),
       GoRoute(path: '/home', builder: (_, _) => const HomeScreen()),
+      GoRoute(path: '/dashboard', builder: (_, _) => const DashboardScreen()),
       GoRoute(path: '/pos', builder: (_, _) => const PosScreen()),
       GoRoute(path: '/sales', builder: (_, _) => const SalesHistoryScreen()),
       GoRoute(
@@ -64,6 +67,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/mechanics', builder: (_, _) => const MechanicsScreen()),
       GoRoute(path: '/treasury', builder: (_, _) => const TreasuryScreen()),
       GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
+      GoRoute(
+          path: '/company-profile',
+          builder: (_, _) => const CompanyProfileScreen()),
     ],
     redirect: (context, state) {
       final status = ref.read(authControllerProvider).status;

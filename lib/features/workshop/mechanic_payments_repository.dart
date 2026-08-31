@@ -63,7 +63,48 @@ class MechanicOt {
       );
 }
 
-/// Detalle de un mecánico: resumen + OTs pendientes y pagadas.
+/// Un pago realizado (liquidó una o varias OTs).
+class MechanicPaymentItem {
+  final int id;
+  final String? date;
+  final double amount;
+  final String? method;
+  final String source; // cash | treasury
+  final String? account;
+  final String? notes;
+  final List<MechanicOt> orders;
+
+  MechanicPaymentItem({
+    required this.id,
+    this.date,
+    required this.amount,
+    this.method,
+    required this.source,
+    this.account,
+    this.notes,
+    required this.orders,
+  });
+
+  String get sourceLabel => source == 'treasury'
+      ? 'Tesorería${account != null ? ' · $account' : ''}'
+      : 'Caja';
+
+  factory MechanicPaymentItem.fromJson(Map<String, dynamic> j) =>
+      MechanicPaymentItem(
+        id: j['id'] as int,
+        date: j['date'] as String?,
+        amount: (j['amount'] as num?)?.toDouble() ?? 0,
+        method: j['method'] as String?,
+        source: (j['source'] ?? 'cash') as String,
+        account: j['account'] as String?,
+        notes: j['notes'] as String?,
+        orders: ((j['orders'] as List?) ?? [])
+            .map((e) => MechanicOt.fromJson(e as Map<String, dynamic>, paid: true))
+            .toList(),
+      );
+}
+
+/// Detalle de un mecánico: resumen + OTs pendientes y pagos realizados.
 class MechanicDetail {
   final int id;
   final String name;
@@ -71,7 +112,7 @@ class MechanicDetail {
   final double pendingTotal;
   final double paidTotal;
   final List<MechanicOt> pending;
-  final List<MechanicOt> paid;
+  final List<MechanicPaymentItem> payments;
 
   MechanicDetail({
     required this.id,
@@ -80,7 +121,7 @@ class MechanicDetail {
     required this.pendingTotal,
     required this.paidTotal,
     required this.pending,
-    required this.paid,
+    required this.payments,
   });
 
   factory MechanicDetail.fromJson(Map<String, dynamic> j) {
@@ -94,8 +135,8 @@ class MechanicDetail {
       pending: ((j['pending'] as List?) ?? [])
           .map((e) => MechanicOt.fromJson(e as Map<String, dynamic>, paid: false))
           .toList(),
-      paid: ((j['paid'] as List?) ?? [])
-          .map((e) => MechanicOt.fromJson(e as Map<String, dynamic>, paid: true))
+      payments: ((j['payments'] as List?) ?? [])
+          .map((e) => MechanicPaymentItem.fromJson(e as Map<String, dynamic>))
           .toList(),
     );
   }
@@ -118,11 +159,12 @@ class MechanicPaymentsRepository {
     return MechanicDetail.fromJson((data as Map<String, dynamic>)['data']);
   }
 
-  /// Liquida las OTs seleccionadas (+ bono). Devuelve el detalle actualizado.
+  /// Liquida las OTs seleccionadas pagando `amount` (editable). Las OTs quedan
+  /// vinculadas al pago. Devuelve el detalle actualizado.
   Future<MechanicDetail> pay({
     required int mechanicId,
     required List<int> workOrderIds,
-    double bonus = 0,
+    required double amount,
     required String paymentSource, // 'cash' | 'treasury'
     int? treasuryAccountId,
     String? method,
@@ -131,7 +173,7 @@ class MechanicPaymentsRepository {
     final data = await _api.post('/mechanic-payments', body: {
       'mechanic_id': mechanicId,
       'work_order_ids': workOrderIds,
-      'bonus': bonus,
+      'amount': amount,
       'payment_source': paymentSource,
       'treasury_account_id': ?treasuryAccountId,
       'method': ?method,
