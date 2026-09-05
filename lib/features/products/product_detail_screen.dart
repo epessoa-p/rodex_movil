@@ -204,6 +204,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        if (d.photos.isNotEmpty) ...[
+          _PhotoGallery(photos: d.photos),
+          const SizedBox(height: 16),
+        ],
         Text(d.name,
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
         const SizedBox(height: 4),
@@ -318,4 +322,131 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             ),
         ],
       );
+}
+
+/// Galería de fotos del producto: foto principal grande + miniaturas. Al tocar
+/// se abre el visor a pantalla completa.
+class _PhotoGallery extends StatefulWidget {
+  final List<String> photos;
+  const _PhotoGallery({required this.photos});
+
+  @override
+  State<_PhotoGallery> createState() => _PhotoGalleryState();
+}
+
+class _PhotoGalleryState extends State<_PhotoGallery> {
+  int _current = 0;
+
+  void _openViewer() {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) =>
+          _PhotoViewer(photos: widget.photos, initialIndex: _current),
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final main = widget.photos[_current];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: _openViewer,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: AspectRatio(
+              aspectRatio: 4 / 3,
+              child: Image.network(
+                main,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => Container(
+                  color: Colors.black12,
+                  child: const Icon(Icons.broken_image_outlined,
+                      color: Colors.black38, size: 40),
+                ),
+                loadingBuilder: (ctx, child, progress) => progress == null
+                    ? child
+                    : Container(
+                        color: Colors.black12,
+                        child: const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2)),
+                      ),
+              ),
+            ),
+          ),
+        ),
+        if (widget.photos.length > 1) ...[
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 56,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: widget.photos.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              itemBuilder: (context, i) {
+                final selected = i == _current;
+                return GestureDetector(
+                  onTap: () => setState(() => _current = i),
+                  child: Container(
+                    width: 56,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: selected
+                            ? Theme.of(context).colorScheme.primary
+                            : Colors.black12,
+                        width: selected ? 2 : 1,
+                      ),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Image.network(widget.photos[i],
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => const Icon(
+                            Icons.broken_image_outlined,
+                            color: Colors.black38)),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Visor de fotos a pantalla completa con zoom y deslizamiento.
+class _PhotoViewer extends StatelessWidget {
+  final List<String> photos;
+  final int initialIndex;
+  const _PhotoViewer({required this.photos, required this.initialIndex});
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = PageController(initialPage: initialIndex);
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        elevation: 0,
+      ),
+      body: PageView.builder(
+        controller: controller,
+        itemCount: photos.length,
+        itemBuilder: (context, i) => InteractiveViewer(
+          minScale: 1,
+          maxScale: 4,
+          child: Center(
+            child: Image.network(
+              photos[i],
+              fit: BoxFit.contain,
+              errorBuilder: (_, _, _) => const Icon(Icons.broken_image_outlined,
+                  color: Colors.white38, size: 60),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

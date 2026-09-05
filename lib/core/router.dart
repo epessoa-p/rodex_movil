@@ -18,6 +18,7 @@ import '../features/purchases/direct_purchase_screen.dart';
 import '../features/purchases/receptions_screen.dart';
 import '../features/purchases/suppliers_screen.dart';
 import '../features/products/products_screen.dart';
+import '../features/reports/income_statement_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/treasury/treasury_screen.dart';
 import '../features/workshop/mechanic_payments_screen.dart';
@@ -70,6 +71,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
           path: '/company-profile',
           builder: (_, _) => const CompanyProfileScreen()),
+      GoRoute(
+          path: '/income-statement',
+          builder: (_, _) => const IncomeStatementScreen()),
     ],
     redirect: (context, state) {
       final status = ref.read(authControllerProvider).status;

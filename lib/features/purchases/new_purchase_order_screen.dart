@@ -68,6 +68,7 @@ class _NewPurchaseOrderScreenState
     await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => ProductsScreen(
         requireStock: false, // en una OC se piden productos aunque no haya stock
+        hideInitialStock: true, // el stock lo suma la compra, no el alta
         onPick: (p) {
           picked = p;
           Navigator.of(context).pop();

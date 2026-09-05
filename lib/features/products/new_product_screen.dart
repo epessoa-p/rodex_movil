@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/api_client.dart';
 import '../../core/format.dart';
@@ -9,7 +12,10 @@ import '../pos/pos_repository.dart';
 /// Alta rápida de producto desde el móvil. Devuelve el `Product` creado
 /// (para agregarlo al carrito si se abrió desde el POS).
 class NewProductScreen extends ConsumerStatefulWidget {
-  const NewProductScreen({super.key});
+  /// Oculta el bloque de "Stock inicial" (p. ej. al crear el producto dentro
+  /// de una compra: el stock lo suma la propia compra).
+  final bool hideInitialStock;
+  const NewProductScreen({super.key, this.hideInitialStock = false});
 
   @override
   ConsumerState<NewProductScreen> createState() => _NewProductScreenState();
@@ -26,6 +32,9 @@ class _NewProductScreenState extends ConsumerState<NewProductScreen> {
   int? _categoryId;
   int? _brandId;
   int? _warehouseId;
+
+  final _picker = ImagePicker();
+  XFile? _photo;
 
   ProductCatalogs? _catalogs;
   bool _loading = true;
@@ -68,7 +77,8 @@ class _NewProductScreenState extends ConsumerState<NewProductScreen> {
       _snack('Nombre y precio son obligatorios.');
       return;
     }
-    final stock = double.tryParse(_stock.text.replaceAll(',', '.')) ?? 0;
+    final stock =
+        widget.hideInitialStock ? 0.0 : (double.tryParse(_stock.text.replaceAll(',', '.')) ?? 0);
     if (stock > 0 && _warehouseId == null) {
       _snack('Selecciona un almacén para el stock inicial.');
       return;
@@ -86,6 +96,7 @@ class _NewProductScreenState extends ConsumerState<NewProductScreen> {
             brandId: _brandId,
             initialStock: stock > 0 ? stock : null,
             warehouseId: stock > 0 ? _warehouseId : null,
+            photoPath: _photo?.path,
           );
       if (mounted) Navigator.pop(context, product);
     } on ApiException catch (e) {
@@ -98,6 +109,43 @@ class _NewProductScreenState extends ConsumerState<NewProductScreen> {
 
   void _snack(String m) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+
+  /// Elige la foto del producto: cámara o galería.
+  Future<void> _pickPhoto() async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Tomar foto'),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Elegir de la galería'),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || source == null) return;
+    try {
+      final picked = await _picker.pickImage(
+        source: source,
+        maxWidth: 1280,
+        imageQuality: 80,
+      );
+      if (picked != null && mounted) setState(() => _photo = picked);
+    } catch (_) {
+      if (mounted) _snack('No se pudo obtener la imagen.');
+    }
+  }
+
+  void _removePhoto() => setState(() => _photo = null);
 
   @override
   Widget build(BuildContext context) {
@@ -116,6 +164,8 @@ class _NewProductScreenState extends ConsumerState<NewProductScreen> {
               : ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
+                    _photoPicker(),
+                    const SizedBox(height: 16),
                     _field(_name, 'Nombre *',
                         capitalize: true),
                     Row(children: [
@@ -135,14 +185,16 @@ class _NewProductScreenState extends ConsumerState<NewProductScreen> {
                     if (cat != null && cat.brands.isNotEmpty)
                       _dropdown('Marca', _brandId, cat.brands,
                           (v) => setState(() => _brandId = v)),
-                    const Divider(height: 28),
-                    const Text('Stock inicial (opcional)',
-                        style: TextStyle(fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 8),
-                    _field(_stock, 'Cantidad', number: true),
-                    if (cat != null && cat.warehouses.isNotEmpty)
-                      _dropdown('Almacén', _warehouseId, cat.warehouses,
-                          (v) => setState(() => _warehouseId = v)),
+                    if (!widget.hideInitialStock) ...[
+                      const Divider(height: 28),
+                      const Text('Stock inicial (opcional)',
+                          style: TextStyle(fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 8),
+                      _field(_stock, 'Cantidad', number: true),
+                      if (cat != null && cat.warehouses.isNotEmpty)
+                        _dropdown('Almacén', _warehouseId, cat.warehouses,
+                            (v) => setState(() => _warehouseId = v)),
+                    ],
                     const SizedBox(height: 20),
                     FilledButton.icon(
                       style: FilledButton.styleFrom(
@@ -159,6 +211,49 @@ class _NewProductScreenState extends ConsumerState<NewProductScreen> {
                     ),
                   ],
                 ),
+    );
+  }
+
+  Widget _photoPicker() {
+    final photo = _photo;
+    return Center(
+      child: Column(
+        children: [
+          GestureDetector(
+            onTap: _pickPhoto,
+            child: Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                color: Colors.black12,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.black26),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: photo == null
+                  ? const Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add_a_photo_outlined,
+                            color: Colors.black45, size: 30),
+                        SizedBox(height: 6),
+                        Text('Agregar foto',
+                            style:
+                                TextStyle(color: Colors.black54, fontSize: 12)),
+                      ],
+                    )
+                  : Image.file(File(photo.path), fit: BoxFit.cover),
+            ),
+          ),
+          if (photo != null)
+            TextButton.icon(
+              onPressed: _removePhoto,
+              icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+              label: const Text('Quitar foto',
+                  style: TextStyle(color: Colors.red)),
+            ),
+        ],
+      ),
     );
   }
 

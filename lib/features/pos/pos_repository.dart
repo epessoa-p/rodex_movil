@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
@@ -29,6 +30,7 @@ class PosRepository {
   }
 
   /// Alta rápida de producto. Devuelve el producto creado (para agregarlo al POS).
+  /// Si [photoPath] está definido, se sube la foto (multipart) como principal.
   Future<Product> createProduct({
     required String name,
     required double price,
@@ -39,8 +41,9 @@ class PosRepository {
     int? brandId,
     double? initialStock,
     int? warehouseId,
+    String? photoPath,
   }) async {
-    final data = await _api.post('/products', body: {
+    final fields = <String, dynamic>{
       'name': name,
       'price': price,
       'cost': ?cost,
@@ -50,7 +53,20 @@ class PosRepository {
       'brand_id': ?brandId,
       'initial_stock': ?initialStock,
       'warehouse_id': ?warehouseId,
-    });
+    };
+
+    Object body = fields;
+    if (photoPath != null) {
+      final form = FormData.fromMap(fields);
+      form.files.add(MapEntry(
+        'photo',
+        await MultipartFile.fromFile(photoPath,
+            filename: photoPath.split(RegExp(r'[\\/]')).last),
+      ));
+      body = form;
+    }
+
+    final data = await _api.post('/products', body: body);
     return Product.fromJson((data as Map<String, dynamic>)['data']);
   }
 

@@ -107,6 +107,7 @@ class Product {
   final String? unit;
   final double price;
   final double currentStock;
+  final String? imageUrl;
 
   Product({
     required this.id,
@@ -116,6 +117,7 @@ class Product {
     this.unit,
     required this.price,
     required this.currentStock,
+    this.imageUrl,
   });
 
   factory Product.fromJson(Map<String, dynamic> j) => Product(
@@ -126,6 +128,9 @@ class Product {
         unit: j['unit'] as String?,
         price: _toDouble(j['price']),
         currentStock: _toDouble(j['current_stock']),
+        imageUrl: (j['image_url'] as String?)?.isNotEmpty == true
+            ? j['image_url'] as String
+            : null,
       );
 }
 
@@ -167,6 +172,7 @@ class ProductDetail {
   final String? origin;
   final List<String> compatibleModels;
   final List<WarehouseStock> stockByWarehouse;
+  final List<String> photos;
 
   ProductDetail({
     required this.id,
@@ -182,6 +188,7 @@ class ProductDetail {
     this.origin,
     required this.compatibleModels,
     required this.stockByWarehouse,
+    this.photos = const [],
   });
 
   factory ProductDetail.fromJson(Map<String, dynamic> j) => ProductDetail(
@@ -202,6 +209,10 @@ class ProductDetail {
         stockByWarehouse: ((j['stock_by_warehouse'] as List?) ?? [])
             .map((e) => WarehouseStock.fromJson(e as Map<String, dynamic>))
             .toList(),
+        photos: ((j['photos'] as List?) ?? [])
+            .map((e) => e.toString())
+            .where((e) => e.isNotEmpty)
+            .toList(),
       );
 
   /// Producto ligero para el carrito (lo que el POS necesita).
@@ -213,6 +224,7 @@ class ProductDetail {
         unit: unit,
         price: price,
         currentStock: currentStock,
+        imageUrl: photos.isNotEmpty ? photos.first : null,
       );
 }
 

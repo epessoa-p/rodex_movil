@@ -95,6 +95,7 @@ class _DirectPurchaseScreenState extends ConsumerState<DirectPurchaseScreen> {
     await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => ProductsScreen(
         requireStock: false,
+        hideInitialStock: true,
         onPick: (p) {
           picked = p;
           Navigator.of(context).pop();

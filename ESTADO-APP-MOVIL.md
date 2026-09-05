@@ -73,7 +73,7 @@ _Última actualización: 2026-08-25_
 - ⬜ Editar productos y gestión completa (kardex, almacenes, importar) → se hace en el **web**.
 
 ### Compras 🟡  (plan:purchases)
-- ✅ **Recepción de mercadería**: lista de OC por recibir (enviadas/parciales) → recibir cantidades por línea en un almacén. Suma stock, avanza la OC y **genera la compra (cuenta por pagar)**. Endpoints `GET /purchase-orders`, `GET /purchase-orders/{id}`, `POST /purchase-orders/{id}/receive`. Gateado por `plan:purchases` + `goods-receipts.create`.
+- ✅ **Compras** (antes "Recepción"): vista única con **dos botones** — **Nueva OC** y **Compra directa** — y un **listado combinado** de **OCs** (badge azul "OC" + estado enviada/parcial, tocar → recibir) y **compras directas** (badge marrón "Compra" + estado de pago; tocar → **detalle con ítems y totales**), ordenadas por fecha. Endpoints `GET /purchase-orders` (OCs), `GET /purchases` (compras directas, `purchases.view`), `GET /purchases/{id}` (detalle), `GET /purchase-orders/{id}`, `POST /purchase-orders/{id}/receive`. En el drawer se llama **Compras**.
 - ✅ **Proveedores**: directorio (listar/buscar) y **alta rápida** (nombre, NIT, contacto, teléfono, email). Endpoints `GET /suppliers`, `POST /suppliers`. Gateado por `plan:purchases` + `suppliers.view/create`.
 - ✅ **Órdenes de compra**: crear una OC desde el móvil (proveedor + productos con cantidad y costo). Queda en estado *enviada* (lista para recibir). Desde Recepción → "Nueva OC". Endpoint `POST /purchase-orders`. Gateado por `purchase-orders.create`.
 - ✅ **Compra directa** (contado, un paso): proveedor + almacén + productos → registra la **compra**, **suma stock** y **paga el gasto**. **Origen del pago elegible: Caja** (requiere caja abierta) **o una cuenta de Tesorería** (valida saldo; registra el movimiento y descuenta el saldo de la cuenta). El selector Caja/Tesorería aparece si el usuario tiene `treasury.view`. Tile en el Inicio + drawer. Endpoint `POST /purchases/direct` (`payment_source` = cash|treasury, `treasury_account_id`). Gateado por `purchases.create`.
@@ -88,6 +88,9 @@ _Última actualización: 2026-08-25_
 ### Mi empresa ✅  (administrativo)
 - ✅ **Módulo "Mi empresa"** (web + móvil): la empresa activa edita **teléfono, dirección, foto/logo** y la **vigencia del enlace de seguimiento** (días tras entregar; **0 = sin caducidad**, default 1). Gateado por `company-profile.view/edit`. Endpoints `GET /company-profile`, `POST /company-profile` (multipart logo). Web: Administración → *Mi empresa*. Móvil: drawer → *Mi empresa*.
 - ✅ **Caducidad del enlace de seguimiento**: el link `/ot/{token}` deja de servir `tracking_link_days` días después de `delivered_at` (muestra "enlace expirado"). **DB:** columna `companies.tracking_link_days` (script `20260831c_company_profile.sql`).
+
+### Estado de resultados (P&L) ✅  (administrativo — Reportes)
+- ✅ **Estado de resultados por movimientos** (web + móvil): ingresos y egresos reales de **caja + tesorería** (base efectivo, agrupados por categoría, sin doble conteo) en un período seleccionable; **Resultado = Ingresos − Egresos** (verde si ≥0, rojo si <0). Móvil: drawer → *Estado de resultados*, presets **Este mes / Mes anterior / Rango**. Web: sección **Reportes** del menú. Gateado por `income-statement.view`. Endpoint `GET /income-statement?from=&to=`. **DB:** permiso `income-statement.view` (módulo `reports`) — script `20260903_income_statement_permission.sql`.
 
 ### Mecánicos (administración) ✅  (plan:workshop)
 - ✅ **Pantalla de Mecánicos** en el menú: listado (activos e inactivos) y **alta/edición con todos los campos** (nombre, especialidad, teléfono, **% de comisión**, activo). Gateado por `mechanics.view/create/edit`. Endpoints `GET /mechanics/all`, `POST /mechanics`, `PUT /mechanics/{id}`.

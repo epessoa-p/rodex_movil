@@ -88,13 +88,15 @@ class AppDrawer extends ConsumerWidget {
                           me.can('mechanic-payments.view')),
                   _item(context, Icons.savings_outlined, 'Caja', '/cash',
                       show: me.canAny(['cash.operate', 'pos.access'])),
-                  _item(context, Icons.local_shipping_outlined, 'Recepción',
+                  _item(context, Icons.shopping_bag_outlined, 'Compras',
                       '/purchases/receptions',
                       show: me.planAllows('purchases') &&
                           me.canAny([
                             'goods-receipts.create',
                             'goods-receipts.view',
-                            'purchase-orders.view'
+                            'purchase-orders.view',
+                            'purchases.view',
+                            'purchases.create'
                           ])),
                   _item(context, Icons.storefront_outlined, 'Proveedores',
                       '/purchases/suppliers',
@@ -111,6 +113,9 @@ class AppDrawer extends ConsumerWidget {
                       show: me.planAllows('cash') &&
                           me.can('cash-registers.view')),
                   const Divider(),
+                  _item(context, Icons.assessment_outlined,
+                      'Estado de resultados', '/income-statement',
+                      show: me.can('income-statement.view')),
                   _item(context, Icons.business_outlined, 'Mi empresa',
                       '/company-profile',
                       show: me.can('company-profile.view')),

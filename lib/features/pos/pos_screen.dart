@@ -41,10 +41,10 @@ class _PosScreenState extends ConsumerState<PosScreen> {
   Future<void> _addProduct() async {
     await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => ProductsScreen(
-        onPick: (p) {
-          ref.read(cartProvider.notifier).add(p);
-          Navigator.pop(context);
-        },
+        // La lista queda abierta para cargar varios productos seguidos.
+        stayOpen: true,
+        onPick: (p) => ref.read(cartProvider.notifier).add(p),
+        footer: const _PickerFooter(),
       ),
     ));
   }
@@ -408,6 +408,54 @@ class _CheckoutBar extends StatelessWidget {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Barra inferior del selector de productos en modo POS: muestra cuántos ítems
+/// y el total del carrito en curso, con un botón "Listo" para volver a la venta.
+class _PickerFooter extends ConsumerWidget {
+  const _PickerFooter();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lines = ref.watch(cartProvider);
+    final cart = ref.read(cartProvider.notifier);
+    final items = lines.fold<double>(0, (s, l) => s + l.quantity);
+    return Material(
+      elevation: 8,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      lines.isEmpty
+                          ? 'Carrito vacío'
+                          : '${qty(items)} ${items == 1 ? 'ítem' : 'ítems'} · ${lines.length} ${lines.length == 1 ? 'producto' : 'productos'}',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                    Text('Total ${money(cart.total)}',
+                        style: const TextStyle(
+                            color: Colors.black54, fontSize: 12)),
+                  ],
+                ),
+              ),
+              FilledButton.icon(
+                icon: const Icon(Icons.check),
+                label: const Text('Listo'),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ],
+          ),
         ),
       ),
     );
