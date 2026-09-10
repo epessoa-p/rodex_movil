@@ -18,22 +18,11 @@ class ProductsScreen extends ConsumerStatefulWidget {
   /// Oculta el "Stock inicial" en el alta de producto (flujos de compra).
   final bool hideInitialStock;
 
-  /// Si es true, al elegir un producto la lista NO se cierra (para cargar
-  /// varios seguidos); muestra un aviso y se sale con [footer]/atrás. En este
-  /// modo [onPick] no debe cerrar la pantalla.
-  final bool stayOpen;
-
-  /// Barra inferior opcional (p. ej. resumen del carrito + botón "Listo") que
-  /// se muestra en modo selección.
-  final Widget? footer;
-
   const ProductsScreen(
       {super.key,
       this.onPick,
       this.requireStock = true,
-      this.hideInitialStock = false,
-      this.stayOpen = false,
-      this.footer});
+      this.hideInitialStock = false});
 
   @override
   ConsumerState<ProductsScreen> createState() => _ProductsScreenState();
@@ -66,13 +55,6 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
       return;
     }
     widget.onPick!(p);
-    // En modo "lista abierta" la pantalla no se cierra: confirmamos con un aviso.
-    if (widget.stayOpen && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Agregado: ${p.name}'),
-        duration: const Duration(milliseconds: 900),
-      ));
-    }
   }
 
   /// Abre la ficha del producto (stock por almacén, ajustar, atributos). En modo
@@ -179,10 +161,6 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                               final p = _items[i];
                               final low = p.currentStock <= 0;
                               return ListTile(
-                                leading: _Thumb(
-                                  url: p.imageUrl,
-                                  onTap: () => _openDetail(p),
-                                ),
                                 title: Text(p.name),
                                 subtitle: Text(
                                     '${p.sku ?? ''}  ·  Stock: ${qty(p.currentStock)} ${p.unit ?? ''}'),
@@ -232,59 +210,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                             },
                           ),
           ),
-          if (picking && widget.footer != null) widget.footer!,
         ],
-      ),
-    );
-  }
-}
-
-/// Miniatura de la foto del producto (o un ícono si no hay). Tocarla abre la
-/// ficha completa con la foto en grande.
-class _Thumb extends StatelessWidget {
-  final String? url;
-  final VoidCallback onTap;
-  const _Thumb({required this.url, required this.onTap});
-
-  static const double _size = 44;
-
-  @override
-  Widget build(BuildContext context) {
-    // Las fotos subidas desde la web NO se redimensionan: pueden ser de varios
-    // MB / miles de píxeles. Sin cacheWidth, Flutter las decodifica a resolución
-    // COMPLETA en memoria aunque se muestren en 44x44, y con varias visibles a
-    // la vez la app se queda sin memoria y se congela (ANR).
-    final cacheWidth =
-        (_size * MediaQuery.devicePixelRatioOf(context)).round();
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: _size,
-        height: _size,
-        decoration: BoxDecoration(
-          color: Colors.black12,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: url == null
-            ? const Icon(Icons.inventory_2_outlined,
-                color: Colors.black38, size: 22)
-            : Image.network(
-                url!,
-                fit: BoxFit.cover,
-                cacheWidth: cacheWidth,
-                filterQuality: FilterQuality.low,
-                // Placeholder estático: un spinner por fila anima toda la lista.
-                frameBuilder: (ctx, child, frame, wasSync) =>
-                    frame == null && !wasSync
-                        ? const SizedBox.shrink()
-                        : child,
-                errorBuilder: (_, _, _) => const Icon(
-                    Icons.inventory_2_outlined,
-                    color: Colors.black38,
-                    size: 22),
-              ),
       ),
     );
   }

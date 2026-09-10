@@ -53,13 +53,13 @@ void main() {
 
     expect(find.text('Agregar producto'), findsOneWidget);
     expect(find.text('Filtro de aceite'), findsOneWidget);
-    expect(find.text('Carrito vacío'), findsOneWidget);
 
-    // Agregar el producto: la lista debe seguir viva y el footer actualizarse.
+    // Tocar el producto lo agrega al carrito y vuelve a la venta.
     await tester.tap(find.text('Filtro de aceite'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Filtro de aceite'), findsOneWidget);
-    expect(find.textContaining('1 ítem'), findsOneWidget);
+    expect(find.text('Agregar producto'), findsNothing); // el selector se cerró
+    expect(find.text('Nueva venta'), findsOneWidget);
+    expect(find.text('Filtro de aceite'), findsOneWidget); // ya en el carrito
   });
 }

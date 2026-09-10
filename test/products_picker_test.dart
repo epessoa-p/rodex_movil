@@ -51,24 +51,28 @@ void main() {
     expect(find.text('Bujía NGK'), findsOneWidget);
   });
 
-  testWidgets('Con footer y lista abierta (stayOpen) sigue renderizando',
+  testWidgets('Tocar un producto lo entrega vía onPick (sin abrir la ficha)',
       (tester) async {
     final picked = <Product>[];
-    await tester.pumpWidget(_wrap(ProductsScreen(
-      stayOpen: true,
-      onPick: picked.add,
-      footer: const SizedBox(height: 60, child: Text('footer')),
-    )));
+    await tester.pumpWidget(_wrap(ProductsScreen(onPick: picked.add)));
     await tester.pumpAndSettle();
 
-    expect(find.text('Filtro de aceite Honda CG 150'), findsOneWidget);
-    expect(find.text('footer'), findsOneWidget);
-
-    // Tocar un producto lo agrega y la lista NO se cierra.
     await tester.tap(find.text('Filtro de aceite Honda CG 150'));
     await tester.pumpAndSettle();
 
     expect(picked, hasLength(1));
-    expect(find.text('Filtro de aceite Honda CG 150'), findsOneWidget);
+    expect(picked.single.id, 1);
+  });
+
+  testWidgets('Sin stock no se agrega y avisa (requireStock)', (tester) async {
+    final picked = <Product>[];
+    await tester.pumpWidget(_wrap(ProductsScreen(onPick: picked.add)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Bujía NGK')); // currentStock = 0
+    await tester.pumpAndSettle();
+
+    expect(picked, isEmpty);
+    expect(find.textContaining('sin stock disponible'), findsOneWidget);
   });
 }
