@@ -6,6 +6,7 @@ import '../features/auth/auth_controller.dart';
 import '../features/auth/login_screen.dart';
 import '../features/agenda/agenda_screen.dart';
 import '../features/auth/select_company_screen.dart';
+import '../features/branches/branches_screen.dart';
 import '../features/company/company_profile_screen.dart';
 import '../features/dashboard/dashboard_screen.dart';
 import '../features/cash/cash_registers_screen.dart';
@@ -18,6 +19,7 @@ import '../features/purchases/direct_purchase_screen.dart';
 import '../features/purchases/receptions_screen.dart';
 import '../features/purchases/suppliers_screen.dart';
 import '../features/products/products_screen.dart';
+import '../features/profile/profile_screen.dart';
 import '../features/reports/income_statement_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/treasury/treasury_screen.dart';
@@ -68,6 +70,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/mechanics', builder: (_, _) => const MechanicsScreen()),
       GoRoute(path: '/treasury', builder: (_, _) => const TreasuryScreen()),
       GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
+      GoRoute(path: '/profile', builder: (_, _) => const ProfileScreen()),
+      GoRoute(path: '/branches', builder: (_, _) => const BranchesScreen()),
       GoRoute(
           path: '/company-profile',
           builder: (_, _) => const CompanyProfileScreen()),

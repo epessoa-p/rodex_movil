@@ -347,6 +347,12 @@ class _PhotoGalleryState extends State<_PhotoGallery> {
   @override
   Widget build(BuildContext context) {
     final main = widget.photos[_current];
+    // Ver el comentario en _Thumb: sin cacheWidth, una foto sin redimensionar se
+    // decodifica completa en memoria y puede congelar la app.
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final mainCacheWidth =
+        (MediaQuery.sizeOf(context).width * dpr).round();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -359,6 +365,7 @@ class _PhotoGalleryState extends State<_PhotoGallery> {
               child: Image.network(
                 main,
                 fit: BoxFit.cover,
+                cacheWidth: mainCacheWidth,
                 errorBuilder: (_, _, _) => Container(
                   color: Colors.black12,
                   child: const Icon(Icons.broken_image_outlined,
@@ -401,6 +408,8 @@ class _PhotoGalleryState extends State<_PhotoGallery> {
                     clipBehavior: Clip.antiAlias,
                     child: Image.network(widget.photos[i],
                         fit: BoxFit.cover,
+                        cacheWidth: (56 * dpr).round(),
+                        filterQuality: FilterQuality.low,
                         errorBuilder: (_, _, _) => const Icon(
                             Icons.broken_image_outlined,
                             color: Colors.black38)),
@@ -441,6 +450,12 @@ class _PhotoViewer extends StatelessWidget {
             child: Image.network(
               photos[i],
               fit: BoxFit.contain,
+              // Tope de decodificación: el doble del ancho de pantalla alcanza
+              // para el zoom sin cargar el original completo en memoria.
+              cacheWidth: (MediaQuery.sizeOf(context).width *
+                      MediaQuery.devicePixelRatioOf(context) *
+                      2)
+                  .round(),
               errorBuilder: (_, _, _) => const Icon(Icons.broken_image_outlined,
                   color: Colors.white38, size: 60),
             ),

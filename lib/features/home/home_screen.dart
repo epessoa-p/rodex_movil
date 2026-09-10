@@ -31,9 +31,21 @@ class HomeScreen extends ConsumerWidget {
         title: Text(me.company?.name ?? 'Rodex'),
         actions: [
           IconButton(
-            tooltip: 'Ajustes',
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () => context.push('/settings'),
+            tooltip: 'Perfil',
+            icon: CircleAvatar(
+              radius: 14,
+              backgroundColor:
+                  Theme.of(context).colorScheme.onPrimary.withValues(alpha: .20),
+              child: Text(
+                me.user.name.isNotEmpty ? me.user.name[0].toUpperCase() : '?',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Theme.of(context).colorScheme.onPrimary,
+                ),
+              ),
+            ),
+            onPressed: () => context.push('/profile'),
           ),
         ],
       ),

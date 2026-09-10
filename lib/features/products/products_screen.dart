@@ -246,13 +246,22 @@ class _Thumb extends StatelessWidget {
   final VoidCallback onTap;
   const _Thumb({required this.url, required this.onTap});
 
+  static const double _size = 44;
+
   @override
   Widget build(BuildContext context) {
+    // Las fotos subidas desde la web NO se redimensionan: pueden ser de varios
+    // MB / miles de píxeles. Sin cacheWidth, Flutter las decodifica a resolución
+    // COMPLETA en memoria aunque se muestren en 44x44, y con varias visibles a
+    // la vez la app se queda sin memoria y se congela (ANR).
+    final cacheWidth =
+        (_size * MediaQuery.devicePixelRatioOf(context)).round();
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 44,
-        height: 44,
+        width: _size,
+        height: _size,
         decoration: BoxDecoration(
           color: Colors.black12,
           borderRadius: BorderRadius.circular(8),
@@ -264,20 +273,17 @@ class _Thumb extends StatelessWidget {
             : Image.network(
                 url!,
                 fit: BoxFit.cover,
+                cacheWidth: cacheWidth,
+                filterQuality: FilterQuality.low,
+                // Placeholder estático: un spinner por fila anima toda la lista.
+                frameBuilder: (ctx, child, frame, wasSync) =>
+                    frame == null && !wasSync
+                        ? const SizedBox.shrink()
+                        : child,
                 errorBuilder: (_, _, _) => const Icon(
                     Icons.inventory_2_outlined,
                     color: Colors.black38,
                     size: 22),
-                loadingBuilder: (ctx, child, progress) => progress == null
-                    ? child
-                    : const Center(
-                        child: SizedBox(
-                          width: 18,
-                          height: 18,
-                          child:
-                              CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      ),
               ),
       ),
     );

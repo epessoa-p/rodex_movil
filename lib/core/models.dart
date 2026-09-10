@@ -50,13 +50,15 @@ class AppUser {
   final int id;
   final String name;
   final String? email;
+  final String? phone;
 
-  AppUser({required this.id, required this.name, this.email});
+  AppUser({required this.id, required this.name, this.email, this.phone});
 
   factory AppUser.fromJson(Map<String, dynamic> j) => AppUser(
         id: j['id'] as int,
         name: j['name'] as String,
         email: j['email'] as String?,
+        phone: j['phone'] as String?,
       );
 }
 

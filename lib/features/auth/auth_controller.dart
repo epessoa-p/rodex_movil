@@ -156,6 +156,16 @@ class AuthController extends StateNotifier<AuthState> {
     _resetSessionData();
   }
 
+  /// Cambia la contraseña del usuario. Lanza [ApiException] si el backend la
+  /// rechaza (p. ej. la contraseña actual no coincide).
+  Future<void> changePassword(String current, String nueva) async {
+    await _api.post('/change-password', body: {
+      'current_password': current,
+      'password': nueva,
+      'password_confirmation': nueva,
+    });
+  }
+
   Future<void> _clear() async {
     _api.clearSession();
     await _store.clear();

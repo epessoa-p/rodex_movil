@@ -86,8 +86,6 @@ class AppDrawer extends ConsumerWidget {
                       '/mechanic-payments',
                       show: me.planAllows('workshop') &&
                           me.can('mechanic-payments.view')),
-                  _item(context, Icons.savings_outlined, 'Caja', '/cash',
-                      show: me.canAny(['cash.operate', 'pos.access'])),
                   _item(context, Icons.shopping_bag_outlined, 'Compras',
                       '/purchases/receptions',
                       show: me.planAllows('purchases') &&
@@ -106,19 +104,11 @@ class AppDrawer extends ConsumerWidget {
                       '/treasury',
                       show: me.planAllows('purchases') &&
                           me.can('treasury.view')),
-                  if (me.planAllows('cash') && me.can('cash-registers.view'))
-                    const Divider(),
-                  _item(context, Icons.point_of_sale_outlined, 'Cajas (admin)',
-                      '/cash-registers',
-                      show: me.planAllows('cash') &&
-                          me.can('cash-registers.view')),
                   const Divider(),
                   _item(context, Icons.assessment_outlined,
                       'Estado de resultados', '/income-statement',
                       show: me.can('income-statement.view')),
-                  _item(context, Icons.business_outlined, 'Mi empresa',
-                      '/company-profile',
-                      show: me.can('company-profile.view')),
+                  // "Mi empresa" y "Cajas" viven ahora dentro de Ajustes.
                   _item(context, Icons.settings_outlined, 'Ajustes',
                       '/settings'),
                 ],

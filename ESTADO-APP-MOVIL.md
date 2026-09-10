@@ -28,12 +28,19 @@ _Última actualización: 2026-08-25_
 ### Autenticación ✅
 - ✅ Login (email o usuario + contraseña).
 - ✅ Selección de empresa (si el usuario tiene varias).
-- ✅ **Ajustes / Perfil**: datos del usuario, **cambiar de empresa**, **cerrar sesión** (con
-  confirmación) y versión de la app. Accesible desde el ícono de ajustes en el inicio.
+- ✅ **Perfil** (avatar con la inicial, arriba a la derecha del inicio → `/profile`): datos del
+  usuario (nombre, email, **teléfono**), **cambiar de empresa**, **cambiar contraseña**,
+  **cerrar sesión** (con confirmación) y versión de la app.
+- ✅ **Cambiar contraseña** desde la app: `POST /change-password` (`current_password`, `password`,
+  `password_confirmation`; mín. 8 caracteres). Va en el grupo `auth:sanctum` **fuera** del tenant
+  (es acción de cuenta, no de empresa) y **revoca las demás sesiones** del usuario. Sin SQL.
 
 ### Inicio (Home) ✅ / 🟡
 - ✅ Accesos: Nueva venta, Productos, Clientes, Taller, Caja.
-- ✅ **Navigation Drawer** (botón hamburguesa): menú lateral con todos los accesos (Ventas, Productos, Clientes, Taller, Caja, Recepción, Proveedores, Cajas admin, Ajustes, Cerrar sesión), gateados por permiso/plan.
+- ✅ **Navigation Drawer** (botón hamburguesa): menú lateral con los accesos (Dashboard, Ventas, Productos, Clientes, Mecánicos, Pago a mecánicos, Compras, Proveedores, Tesorería, Estado de resultados, Ajustes, Cerrar sesión), gateados por permiso/plan.
+- ✅ **Ajustes** (drawer → *Ajustes*, `/settings`): hub con **recuadros** — *Mi empresa* y *Cajas* —
+  cada uno abre su pantalla. Preparado para crecer. Se quitaron del drawer **"Caja"** (ya está la
+  tarjeta de caja en el inicio), **"Cajas (admin)"** y **"Mi empresa"** (ahora viven en Ajustes).
 - ✅ Estado de caja (abierta/cerrada).
 - ✅ Ocultar accesos según permisos/plan (`me.can()/planAllows()`).
 - ✅ **Resumen del día** (ventas/monto de hoy) en el inicio. Endpoint `GET /sales/summary`; respeta "solo las mías" salvo `sales.view-all-records`.
@@ -55,7 +62,9 @@ _Última actualización: 2026-08-25_
 - ✅ Ver sesión actual, **abrir** (elegir caja + monto) y **cerrar** (monto contado).
 - ✅ Ver **movimientos** de la sesión (ingresos/gastos) y registrar **gasto** simple (operativo/servicio/transporte) desde caja. Endpoints `GET /cash/movements`, `POST /cash/expense`.
 - ✅ **Resumen de cierre**: esperado vs contado con **diferencia en vivo** al cerrar; el resumen (inicial, ingresos, gastos, esperado) se ve en la pantalla.
-- ✅ **Crear caja y asignarla a un personal** (Ajustes → Administración → Cajas): listar/crear/editar cajas con sucursal + personal asignado. Requisito para que ese personal pueda abrir caja. Endpoints `GET/POST /cash-registers`, `GET /cash-registers/form-data`, `PUT /cash-registers/{id}`. Gateado por `plan:cash` + `cash-registers.view/create/edit`.
+- ✅ **Una caja por sucursal**: al crear, solo se ofrecen sucursales sin caja; si todas están ocupadas se avisa. Validado también en el backend (422 `branch_already_has_register`). Editar una caja sin moverla de sucursal siempre se permite (datos previos con varias cajas por sucursal). `GET /cash-registers/form-data` devuelve `register_id` por sucursal.
+- ✅ **Sucursales** (Ajustes → *Sucursales*): listar y editar **solo nombre, dirección y teléfono** (el alta/baja y el resto de campos quedan en la web). Endpoints `GET /branches`, `PUT /branches/{id}`. Gateado por `branches.view` / `branches.edit`.
+- ✅ **Crear caja y asignarla a un personal** (Ajustes → *Cajas*): listar/crear/editar cajas con sucursal + personal asignado. Requisito para que ese personal pueda abrir caja. Endpoints `GET/POST /cash-registers`, `GET /cash-registers/form-data`, `PUT /cash-registers/{id}`. Gateado por `plan:cash` + `cash-registers.view/create/edit`.
 - ⬜ Gastos con integración (pago a proveedor/CxP, pago a personal) — se manejan en el web.
 
 ### Clientes ✅
@@ -86,7 +95,7 @@ _Última actualización: 2026-08-25_
 - La **web** ya tenía dashboards (Ventas/Taller/Compras) gateados por permiso y en el menú (sin cambios).
 
 ### Mi empresa ✅  (administrativo)
-- ✅ **Módulo "Mi empresa"** (web + móvil): la empresa activa edita **teléfono, dirección, foto/logo** y la **vigencia del enlace de seguimiento** (días tras entregar; **0 = sin caducidad**, default 1). Gateado por `company-profile.view/edit`. Endpoints `GET /company-profile`, `POST /company-profile` (multipart logo). Web: Administración → *Mi empresa*. Móvil: drawer → *Mi empresa*.
+- ✅ **Módulo "Mi empresa"** (web + móvil): la empresa activa edita **teléfono, dirección, foto/logo** y la **vigencia del enlace de seguimiento** (días tras entregar; **0 = sin caducidad**, default 1). Gateado por `company-profile.view/edit`. Endpoints `GET /company-profile`, `POST /company-profile` (multipart logo). Web: Administración → *Mi empresa*. Móvil: **Ajustes → *Mi empresa***.
 - ✅ **Caducidad del enlace de seguimiento**: el link `/ot/{token}` deja de servir `tracking_link_days` días después de `delivered_at` (muestra "enlace expirado"). **DB:** columna `companies.tracking_link_days` (script `20260831c_company_profile.sql`).
 
 ### Estado de resultados (P&L) ✅  (administrativo — Reportes)
@@ -173,7 +182,7 @@ Existen en la web pero todavía no tienen pantallas en el móvil. Se evalúan se
 - ⬜ Probar el **escáner en Android físico** (cámara real; el emulador no sirve).
 - 🟡 Branding: **nombre "Rodex"** ✅ y **applicationId `net.sczsoft.rodex`** ✅. Íconos/splash: config lista (`flutter_launcher_icons`/`flutter_native_splash`), **falta el logo** en `assets/branding/icon.png` y correr los generadores.
 - ⬜ Manejo de **sin conexión** (hoy es online; el plan lo dejó fuera por ahora).
-- ✅ Pantalla de **ajustes/perfil** (empresa activa, cambiar empresa, cerrar sesión, versión).
+- ✅ Pantalla de **Perfil** (usuario, teléfono, empresa activa, cambiar empresa, cambiar contraseña, cerrar sesión, versión) y **Ajustes** como hub de recuadros.
 - ⬜ Tests de widget (login, carrito) y `flutter analyze` en CI.
 - 🟡 Build de release firmado: **config de firma lista** (`build.gradle.kts` lee `android/key.properties`, con fallback a debug; plantilla en `key.properties.example`). **Falta** crear el keystore y el `key.properties` con las contraseñas, y correr `flutter build apk --release`.
 

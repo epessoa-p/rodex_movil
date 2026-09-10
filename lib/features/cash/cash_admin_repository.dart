@@ -4,12 +4,26 @@ import '../../core/api_client.dart';
 import '../../core/providers.dart';
 
 /// Opción simple id + nombre (sucursal / personal).
+///
+/// Para las sucursales, [registerId] indica la caja que ya la ocupa (null =
+/// libre): solo se permite UNA caja por sucursal.
 class NamedOption {
   final int id;
   final String name;
-  NamedOption({required this.id, required this.name});
-  factory NamedOption.fromJson(Map<String, dynamic> j) =>
-      NamedOption(id: j['id'] as int, name: (j['name'] ?? '') as String);
+  final int? registerId;
+
+  NamedOption({required this.id, required this.name, this.registerId});
+
+  /// true si la sucursal ya tiene una caja distinta de [exceptRegisterId]
+  /// (la que se está editando).
+  bool isTaken({int? exceptRegisterId}) =>
+      registerId != null && registerId != exceptRegisterId;
+
+  factory NamedOption.fromJson(Map<String, dynamic> j) => NamedOption(
+        id: j['id'] as int,
+        name: (j['name'] ?? '') as String,
+        registerId: j['register_id'] as int?,
+      );
 }
 
 /// Caja (para administración: crear/asignar a personal).

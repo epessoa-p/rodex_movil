@@ -50,6 +50,13 @@ class _CashRegistersScreenState extends ConsumerState<CashRegistersScreen> {
       _snack('Primero crea una sucursal y registra personal (desde la web).');
       return;
     }
+    // Regla: una caja por sucursal. Al crear, solo se ofrecen las libres.
+    if (editing == null &&
+        !form.branches.any((b) => !b.isTaken())) {
+      _snack('Todas las sucursales ya tienen su caja. '
+          'Solo se permite una caja por sucursal.');
+      return;
+    }
 
     final saved = await showModalBottomSheet<bool>(
       context: context,
@@ -146,12 +153,22 @@ class _CashRegisterFormState extends ConsumerState<_CashRegisterForm> {
   bool _active = true;
   bool _saving = false;
 
+  /// Sucursales elegibles: las libres, más la propia cuando se edita
+  /// (una caja por sucursal).
+  late final List<NamedOption> _branches;
+
   @override
   void initState() {
     super.initState();
     final e = widget.editing;
+    // Elegible = libre, o la que esta misma caja ya ocupa (así una caja antigua
+    // en una sucursal compartida sigue siendo editable).
+    _branches = widget.form.branches
+        .where((b) => !b.isTaken(exceptRegisterId: e?.id) || b.id == e?.branchId)
+        .toList();
     _name = TextEditingController(text: e?.name ?? '');
-    _branchId = e?.branchId ?? widget.form.branches.first.id;
+    _branchId = e?.branchId ??
+        (_branches.isNotEmpty ? _branches.first.id : null);
     _personalId = e?.personalId ?? widget.form.personal.first.id;
     _active = e?.active ?? true;
   }
@@ -166,6 +183,11 @@ class _CashRegisterFormState extends ConsumerState<_CashRegisterForm> {
     if (_name.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('El nombre es obligatorio.')));
+      return;
+    }
+    if (_branchId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Selecciona una sucursal.')));
       return;
     }
     setState(() => _saving = true);
@@ -221,9 +243,12 @@ class _CashRegisterFormState extends ConsumerState<_CashRegisterForm> {
           DropdownButtonFormField<int>(
             initialValue: _branchId,
             decoration: const InputDecoration(
-                labelText: 'Sucursal', border: OutlineInputBorder()),
+              labelText: 'Sucursal',
+              border: OutlineInputBorder(),
+              helperText: 'Una caja por sucursal',
+            ),
             items: [
-              for (final b in widget.form.branches)
+              for (final b in _branches)
                 DropdownMenuItem(value: b.id, child: Text(b.name)),
             ],
             onChanged: (v) => setState(() => _branchId = v),
