@@ -108,11 +108,18 @@ class _PoReceiveScreenState extends ConsumerState<PoReceiveScreen> {
   void _snack(String m) => ScaffoldMessenger.of(context)
       .showSnackBar(SnackBar(content: Text(m)));
 
+  /// Recibida o anulada: se consulta pero ya no se le puede recibir nada
+  /// (el backend también lo rechaza con 422).
+  bool get _readOnly =>
+      _detail != null && !['sent', 'partial'].contains(_detail!.status);
+
   @override
   Widget build(BuildContext context) {
     final d = _detail;
+    final readOnly = _readOnly;
     return Scaffold(
-      appBar: AppBar(title: Text('Recibir ${widget.code}')),
+      appBar: AppBar(
+          title: Text(readOnly ? 'OC ${widget.code}' : 'Recibir ${widget.code}')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
@@ -123,7 +130,7 @@ class _PoReceiveScreenState extends ConsumerState<PoReceiveScreen> {
                   ),
                 )
               : _content(d!),
-      bottomNavigationBar: (d != null)
+      bottomNavigationBar: (d != null && !readOnly)
           ? SafeArea(
               child: Padding(
                 padding: const EdgeInsets.all(12),
@@ -147,6 +154,7 @@ class _PoReceiveScreenState extends ConsumerState<PoReceiveScreen> {
   }
 
   Widget _content(PoDetail d) {
+    final readOnly = _readOnly;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -154,24 +162,31 @@ class _PoReceiveScreenState extends ConsumerState<PoReceiveScreen> {
             style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
         const SizedBox(height: 12),
 
-        // Almacén destino
-        DropdownButtonFormField<int>(
-          initialValue: _warehouseId,
-          decoration: const InputDecoration(
-              labelText: 'Almacén de destino', border: OutlineInputBorder()),
-          items: [
-            for (final w in d.warehouses)
-              DropdownMenuItem(value: w.id, child: Text(w.name)),
-          ],
-          onChanged: (v) => setState(() => _warehouseId = v),
-        ),
-        const SizedBox(height: 16),
+        if (readOnly) ...[
+          _StatusBanner(status: d.status),
+          const SizedBox(height: 16),
+        ] else ...[
+          // Almacén destino
+          DropdownButtonFormField<int>(
+            initialValue: _warehouseId,
+            decoration: const InputDecoration(
+                labelText: 'Almacén de destino', border: OutlineInputBorder()),
+            items: [
+              for (final w in d.warehouses)
+                DropdownMenuItem(value: w.id, child: Text(w.name)),
+            ],
+            onChanged: (v) => setState(() => _warehouseId = v),
+          ),
+          const SizedBox(height: 16),
+        ],
 
         const Text('Productos',
             style: TextStyle(fontWeight: FontWeight.w700)),
         const SizedBox(height: 4),
-        for (final it in d.items) _itemRow(it),
+        for (final it in d.items) _itemRow(it, readOnly: readOnly),
 
+        if (readOnly) const SizedBox(height: 8),
+        if (!readOnly) ...[
         const SizedBox(height: 16),
         TextField(
           controller: _invoiceCtrl,
@@ -193,12 +208,28 @@ class _PoReceiveScreenState extends ConsumerState<PoReceiveScreen> {
           'compra (cuenta por pagar) por lo recibido.',
           style: TextStyle(color: Colors.black54, fontSize: 12),
         ),
+        ],
       ],
     );
   }
 
-  Widget _itemRow(PoItem it) {
+  Widget _itemRow(PoItem it, {required bool readOnly}) {
     final done = it.pending <= 0;
+    if (readOnly) {
+      return Card(
+        margin: const EdgeInsets.only(top: 8),
+        child: ListTile(
+          title: Text(it.product ?? '—',
+              style: const TextStyle(fontWeight: FontWeight.w600)),
+          subtitle: Text(
+            'Pedido: ${qty(it.ordered)} · Recibido: ${qty(it.received)} ${it.unit ?? ''}',
+            style: const TextStyle(color: Colors.black54, fontSize: 12),
+          ),
+          trailing: Text(money(it.unitCost),
+              style: const TextStyle(fontWeight: FontWeight.w600)),
+        ),
+      );
+    }
     return Card(
       margin: const EdgeInsets.only(top: 8),
       child: Padding(
@@ -242,6 +273,41 @@ class _PoReceiveScreenState extends ConsumerState<PoReceiveScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Banner con el estado de una OC que ya no admite recepción.
+class _StatusBanner extends StatelessWidget {
+  final String status;
+  const _StatusBanner({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final (label, color, icon) = switch (status) {
+      'received' => ('Recibida completa', Colors.green, Icons.check_circle),
+      'cancelled' => ('Anulada', Colors.red, Icons.cancel),
+      _ => (status, Colors.grey, Icons.info_outline),
+    };
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .10),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: .35)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '$label · esta orden ya no admite recepciones.',
+              style: TextStyle(color: color, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
       ),
     );
   }

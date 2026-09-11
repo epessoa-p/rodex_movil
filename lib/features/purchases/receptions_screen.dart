@@ -3,47 +3,102 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
 import '../../core/format.dart';
+import '../../core/models.dart';
 import '../../core/providers.dart';
 import 'direct_purchase_detail_screen.dart';
 import 'direct_purchase_screen.dart';
 import 'new_purchase_order_screen.dart';
 import 'po_receive_screen.dart';
 import 'purchases_repository.dart';
+import 'suppliers_screen.dart';
 
-/// Compras: órdenes de compra (por recibir) + compras directas, en un listado.
-class ReceptionsScreen extends ConsumerStatefulWidget {
-  const ReceptionsScreen({super.key});
+/// Compras: una pantalla con tres tabs inferiores — Compras directas, Órdenes
+/// de compra (todas, con estado) y Proveedores. Cada tab se gatea por su
+/// permiso; si solo queda uno visible, se muestra sin barra inferior.
+class PurchasesScreen extends ConsumerStatefulWidget {
+  const PurchasesScreen({super.key});
 
   @override
-  ConsumerState<ReceptionsScreen> createState() => _ReceptionsScreenState();
+  ConsumerState<PurchasesScreen> createState() => _PurchasesScreenState();
 }
 
-/// Item unificado del listado (OC o compra directa).
-class _Item {
-  final bool isOrder; // true = OC, false = compra directa
-  final int id;
-  final String code;
-  final String? supplier;
-  final String? date;
-  final double total;
-  final String statusLabel;
-  final Color color;
-  final VoidCallback? onTap;
-  _Item({
-    required this.isOrder,
-    required this.id,
-    required this.code,
-    this.supplier,
-    this.date,
-    required this.total,
-    required this.statusLabel,
-    required this.color,
-    this.onTap,
-  });
+class _Tab {
+  final String label;
+  final IconData icon;
+  final IconData selectedIcon;
+  final Widget body;
+  const _Tab(this.label, this.icon, this.selectedIcon, this.body);
 }
 
-class _ReceptionsScreenState extends ConsumerState<ReceptionsScreen> {
-  List<_Item> _items = [];
+class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
+  int _index = 0;
+
+  List<_Tab> _tabs(MeContext me) => [
+        if (me.can('purchases.view'))
+          const _Tab('Compras', Icons.shopping_bag_outlined,
+              Icons.shopping_bag, _DirectPurchasesTab()),
+        if (me.canAny(['purchase-orders.view', 'goods-receipts.view']))
+          const _Tab('OCs', Icons.receipt_long_outlined, Icons.receipt_long,
+              _OrdersTab()),
+        if (me.can('suppliers.view'))
+          const _Tab('Proveedores', Icons.storefront_outlined,
+              Icons.storefront, SuppliersTab()),
+      ];
+
+  @override
+  Widget build(BuildContext context) {
+    final me = ref.watch(authControllerProvider).me;
+    if (me == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    final tabs = _tabs(me);
+    if (tabs.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Compras')),
+        body: const Center(child: Text('No tienes acceso a este módulo.')),
+      );
+    }
+    final index = _index.clamp(0, tabs.length - 1);
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Compras')),
+      body: IndexedStack(
+        index: index,
+        children: [for (final t in tabs) t.body],
+      ),
+      // NavigationBar exige al menos 2 destinos.
+      bottomNavigationBar: tabs.length < 2
+          ? null
+          : NavigationBar(
+              selectedIndex: index,
+              onDestinationSelected: (i) => setState(() => _index = i),
+              destinations: [
+                for (final t in tabs)
+                  NavigationDestination(
+                    icon: Icon(t.icon),
+                    selectedIcon: Icon(t.selectedIcon),
+                    label: t.label,
+                  ),
+              ],
+            ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Tab: Compras directas
+// ═══════════════════════════════════════════════════════════════════
+
+class _DirectPurchasesTab extends ConsumerStatefulWidget {
+  const _DirectPurchasesTab();
+
+  @override
+  ConsumerState<_DirectPurchasesTab> createState() => _DirectPurchasesTabState();
+}
+
+class _DirectPurchasesTabState extends ConsumerState<_DirectPurchasesTab> {
+  List<DirectPurchaseSummary> _items = [];
   bool _loading = true;
   Object? _error;
 
@@ -54,236 +109,344 @@ class _ReceptionsScreenState extends ConsumerState<ReceptionsScreen> {
   }
 
   Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    final me = ref.read(authControllerProvider).me;
-    final repo = ref.read(purchasesRepositoryProvider);
+    setState(() { _loading = true; _error = null; });
     try {
-      final orders = await repo.receivableOrders();
-
-      List<DirectPurchaseSummary> purchases = [];
-      if (me?.can('purchases.view') ?? false) {
-        try {
-          purchases = await repo.directPurchases();
-        } on ApiException {
-          purchases = []; // sin permiso u otro error: solo OCs
-        }
-      }
-
-      final items = <_Item>[
-        for (final po in orders)
-          _Item(
-            isOrder: true,
-            id: po.id,
-            code: po.code,
-            supplier: po.supplier,
-            date: po.date,
-            total: po.total,
-            statusLabel:
-                po.status == 'partial' ? 'Recibida parcial' : 'Enviada',
-            color: po.status == 'partial' ? Colors.orange : Colors.blue,
-            onTap: () => _receive(po),
-          ),
-        for (final c in purchases)
-          _Item(
-            isOrder: false,
-            id: c.id,
-            code: c.code,
-            supplier: c.supplier,
-            date: c.date,
-            total: c.total,
-            statusLabel: c.paymentLabel,
-            color: switch (c.paymentStatus) {
-              'paid' => Colors.green,
-              'partial' => Colors.orange,
-              _ => Colors.red,
-            },
-            onTap: () => _openPurchase(c),
-          ),
-      ]..sort((a, b) => (b.date ?? '').compareTo(a.date ?? ''));
-
+      final items = await ref.read(purchasesRepositoryProvider).directPurchases();
       if (mounted) setState(() { _items = items; _loading = false; });
     } on ApiException catch (e) {
       if (mounted) setState(() { _error = e.message; _loading = false; });
     }
   }
 
-  Future<void> _receive(PoSummary po) async {
-    final received = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => PoReceiveScreen(orderId: po.id, code: po.code),
-      ),
-    );
-    if (received == true) _load();
-  }
-
-  void _openPurchase(DirectPurchaseSummary c) {
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) =>
-          DirectPurchaseDetailScreen(purchaseId: c.id, code: c.code),
-    ));
-  }
-
-  Future<void> _newOrder() async {
-    final created = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const NewPurchaseOrderScreen()),
-    );
-    if (created == true) _load();
-  }
-
-  Future<void> _directPurchase() async {
+  Future<void> _create() async {
     final created = await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (_) => const DirectPurchaseScreen()),
     );
     if (created == true) _load();
   }
 
+  void _open(DirectPurchaseSummary c) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => DirectPurchaseDetailScreen(purchaseId: c.id, code: c.code),
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
     final me = ref.watch(authControllerProvider).me;
-    final canOrder = me?.can('purchase-orders.create') ?? false;
-    final canDirect =
-        (me?.planAllows('purchases') ?? false) && (me?.can('purchases.create') ?? false);
+    final canCreate = (me?.planAllows('purchases') ?? false) &&
+        (me?.can('purchases.create') ?? false);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Compras')),
-      body: Column(
-        children: [
-          if (canOrder || canDirect)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-              child: Row(
-                children: [
-                  if (canOrder)
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                            minimumSize: const Size.fromHeight(46)),
-                        icon: const Icon(Icons.receipt_long_outlined, size: 18),
-                        label: const Text('Nueva OC'),
-                        onPressed: _newOrder,
-                      ),
-                    ),
-                  if (canOrder && canDirect) const SizedBox(width: 10),
-                  if (canDirect)
-                    Expanded(
-                      child: FilledButton.icon(
-                        style: FilledButton.styleFrom(
-                            backgroundColor: Colors.brown,
-                            minimumSize: const Size.fromHeight(46)),
-                        icon: const Icon(Icons.shopping_bag_outlined, size: 18),
-                        label: const Text('Compra directa'),
-                        onPressed: _directPurchase,
-                      ),
-                    ),
-                ],
-              ),
+    return Column(
+      children: [
+        if (canCreate)
+          _ActionRow(
+            child: FilledButton.icon(
+              style: FilledButton.styleFrom(
+                  backgroundColor: Colors.brown,
+                  minimumSize: const Size.fromHeight(46)),
+              icon: const Icon(Icons.add_shopping_cart, size: 18),
+              label: const Text('Compra directa'),
+              onPressed: _create,
             ),
-          Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : _error != null
-                    ? _ErrorState(message: '$_error', onRetry: _load)
-                    : RefreshIndicator(
-                        onRefresh: _load,
-                        child: _items.isEmpty
-                            ? ListView(children: const [
-                                SizedBox(height: 120),
-                                Icon(Icons.inventory_2_outlined,
-                                    size: 56, color: Colors.black26),
-                                SizedBox(height: 12),
-                                Center(child: Text('No hay compras registradas.')),
-                              ])
-                            : ListView.separated(
-                                itemCount: _items.length,
-                                separatorBuilder: (_, _) =>
-                                    const Divider(height: 1),
-                                itemBuilder: (_, i) => _row(_items[i]),
-                              ),
-                      ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _row(_Item it) {
-    return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: (it.isOrder ? Colors.blue : Colors.brown)
-            .withValues(alpha: .12),
-        child: Icon(it.isOrder ? Icons.receipt_long : Icons.shopping_bag_outlined,
-            color: it.isOrder ? Colors.blue : Colors.brown),
-      ),
-      title: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-            decoration: BoxDecoration(
-              color: (it.isOrder ? Colors.blue : Colors.brown)
-                  .withValues(alpha: .12),
-              borderRadius: BorderRadius.circular(6),
+        Expanded(
+          child: _ListState(
+            loading: _loading,
+            error: _error,
+            onRetry: _load,
+            isEmpty: _items.isEmpty,
+            emptyIcon: Icons.shopping_bag_outlined,
+            emptyText: 'No hay compras directas.',
+            child: ListView.separated(
+              itemCount: _items.length,
+              separatorBuilder: (_, _) => const Divider(height: 1),
+              itemBuilder: (_, i) {
+                final c = _items[i];
+                final color = switch (c.paymentStatus) {
+                  'paid' => Colors.green,
+                  'partial' => Colors.orange,
+                  _ => Colors.red,
+                };
+                return _PurchaseRow(
+                  icon: Icons.shopping_bag_outlined,
+                  accent: Colors.brown,
+                  code: c.code,
+                  supplier: c.supplier,
+                  date: c.date,
+                  total: c.total,
+                  statusLabel: c.paymentLabel,
+                  statusColor: color,
+                  onTap: () => _open(c),
+                );
+              },
             ),
-            child: Text(it.isOrder ? 'OC' : 'Compra',
-                style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: it.isOrder ? Colors.blue : Colors.brown)),
           ),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(it.code,
-                style: const TextStyle(fontWeight: FontWeight.w700),
-                overflow: TextOverflow.ellipsis),
-          ),
-        ],
-      ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text([
-            it.supplier ?? 'Sin proveedor',
-            if (it.date != null) it.date!,
-          ].join('  ·  ')),
-          Text(it.statusLabel,
-              style: TextStyle(
-                  fontSize: 12, color: it.color, fontWeight: FontWeight.w600)),
-        ],
-      ),
-      trailing: Text(money(it.total),
-          style: const TextStyle(fontWeight: FontWeight.w700)),
-      onTap: it.onTap,
+        ),
+      ],
     );
   }
 }
 
-class _ErrorState extends StatelessWidget {
-  final String message;
-  final VoidCallback onRetry;
-  const _ErrorState({required this.message, required this.onRetry});
+// ═══════════════════════════════════════════════════════════════════
+// Tab: Órdenes de compra (todas)
+// ═══════════════════════════════════════════════════════════════════
+
+enum _OrderFilter { all, pending }
+
+class _OrdersTab extends ConsumerStatefulWidget {
+  const _OrdersTab();
+
+  @override
+  ConsumerState<_OrdersTab> createState() => _OrdersTabState();
+}
+
+class _OrdersTabState extends ConsumerState<_OrdersTab> {
+  List<PoSummary> _items = [];
+  _OrderFilter _filter = _OrderFilter.all;
+  bool _loading = true;
+  Object? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() { _loading = true; _error = null; });
+    try {
+      final items = await ref.read(purchasesRepositoryProvider).orders(all: true);
+      if (mounted) setState(() { _items = items; _loading = false; });
+    } on ApiException catch (e) {
+      if (mounted) setState(() { _error = e.message; _loading = false; });
+    }
+  }
+
+  Future<void> _create() async {
+    final created = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const NewPurchaseOrderScreen()),
+    );
+    if (created == true) _load();
+  }
+
+  /// Pendiente → pantalla de recibir; recibida/anulada → la misma pantalla en
+  /// solo lectura (ella decide por el estado de la OC).
+  Future<void> _open(PoSummary po) async {
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => PoReceiveScreen(orderId: po.id, code: po.code),
+      ),
+    );
+    if (changed == true) _load();
+  }
+
+  List<PoSummary> get _visible => _filter == _OrderFilter.pending
+      ? _items.where((p) => p.isReceivable).toList()
+      : _items;
+
+  static Color _colorFor(String status) => switch (status) {
+        'sent' => Colors.blue,
+        'partial' => Colors.orange,
+        'received' => Colors.green,
+        'cancelled' => Colors.red,
+        _ => Colors.grey,
+      };
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, color: Colors.red, size: 44),
-            const SizedBox(height: 12),
-            Text(message, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Reintentar'),
-            ),
-          ],
+    final canCreate =
+        ref.watch(authControllerProvider).me?.can('purchase-orders.create') ??
+            false;
+    final visible = _visible;
+
+    return Column(
+      children: [
+        _ActionRow(
+          child: Row(
+            children: [
+              Expanded(
+                child: SegmentedButton<_OrderFilter>(
+                  segments: const [
+                    ButtonSegment(value: _OrderFilter.all, label: Text('Todas')),
+                    ButtonSegment(
+                        value: _OrderFilter.pending, label: Text('Pendientes')),
+                  ],
+                  selected: {_filter},
+                  showSelectedIcon: false,
+                  onSelectionChanged: (s) => setState(() => _filter = s.first),
+                ),
+              ),
+              if (canCreate) ...[
+                const SizedBox(width: 8),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(minimumSize: const Size(0, 46)),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Nueva OC'),
+                  onPressed: _create,
+                ),
+              ],
+            ],
+          ),
         ),
+        Expanded(
+          child: _ListState(
+            loading: _loading,
+            error: _error,
+            onRetry: _load,
+            isEmpty: visible.isEmpty,
+            emptyIcon: Icons.receipt_long_outlined,
+            emptyText: _filter == _OrderFilter.pending
+                ? 'No hay órdenes pendientes de recibir.'
+                : 'No hay órdenes de compra.',
+            child: ListView.separated(
+              itemCount: visible.length,
+              separatorBuilder: (_, _) => const Divider(height: 1),
+              itemBuilder: (_, i) {
+                final po = visible[i];
+                return _PurchaseRow(
+                  icon: Icons.receipt_long,
+                  accent: Colors.blue,
+                  code: po.code,
+                  supplier: po.supplier,
+                  date: po.date,
+                  total: po.total,
+                  statusLabel: po.statusLabel,
+                  statusColor: _colorFor(po.status),
+                  onTap: () => _open(po),
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Piezas compartidas
+// ═══════════════════════════════════════════════════════════════════
+
+/// Fila de acciones/filtros arriba de cada lista.
+class _ActionRow extends StatelessWidget {
+  final Widget child;
+  const _ActionRow({required this.child});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+        child: child,
+      );
+}
+
+/// Loading / error / vacío / lista, con pull-to-refresh.
+class _ListState extends StatelessWidget {
+  final bool loading;
+  final Object? error;
+  final Future<void> Function() onRetry;
+  final bool isEmpty;
+  final IconData emptyIcon;
+  final String emptyText;
+  final Widget child;
+
+  const _ListState({
+    required this.loading,
+    required this.error,
+    required this.onRetry,
+    required this.isEmpty,
+    required this.emptyIcon,
+    required this.emptyText,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading) return const Center(child: CircularProgressIndicator());
+    if (error != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red, size: 44),
+              const SizedBox(height: 12),
+              Text('$error', textAlign: TextAlign.center),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Reintentar'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: onRetry,
+      child: isEmpty
+          ? ListView(children: [
+              const SizedBox(height: 120),
+              Icon(emptyIcon, size: 56, color: Colors.black26),
+              const SizedBox(height: 12),
+              Center(child: Text(emptyText)),
+            ])
+          : child,
+    );
+  }
+}
+
+/// Fila de OC o compra directa: código, proveedor, fecha, estado y total.
+class _PurchaseRow extends StatelessWidget {
+  final IconData icon;
+  final Color accent;
+  final String code;
+  final String? supplier;
+  final String? date;
+  final double total;
+  final String statusLabel;
+  final Color statusColor;
+  final VoidCallback onTap;
+
+  const _PurchaseRow({
+    required this.icon,
+    required this.accent,
+    required this.code,
+    required this.supplier,
+    required this.date,
+    required this.total,
+    required this.statusLabel,
+    required this.statusColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: CircleAvatar(
+        backgroundColor: accent.withValues(alpha: .12),
+        child: Icon(icon, color: accent),
       ),
+      title: Text(code, style: const TextStyle(fontWeight: FontWeight.w700)),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text([
+            supplier ?? 'Sin proveedor',
+            ?date,
+          ].join('  ·  ')),
+          Text(statusLabel,
+              style: TextStyle(
+                  fontSize: 12,
+                  color: statusColor,
+                  fontWeight: FontWeight.w600)),
+        ],
+      ),
+      trailing:
+          Text(money(total), style: const TextStyle(fontWeight: FontWeight.w700)),
+      onTap: onTap,
     );
   }
 }

@@ -37,7 +37,7 @@ _Última actualización: 2026-08-25_
 
 ### Inicio (Home) ✅ / 🟡
 - ✅ Accesos: Nueva venta, Productos, Clientes, Taller, Caja.
-- ✅ **Navigation Drawer** (botón hamburguesa): menú lateral con los accesos (Dashboard, Ventas, Productos, Clientes, Mecánicos, Pago a mecánicos, Compras, Proveedores, Tesorería, Estado de resultados, Ajustes, Cerrar sesión), gateados por permiso/plan.
+- ✅ **Navigation Drawer** (botón hamburguesa): menú lateral con los accesos (Dashboard, Ventas, Productos, Clientes, Mecánicos, Pago a mecánicos, Compras, Tesorería, Reportes, Ajustes, Cerrar sesión), gateados por permiso/plan.
 - ✅ **Ajustes** (drawer → *Ajustes*, `/settings`): hub con **recuadros** — *Mi empresa* y *Cajas* —
   cada uno abre su pantalla. Preparado para crecer. Se quitaron del drawer **"Caja"** (ya está la
   tarjeta de caja en el inicio), **"Cajas (admin)"** y **"Mi empresa"** (ahora viven en Ajustes).
@@ -82,16 +82,21 @@ _Última actualización: 2026-08-25_
 - ⬜ Editar productos y gestión completa (kardex, almacenes, importar) → se hace en el **web**.
 
 ### Compras 🟡  (plan:purchases)
-- ✅ **Compras** (antes "Recepción"): vista única con **dos botones** — **Nueva OC** y **Compra directa** — y un **listado combinado** de **OCs** (badge azul "OC" + estado enviada/parcial, tocar → recibir) y **compras directas** (badge marrón "Compra" + estado de pago; tocar → **detalle con ítems y totales**), ordenadas por fecha. Endpoints `GET /purchase-orders` (OCs), `GET /purchases` (compras directas, `purchases.view`), `GET /purchases/{id}` (detalle), `GET /purchase-orders/{id}`, `POST /purchase-orders/{id}/receive`. En el drawer se llama **Compras**.
-- ✅ **Proveedores**: directorio (listar/buscar) y **alta rápida** (nombre, NIT, contacto, teléfono, email). Endpoints `GET /suppliers`, `POST /suppliers`. Gateado por `plan:purchases` + `suppliers.view/create`.
+- ✅ **Compras**: una pantalla con **tres tabs inferiores** — **Compras** (directas), **OCs** y **Proveedores** — cada uno gateado por su permiso (`purchases.view` / `purchase-orders.view` o `goods-receipts.view` / `suppliers.view`); si solo queda un tab visible se muestra sin barra. Cada tab tiene su botón de acción arriba (**Compra directa** / **Nueva OC** / **Nuevo proveedor**).
+  - **Tab OCs**: lista **todas** las órdenes (enviada / parcial / recibida / anulada) con chip de estado, y filtro **Todas | Pendientes**. Tocar una pendiente → recibir; tocar una **recibida o anulada** → detalle en **solo lectura** (banner de estado, sin formulario ni botón). Endpoint `GET /purchase-orders?scope=all` (sin `scope` sigue devolviendo solo las por recibir, compatible con APKs viejas); las filas traen `status_label`.
+  - **Tab Compras**: compras directas con estado de pago; tocar → detalle con ítems y totales (`GET /purchases`, `GET /purchases/{id}`).
+  - **Tab Proveedores**: directorio (listar/buscar) y **alta rápida** (nombre, NIT, contacto, teléfono, email). `GET /suppliers`, `POST /suppliers` (`suppliers.create`). **Ya no está en el drawer** como entrada aparte.
 - ✅ **Órdenes de compra**: crear una OC desde el móvil (proveedor + productos con cantidad y costo). Queda en estado *enviada* (lista para recibir). Desde Recepción → "Nueva OC". Endpoint `POST /purchase-orders`. Gateado por `purchase-orders.create`.
 - ✅ **Compra directa** (contado, un paso): proveedor + almacén + productos → registra la **compra**, **suma stock** y **paga el gasto**. **Origen del pago elegible: Caja** (requiere caja abierta) **o una cuenta de Tesorería** (valida saldo; registra el movimiento y descuenta el saldo de la cuenta). El selector Caja/Tesorería aparece si el usuario tiene `treasury.view`. Tile en el Inicio + drawer. Endpoint `POST /purchases/direct` (`payment_source` = cash|treasury, `treasury_account_id`). Gateado por `purchases.create`.
 - ⬜ **Cuentas por pagar**: ver saldos a proveedores y registrar un pago (más administrativo).
 
-### Dashboard / Análisis ✅  (móvil)
-- ✅ **Dashboard con tabs** (Ventas, Taller, Compras — según plan + permiso `*-dashboard.view`). Una sola vista con `TabBar`. Orden de los tabs configurable en **Mi empresa**.
-- ✅ Cada tab: selector **Monto / Cantidad**, **KPI** (semana y mes vs. periodo anterior con variación %) y **gráficos de barras** de comparativa **semanal (últimas 8)** y **mensual (últimos 6)** con `fl_chart`.
-- Endpoints `GET /dashboard/sales|workshop|purchases` (series {label, amount, count}), gateados por plan + `*-dashboard.view`. Drawer → *Dashboard*.
+### Dashboard operativo ✅  (móvil, drawer → *Dashboard*)
+- ✅ Vista **operativa del día, de toda la empresa** (a diferencia de los resúmenes "míos" de Home): KPIs **Ventas hoy**, **OTs hoy** (+ activas), **Motos en taller** (vehículos con OT sin entregar), **Citas hoy** (+ pendientes), **Repuestos en stock** (+ alerta de stock bajo); **OTs por estado**; **Próxima cita**; **Ventas por servicio** (ranking top 5 del mes, con barras); **OTs recientes** (tap → detalle). Pull-to-refresh.
+- Endpoint único `GET /dashboard/overview` (ruta fuera de los grupos de plan, `api.permission` OR de los tres `*-dashboard.view`); cada sección (`sales` / `workshop` / `stock`) viene en `null` si el plan no tiene el módulo o el usuario no tiene ese permiso, y el móvil no pinta la tarjeta. Las OTs recientes usan las mismas claves que `WorkOrderController::summary()` (`WorkOrder.fromJson`).
+
+### Reportes ✅  (móvil, drawer → *Reportes*)
+- ✅ **Hub de recuadros** (mismo patrón que Ajustes) con **Análisis** y **Estado de resultados**. Se muestra si el usuario tiene algún `*-dashboard.view` (con su plan) o `income-statement.view`. *Estado de resultados* **ya no** cuelga suelto del drawer.
+- ✅ **Análisis** (`/reports/analytics`, antes era "Dashboard"): tabs Ventas/Taller/Compras según plan + `*-dashboard.view`, orden configurable en **Mi empresa**; selector **Monto / Cantidad**, **KPI** (semana y mes vs. periodo anterior) y **gráficos de barras** semanal (8) y mensual (6) con `fl_chart`. Endpoints `GET /dashboard/sales|workshop|purchases` (sin cambios).
 - La **web** ya tenía dashboards (Ventas/Taller/Compras) gateados por permiso y en el menú (sin cambios).
 
 ### Mi empresa ✅  (administrativo)
@@ -99,7 +104,7 @@ _Última actualización: 2026-08-25_
 - ✅ **Caducidad del enlace de seguimiento**: el link `/ot/{token}` deja de servir `tracking_link_days` días después de `delivered_at` (muestra "enlace expirado"). **DB:** columna `companies.tracking_link_days` (script `20260831c_company_profile.sql`).
 
 ### Estado de resultados (P&L) ✅  (administrativo — Reportes)
-- ✅ **Estado de resultados por movimientos** (web + móvil): ingresos y egresos reales de **caja + tesorería** (base efectivo, agrupados por categoría, sin doble conteo) en un período seleccionable; **Resultado = Ingresos − Egresos** (verde si ≥0, rojo si <0). Móvil: drawer → *Estado de resultados*, presets **Este mes / Mes anterior / Rango**. Web: sección **Reportes** del menú. Gateado por `income-statement.view`. Endpoint `GET /income-statement?from=&to=`. **DB:** permiso `income-statement.view` (módulo `reports`) — script `20260903_income_statement_permission.sql`.
+- ✅ **Estado de resultados por movimientos** (web + móvil): ingresos y egresos reales de **caja + tesorería** (base efectivo, agrupados por categoría, sin doble conteo) en un período seleccionable; **Resultado = Ingresos − Egresos** (verde si ≥0, rojo si <0). Móvil: **Reportes → *Estado de resultados***, presets **Este mes / Mes anterior / Rango**. Web: sección **Reportes** del menú. Gateado por `income-statement.view`. Endpoint `GET /income-statement?from=&to=`. **DB:** permiso `income-statement.view` (módulo `reports`) — script `20260903_income_statement_permission.sql`.
 
 ### Mecánicos (administración) ✅  (plan:workshop)
 - ✅ **Pantalla de Mecánicos** en el menú: listado (activos e inactivos) y **alta/edición con todos los campos** (nombre, especialidad, teléfono, **% de comisión**, activo). Gateado por `mechanics.view/create/edit`. Endpoints `GET /mechanics/all`, `POST /mechanics`, `PUT /mechanics/{id}`.

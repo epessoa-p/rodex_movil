@@ -17,10 +17,11 @@ import '../features/pos/pos_screen.dart';
 import '../features/pos/sales_history_screen.dart';
 import '../features/purchases/direct_purchase_screen.dart';
 import '../features/purchases/receptions_screen.dart';
-import '../features/purchases/suppliers_screen.dart';
 import '../features/products/products_screen.dart';
 import '../features/profile/profile_screen.dart';
+import '../features/dashboard/analytics_screen.dart';
 import '../features/reports/income_statement_screen.dart';
+import '../features/reports/reports_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/treasury/treasury_screen.dart';
 import '../features/workshop/mechanic_payments_screen.dart';
@@ -44,15 +45,18 @@ final routerProvider = Provider<GoRouter>((ref) {
           path: '/select-company',
           builder: (_, _) => const SelectCompanyScreen()),
       GoRoute(path: '/home', builder: (_, _) => const HomeScreen()),
+      // Dashboard operativo del día; las gráficas están en Reportes → Análisis.
       GoRoute(path: '/dashboard', builder: (_, _) => const DashboardScreen()),
+      GoRoute(path: '/reports', builder: (_, _) => const ReportsScreen()),
+      GoRoute(
+          path: '/reports/analytics',
+          builder: (_, _) => const AnalyticsScreen()),
       GoRoute(path: '/pos', builder: (_, _) => const PosScreen()),
       GoRoute(path: '/sales', builder: (_, _) => const SalesHistoryScreen()),
+      // Compras: tabs Compras / OCs / Proveedores en una sola pantalla.
       GoRoute(
           path: '/purchases/receptions',
-          builder: (_, _) => const ReceptionsScreen()),
-      GoRoute(
-          path: '/purchases/suppliers',
-          builder: (_, _) => const SuppliersScreen()),
+          builder: (_, _) => const PurchasesScreen()),
       GoRoute(
           path: '/purchases/direct',
           builder: (_, _) => const DirectPurchaseScreen()),

@@ -1,288 +1,191 @@
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/format.dart';
-import '../../core/providers.dart';
-import 'dashboard_repository.dart';
+import '../../core/models.dart';
+import '../workshop/work_order_detail_screen.dart';
+import 'overview_repository.dart';
 
-/// Config de cada módulo: clave del config → módulo API, etiqueta, permiso, plan.
-class _ModuleDef {
-  final String key; // ventas | taller | compras
-  final String api; // sales | workshop | purchases
-  final String label;
-  final String plan;
-  final String permission;
-  final Color color;
-  const _ModuleDef(
-      this.key, this.api, this.label, this.plan, this.permission, this.color);
-}
-
-const _defs = <_ModuleDef>[
-  _ModuleDef('ventas', 'sales', 'Ventas', 'sales', 'sales-dashboard.view',
-      Colors.green),
-  _ModuleDef('taller', 'workshop', 'Taller', 'workshop',
-      'workshop-dashboard.view', Colors.deepPurple),
-  _ModuleDef('compras', 'purchases', 'Compras', 'purchases',
-      'purchases-dashboard.view', Colors.brown),
-];
-
-/// ¿Qué módulos de dashboard puede ver el usuario, en el orden de su empresa?
-List<_ModuleDef> _enabledDashboards(dynamic me) {
-  if (me == null) return const [];
-  final order = (me.company?.dashboardModules as List<String>?) ??
-      ['ventas', 'taller', 'compras'];
-  final result = <_ModuleDef>[];
-  for (final key in order) {
-    final def = _defs.where((d) => d.key == key);
-    if (def.isEmpty) continue;
-    final d = def.first;
-    if (me.planAllows(d.plan) && me.can(d.permission)) result.add(d);
-  }
-  return result;
-}
-
+/// Dashboard operativo del día (toda la empresa): ventas de hoy, OTs y motos
+/// en taller, citas, stock, ranking de servicios del mes y OTs recientes.
+/// Las gráficas comparativas viven en Reportes → Análisis.
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final me = ref.watch(authControllerProvider).me;
-    final tabs = _enabledDashboards(me);
+    final async = ref.watch(dashboardOverviewProvider);
 
-    if (tabs.isEmpty) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Dashboard')),
-        body: const Center(
-            child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text('No tienes dashboards habilitados.',
-              textAlign: TextAlign.center),
-        )),
-      );
-    }
-
-    return DefaultTabController(
-      length: tabs.length,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Dashboard'),
-          bottom: TabBar(
-            isScrollable: tabs.length > 2,
-            labelColor: Theme.of(context).colorScheme.onPrimary,
-            unselectedLabelColor:
-                Theme.of(context).colorScheme.onPrimary.withValues(alpha: .65),
-            indicatorColor: Theme.of(context).colorScheme.onPrimary,
-            labelStyle: const TextStyle(fontWeight: FontWeight.w700),
-            tabs: [for (final t in tabs) Tab(text: t.label)],
-          ),
-        ),
-        body: TabBarView(
-          children: [for (final t in tabs) _ModuleTab(def: t)],
+    return Scaffold(
+      appBar: AppBar(title: const Text('Dashboard')),
+      body: RefreshIndicator(
+        onRefresh: () => ref.refresh(dashboardOverviewProvider.future),
+        child: async.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => ListView(children: [
+            const SizedBox(height: 80),
+            Center(
+                child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text('$e', textAlign: TextAlign.center),
+            )),
+          ]),
+          data: (o) => _Body(overview: o),
         ),
       ),
     );
   }
 }
 
-class _ModuleTab extends ConsumerStatefulWidget {
-  final _ModuleDef def;
-  const _ModuleTab({required this.def});
-
-  @override
-  ConsumerState<_ModuleTab> createState() => _ModuleTabState();
-}
-
-class _ModuleTabState extends ConsumerState<_ModuleTab>
-    with AutomaticKeepAliveClientMixin {
-  bool _amount = true; // true = Monto, false = Cantidad
-
-  @override
-  bool get wantKeepAlive => true;
+class _Body extends StatelessWidget {
+  final DashboardOverview overview;
+  const _Body({required this.overview});
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);
-    final async = ref.watch(dashboardSeriesProvider(widget.def.api));
+    final o = overview;
+    final w = o.workshop;
 
-    return RefreshIndicator(
-      onRefresh: () async =>
-          ref.invalidate(dashboardSeriesProvider(widget.def.api)),
-      child: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => ListView(children: [
-          const SizedBox(height: 80),
-          Center(child: Text('$e', textAlign: TextAlign.center)),
-        ]),
-        data: (s) => ListView(
-          padding: const EdgeInsets.all(16),
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // ── KPIs ────────────────────────────────────────────────
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          childAspectRatio: 1.55,
           children: [
-            SegmentedButton<bool>(
-              segments: [
-                ButtonSegment(value: true, label: Text('Monto ($currencySymbol)')),
-                const ButtonSegment(value: false, label: Text('Cantidad')),
-              ],
-              selected: {_amount},
-              onSelectionChanged: (v) => setState(() => _amount = v.first),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                    child: _kpi('Semana', s.weekly, widget.def.color)),
-                const SizedBox(width: 10),
-                Expanded(child: _kpi('Mes', s.monthly, widget.def.color)),
-              ],
-            ),
-            const SizedBox(height: 20),
-            _WeekCompareCard(
-              points: s.weekCompare,
-              amount: _amount,
-              color: widget.def.color,
-            ),
-            const SizedBox(height: 16),
-            _ChartCard(
-              title: 'Comparativa semanal (últimas ${s.weekly.length})',
-              points: s.weekly,
-              amount: _amount,
-              color: widget.def.color,
-            ),
-            const SizedBox(height: 16),
-            _ChartCard(
-              title: 'Comparativa mensual (últimos ${s.monthly.length})',
-              points: s.monthly,
-              amount: _amount,
-              color: widget.def.color,
-            ),
+            if (o.sales != null)
+              _Kpi(
+                icon: Icons.point_of_sale,
+                color: Colors.green,
+                label: 'Ventas hoy',
+                value: money(o.sales!.total),
+                detail: '${o.sales!.count} ${o.sales!.count == 1 ? 'venta' : 'ventas'}',
+              ),
+            if (w != null) ...[
+              _Kpi(
+                icon: Icons.build_circle_outlined,
+                color: Colors.deepPurple,
+                label: 'OTs hoy',
+                value: '${w.receivedToday}',
+                detail: '${w.active} activas',
+              ),
+              _Kpi(
+                icon: Icons.two_wheeler,
+                color: Colors.orange,
+                label: 'Motos en taller',
+                value: '${w.vehiclesInShop}',
+                detail: 'sin entregar',
+              ),
+              _Kpi(
+                icon: Icons.calendar_month_outlined,
+                color: Colors.pink,
+                label: 'Citas hoy',
+                value: '${w.appointments.total}',
+                detail: '${w.appointments.pending} pendientes',
+              ),
+            ],
+            if (o.stock != null)
+              _Kpi(
+                icon: Icons.inventory_2_outlined,
+                color: Colors.indigo,
+                label: 'Repuestos en stock',
+                value: '${o.stock!.inStock}',
+                detail: o.stock!.lowStock > 0
+                    ? '${o.stock!.lowStock} en stock bajo'
+                    : 'sin alertas',
+                detailColor: o.stock!.lowStock > 0 ? Colors.red : null,
+              ),
           ],
         ),
-      ),
+
+        if (w != null) ...[
+          const SizedBox(height: 16),
+          _StatusStrip(byStatus: w.byStatus),
+          const SizedBox(height: 12),
+          _NextAppointmentCard(appt: w.appointments.next),
+          const SizedBox(height: 12),
+          _TopServicesCard(services: w.topServices),
+          const SizedBox(height: 12),
+          _RecentOrdersCard(orders: w.recent),
+        ],
+
+        if (o.sales == null && w == null && o.stock == null)
+          const Padding(
+            padding: EdgeInsets.only(top: 80),
+            child: Center(
+                child: Text('No hay indicadores disponibles para tu usuario.')),
+          ),
+        const SizedBox(height: 24),
+      ],
     );
   }
+}
 
-  Widget _kpi(String label, List<SeriesPoint> pts, Color color) {
-    final cur = pts.isNotEmpty ? _val(pts.last) : 0.0;
-    final prev = pts.length >= 2 ? _val(pts[pts.length - 2]) : 0.0;
-    final delta = prev != 0 ? (cur - prev) / prev * 100 : (cur > 0 ? 100.0 : 0.0);
-    final up = cur >= prev;
+// ═══════════════════════════════════════════════════════════════════
+// Widgets
+// ═══════════════════════════════════════════════════════════════════
+
+class _Kpi extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String label;
+  final String value;
+  final String detail;
+  final Color? detailColor;
+
+  const _Kpi({
+    required this.icon,
+    required this.color,
+    required this.label,
+    required this.value,
+    required this.detail,
+    this.detailColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label,
-                style: const TextStyle(fontSize: 12, color: Colors.black54)),
-            const SizedBox(height: 2),
-            Text(_amount ? money(cur) : cur.toInt().toString(),
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 14,
+                  backgroundColor: color.withValues(alpha: .12),
+                  child: Icon(icon, color: color, size: 16),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(label,
+                      style: const TextStyle(fontSize: 12, color: Colors.black54),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
+                ),
+              ],
+            ),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(value,
+                  style: const TextStyle(
+                      fontSize: 22, fontWeight: FontWeight.w800)),
+            ),
+            Text(detail,
                 style: TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.w800, color: color)),
-            const SizedBox(height: 2),
-            Row(
-              children: [
-                Icon(up ? Icons.trending_up : Icons.trending_down,
-                    size: 15, color: up ? Colors.green : Colors.red),
-                const SizedBox(width: 3),
-                Text('${delta >= 0 ? '+' : ''}${delta.toStringAsFixed(0)}% vs anterior',
-                    style: TextStyle(
-                        fontSize: 11,
-                        color: up ? Colors.green : Colors.red)),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  double _val(SeriesPoint p) => _amount ? p.amount : p.count.toDouble();
-}
-
-class _ChartCard extends StatelessWidget {
-  final String title;
-  final List<SeriesPoint> points;
-  final bool amount;
-  final Color color;
-  const _ChartCard(
-      {required this.title,
-      required this.points,
-      required this.amount,
-      required this.color});
-
-  double _val(SeriesPoint p) => amount ? p.amount : p.count.toDouble();
-
-  @override
-  Widget build(BuildContext context) {
-    final values = points.map(_val).toList();
-    final maxV = values.isEmpty ? 1.0 : values.reduce((a, b) => a > b ? a : b);
-    final maxY = maxV <= 0 ? 1.0 : maxV * 1.25;
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 14, 12, 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title,
-                style: const TextStyle(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 190,
-              child: BarChart(
-                BarChartData(
-                  alignment: BarChartAlignment.spaceAround,
-                  maxY: maxY,
-                  gridData: const FlGridData(show: false),
-                  borderData: FlBorderData(show: false),
-                  titlesData: FlTitlesData(
-                    leftTitles: _yAxisTitles(maxY),
-                    rightTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
-                    topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 22,
-                        getTitlesWidget: (v, meta) {
-                          final i = v.toInt();
-                          if (i < 0 || i >= points.length) {
-                            return const SizedBox.shrink();
-                          }
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(points[i].label,
-                                style: const TextStyle(fontSize: 9)),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  barTouchData: BarTouchData(
-                    touchTooltipData: BarTouchTooltipData(
-                      getTooltipItem: (group, gi, rod, ri) {
-                        final p = points[group.x];
-                        final txt = amount ? money(p.amount) : '${p.count}';
-                        return BarTooltipItem(
-                            txt, const TextStyle(color: Colors.white, fontSize: 11));
-                      },
-                    ),
-                  ),
-                  barGroups: [
-                    for (int i = 0; i < points.length; i++)
-                      BarChartGroupData(x: i, barRods: [
-                        BarChartRodData(
-                          toY: values[i],
-                          color: color,
-                          width: 14,
-                          borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(4)),
-                        ),
-                      ]),
-                  ],
-                ),
-              ),
-            ),
+                    fontSize: 11,
+                    color: detailColor ?? Colors.black45,
+                    fontWeight: detailColor != null ? FontWeight.w600 : null),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
           ],
         ),
       ),
@@ -290,161 +193,223 @@ class _ChartCard extends StatelessWidget {
   }
 }
 
-/// Comparativa día por día: semana anterior (claro) vs. semana actual (color).
-class _WeekCompareCard extends StatelessWidget {
-  final List<WeekComparePoint> points;
-  final bool amount;
-  final Color color;
-  const _WeekCompareCard(
-      {required this.points, required this.amount, required this.color});
+/// OTs activas por estado.
+class _StatusStrip extends StatelessWidget {
+  final Map<String, int> byStatus;
+  const _StatusStrip({required this.byStatus});
 
-  double _cur(WeekComparePoint p) =>
-      amount ? p.currentAmount : p.currentCount.toDouble();
-  double _prev(WeekComparePoint p) =>
-      amount ? p.prevAmount : p.prevCount.toDouble();
+  static const _meta = [
+    ('recibida', 'Recibidas', Colors.blueGrey),
+    ('diagnosticada', 'Diagnosticadas', Colors.indigo),
+    ('en_proceso', 'En proceso', Colors.orange),
+    ('terminada', 'Terminadas', Colors.green),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    final prevColor = color.withValues(alpha: .35);
-    double maxV = 0;
-    for (final p in points) {
-      maxV = [maxV, _cur(p), _prev(p)].reduce((a, b) => a > b ? a : b);
-    }
-    final maxY = maxV <= 0 ? 1.0 : maxV * 1.25;
-
     return Card(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 14, 12, 10),
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Semana anterior vs. actual (por día)',
+            const Text('OTs en taller por estado',
                 style: TextStyle(fontWeight: FontWeight.w700)),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Row(
               children: [
-                _legend(prevColor, 'Semana anterior'),
-                const SizedBox(width: 16),
-                _legend(color, 'Semana actual'),
+                for (final (key, label, color) in _meta)
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Text('${byStatus[key] ?? 0}',
+                            style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                color: color)),
+                        Text(label,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                                fontSize: 10, color: Colors.black54)),
+                      ],
+                    ),
+                  ),
               ],
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 190,
-              child: BarChart(
-                BarChartData(
-                  alignment: BarChartAlignment.spaceAround,
-                  maxY: maxY,
-                  gridData: const FlGridData(show: false),
-                  borderData: FlBorderData(show: false),
-                  titlesData: FlTitlesData(
-                    leftTitles: _yAxisTitles(maxY),
-                    rightTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
-                    topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 22,
-                        getTitlesWidget: (v, meta) {
-                          final i = v.toInt();
-                          if (i < 0 || i >= points.length) {
-                            return const SizedBox.shrink();
-                          }
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(points[i].label,
-                                style: const TextStyle(fontSize: 9)),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  barTouchData: BarTouchData(
-                    touchTooltipData: BarTouchTooltipData(
-                      getTooltipItem: (group, gi, rod, ri) {
-                        final v = amount ? money(rod.toY) : rod.toY.toInt().toString();
-                        final serie = ri == 0 ? 'Anterior' : 'Actual';
-                        return BarTooltipItem('$serie: $v',
-                            const TextStyle(color: Colors.white, fontSize: 11));
-                      },
-                    ),
-                  ),
-                  barGroups: [
-                    for (int i = 0; i < points.length; i++)
-                      BarChartGroupData(
-                        x: i,
-                        barsSpace: 2,
-                        barRods: [
-                          BarChartRodData(
-                              toY: _prev(points[i]),
-                              color: prevColor,
-                              width: 8,
-                              borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(3))),
-                          BarChartRodData(
-                              toY: _cur(points[i]),
-                              color: color,
-                              width: 8,
-                              borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(3))),
-                        ],
-                      ),
-                  ],
-                ),
-              ),
             ),
           ],
         ),
       ),
     );
   }
-
-  Widget _legend(Color c, String label) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-              width: 12,
-              height: 12,
-              decoration:
-                  BoxDecoration(color: c, borderRadius: BorderRadius.circular(3))),
-          const SizedBox(width: 5),
-          Text(label, style: const TextStyle(fontSize: 12)),
-        ],
-      );
 }
 
-/// Etiqueta compacta para el eje Y (número; la moneda va en el tab "Monto").
-String _axisLabel(double v) {
-  String n;
-  final a = v.abs();
-  if (a >= 1000000) {
-    n = '${(v / 1000000).toStringAsFixed(v % 1000000 == 0 ? 0 : 1)}M';
-  } else if (a >= 1000) {
-    n = '${(v / 1000).toStringAsFixed(v % 1000 == 0 ? 0 : 1)}k';
-  } else {
-    n = v.toStringAsFixed(0);
+class _NextAppointmentCard extends StatelessWidget {
+  final NextAppointment? appt;
+  const _NextAppointmentCard({required this.appt});
+
+  @override
+  Widget build(BuildContext context) {
+    final a = appt;
+    return Card(
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: Colors.pink.withValues(alpha: .12),
+          child: const Icon(Icons.event_available, color: Colors.pink),
+        ),
+        title: Text(a == null ? 'Sin citas pendientes hoy' : 'Próxima cita',
+            style: const TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: a == null
+            ? null
+            : Text([
+                if (a.client != null && a.client!.isNotEmpty) a.client!,
+                if (a.title != null && a.title!.isNotEmpty) a.title!,
+              ].join('  ·  ')),
+        trailing: a?.time == null
+            ? null
+            : Text(a!.time!,
+                style: const TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.w800)),
+      ),
+    );
   }
-  return n;
 }
 
-/// Títulos del eje Y (valores de monto o cantidad).
-AxisTitles _yAxisTitles(double maxY) {
-  final interval = maxY <= 0 ? 1.0 : maxY / 4;
-  return AxisTitles(
-    sideTitles: SideTitles(
-      showTitles: true,
-      reservedSize: 44,
-      interval: interval,
-      getTitlesWidget: (v, meta) {
-        if (v <= 0) return const SizedBox.shrink();
-        return Padding(
-          padding: const EdgeInsets.only(right: 4),
-          child: Text(_axisLabel(v),
-              style: const TextStyle(fontSize: 9, color: Colors.black54)),
-        );
-      },
-    ),
-  );
+/// Ranking de servicios por ingreso en el mes.
+class _TopServicesCard extends StatelessWidget {
+  final List<ServiceSale> services;
+  const _TopServicesCard({required this.services});
+
+  @override
+  Widget build(BuildContext context) {
+    final max = services.isEmpty
+        ? 1.0
+        : services.map((s) => s.amount).reduce((a, b) => a > b ? a : b);
+    final primary = Theme.of(context).colorScheme.primary;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.handyman_outlined, size: 18, color: Colors.black54),
+                SizedBox(width: 6),
+                Text('Ventas por servicio',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
+                Spacer(),
+                Text('este mes',
+                    style: TextStyle(fontSize: 11, color: Colors.black45)),
+              ],
+            ),
+            const SizedBox(height: 10),
+            if (services.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Text('Aún no hay servicios facturados este mes.',
+                    style: TextStyle(color: Colors.black54)),
+              )
+            else
+              for (final s in services) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(s.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                    ),
+                    const SizedBox(width: 8),
+                    Text('×${s.count}',
+                        style: const TextStyle(
+                            fontSize: 11, color: Colors.black45)),
+                    const SizedBox(width: 10),
+                    Text(money(s.amount),
+                        style: const TextStyle(fontWeight: FontWeight.w700)),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: max > 0 ? (s.amount / max).clamp(0, 1).toDouble() : 0,
+                    minHeight: 6,
+                    backgroundColor: primary.withValues(alpha: .10),
+                    color: primary,
+                  ),
+                ),
+                const SizedBox(height: 10),
+              ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Últimas OTs, con acceso a su detalle.
+class _RecentOrdersCard extends StatelessWidget {
+  final List<WorkOrder> orders;
+  const _RecentOrdersCard({required this.orders});
+
+  static Color _statusColor(String status) => switch (status) {
+        'recibida' => Colors.blueGrey,
+        'diagnosticada' => Colors.indigo,
+        'en_proceso' => Colors.orange,
+        'terminada' => Colors.green,
+        'entregada' => Colors.grey,
+        _ => Colors.black45,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.fromLTRB(14, 12, 14, 4),
+            child: Text('OTs recientes',
+                style: TextStyle(fontWeight: FontWeight.w700)),
+          ),
+          if (orders.isEmpty)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(14, 8, 14, 16),
+              child: Text('Sin órdenes registradas.',
+                  style: TextStyle(color: Colors.black54)),
+            )
+          else
+            for (final o in orders)
+              ListTile(
+                dense: true,
+                title: Text(o.code,
+                    style: const TextStyle(fontWeight: FontWeight.w700)),
+                subtitle: Text(
+                  [o.client ?? 'Sin cliente', ?o.vehicle].join('  ·  '),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                trailing: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(o.statusLabel,
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: _statusColor(o.status))),
+                    Text(money(o.total),
+                        style: const TextStyle(fontSize: 12)),
+                  ],
+                ),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => WorkOrderDetailScreen(orderId: o.id),
+                )),
+              ),
+          const SizedBox(height: 4),
+        ],
+      ),
+    );
+  }
 }

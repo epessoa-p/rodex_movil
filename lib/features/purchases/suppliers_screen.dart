@@ -2,17 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
+import '../../core/providers.dart';
 import 'purchases_repository.dart';
 
-/// Directorio de proveedores: listar/buscar y alta rápida.
-class SuppliersScreen extends ConsumerStatefulWidget {
-  const SuppliersScreen({super.key});
+/// Tab de Proveedores dentro de Compras: listar/buscar y alta rápida.
+/// Es solo el cuerpo (sin Scaffold): la pantalla contenedora pone AppBar y
+/// barra inferior.
+class SuppliersTab extends ConsumerStatefulWidget {
+  const SuppliersTab({super.key});
 
   @override
-  ConsumerState<SuppliersScreen> createState() => _SuppliersScreenState();
+  ConsumerState<SuppliersTab> createState() => _SuppliersTabState();
 }
 
-class _SuppliersScreenState extends ConsumerState<SuppliersScreen> {
+class _SuppliersTabState extends ConsumerState<SuppliersTab> {
   final _search = TextEditingController();
   List<Supplier> _items = [];
   bool _loading = true;
@@ -121,75 +124,96 @@ class _SuppliersScreenState extends ConsumerState<SuppliersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Proveedores')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _addDialog,
-        icon: const Icon(Icons.add),
-        label: const Text('Nuevo'),
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: TextField(
-              controller: _search,
-              textInputAction: TextInputAction.search,
-              onSubmitted: _load,
-              decoration: InputDecoration(
-                hintText: 'Buscar por nombre, NIT o teléfono',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.clear),
-                  onPressed: () { _search.clear(); _load(''); },
+    final canCreate =
+        ref.watch(authControllerProvider).me?.can('suppliers.create') ?? false;
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _search,
+                  textInputAction: TextInputAction.search,
+                  onSubmitted: _load,
+                  decoration: InputDecoration(
+                    hintText: 'Buscar por nombre, NIT o teléfono',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () { _search.clear(); _load(''); },
+                    ),
+                    isDense: true,
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  ),
                 ),
-                isDense: true,
-                border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
               ),
-            ),
+              if (canCreate) ...[
+                const SizedBox(width: 8),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                      minimumSize: const Size(0, 46)),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Nuevo'),
+                  onPressed: _addDialog,
+                ),
+              ],
+            ],
           ),
-          Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : _error != null
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Text('$_error', textAlign: TextAlign.center),
-                        ),
-                      )
-                    : _items.isEmpty
-                        ? const Center(child: Text('Sin proveedores.'))
-                        : ListView.separated(
-                            itemCount: _items.length,
-                            separatorBuilder: (_, _) =>
-                                const Divider(height: 1),
-                            itemBuilder: (context, i) {
-                              final s = _items[i];
-                              final sub = [
-                                if (s.nit != null && s.nit!.isNotEmpty)
-                                  'NIT ${s.nit}',
-                                if (s.contactName != null &&
-                                    s.contactName!.isNotEmpty)
-                                  s.contactName!,
-                                if (s.phone != null && s.phone!.isNotEmpty)
-                                  s.phone!,
-                              ].join('  ·  ');
-                              return ListTile(
-                                leading: CircleAvatar(
-                                  child: Text(s.name.isNotEmpty
-                                      ? s.name[0].toUpperCase()
-                                      : '?'),
-                                ),
-                                title: Text(s.name),
-                                subtitle: sub.isEmpty ? null : Text(sub),
-                              );
-                            },
-                          ),
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 8),
+        Expanded(
+          child: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : _error != null
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text('$_error', textAlign: TextAlign.center),
+                      ),
+                    )
+                  : RefreshIndicator(
+                      onRefresh: () => _load(_search.text),
+                      child: _items.isEmpty
+                          ? ListView(children: const [
+                              SizedBox(height: 120),
+                              Icon(Icons.storefront_outlined,
+                                  size: 56, color: Colors.black26),
+                              SizedBox(height: 12),
+                              Center(child: Text('Sin proveedores.')),
+                            ])
+                          : ListView.separated(
+                              itemCount: _items.length,
+                              separatorBuilder: (_, _) =>
+                                  const Divider(height: 1),
+                              itemBuilder: (context, i) {
+                                final s = _items[i];
+                                final sub = [
+                                  if (s.nit != null && s.nit!.isNotEmpty)
+                                    'NIT ${s.nit}',
+                                  if (s.contactName != null &&
+                                      s.contactName!.isNotEmpty)
+                                    s.contactName!,
+                                  if (s.phone != null && s.phone!.isNotEmpty)
+                                    s.phone!,
+                                ].join('  ·  ');
+                                return ListTile(
+                                  leading: CircleAvatar(
+                                    child: Text(s.name.isNotEmpty
+                                        ? s.name[0].toUpperCase()
+                                        : '?'),
+                                  ),
+                                  title: Text(s.name),
+                                  subtitle: sub.isEmpty ? null : Text(sub),
+                                );
+                              },
+                            ),
+                    ),
+        ),
+      ],
     );
   }
 }

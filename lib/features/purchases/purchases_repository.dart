@@ -3,12 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api_client.dart';
 import '../../core/providers.dart';
 
-/// Resumen de una orden de compra por recibir.
+/// Resumen de una orden de compra.
 class PoSummary {
   final int id;
   final String code;
   final String? supplier;
-  final String status; // sent | partial
+  final String status; // sent | partial | received | cancelled
+  final String statusLabel;
   final String? date;
   final double total;
 
@@ -17,18 +18,35 @@ class PoSummary {
     required this.code,
     this.supplier,
     required this.status,
+    required this.statusLabel,
     this.date,
     required this.total,
   });
 
-  factory PoSummary.fromJson(Map<String, dynamic> j) => PoSummary(
-        id: j['id'] as int,
-        code: j['code'] as String,
-        supplier: j['supplier'] as String?,
-        status: (j['status'] ?? '') as String,
-        date: j['date'] as String?,
-        total: (j['total'] as num?)?.toDouble() ?? 0,
-      );
+  /// Aún se le puede recibir mercadería.
+  bool get isReceivable => status == 'sent' || status == 'partial';
+
+  /// Etiqueta local por si el backend (versión vieja) no manda `status_label`.
+  static const _labels = {
+    'draft': 'Borrador',
+    'sent': 'Enviada',
+    'partial': 'Recibida parcial',
+    'received': 'Recibida',
+    'cancelled': 'Anulada',
+  };
+
+  factory PoSummary.fromJson(Map<String, dynamic> j) {
+    final status = (j['status'] ?? '') as String;
+    return PoSummary(
+      id: j['id'] as int,
+      code: j['code'] as String,
+      supplier: j['supplier'] as String?,
+      status: status,
+      statusLabel: (j['status_label'] as String?) ?? _labels[status] ?? status,
+      date: j['date'] as String?,
+      total: (j['total'] as num?)?.toDouble() ?? 0,
+    );
+  }
 }
 
 /// Resumen de una compra directa (no ligada a una OC).
@@ -292,8 +310,11 @@ class PurchasesRepository {
     return PoSummary.fromJson((data as Map<String, dynamic>)['data']);
   }
 
-  Future<List<PoSummary>> receivableOrders() async {
-    final data = await _api.get('/purchase-orders');
+  /// Órdenes de compra. Por defecto solo las por recibir; con [all] devuelve
+  /// también las recibidas y anuladas (todo salvo borradores).
+  Future<List<PoSummary>> orders({bool all = false}) async {
+    final data = await _api.get('/purchase-orders',
+        query: all ? {'scope': 'all'} : null);
     return (((data as Map<String, dynamic>)['data'] as List?) ?? [])
         .map((e) => PoSummary.fromJson(e as Map<String, dynamic>))
         .toList();

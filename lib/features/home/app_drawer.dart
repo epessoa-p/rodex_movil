@@ -86,6 +86,7 @@ class AppDrawer extends ConsumerWidget {
                       '/mechanic-payments',
                       show: me.planAllows('workshop') &&
                           me.can('mechanic-payments.view')),
+                  // Compras agrupa los tabs Compras / OCs / Proveedores.
                   _item(context, Icons.shopping_bag_outlined, 'Compras',
                       '/purchases/receptions',
                       show: me.planAllows('purchases') &&
@@ -94,20 +95,18 @@ class AppDrawer extends ConsumerWidget {
                             'goods-receipts.view',
                             'purchase-orders.view',
                             'purchases.view',
-                            'purchases.create'
+                            'purchases.create',
+                            'suppliers.view',
                           ])),
-                  _item(context, Icons.storefront_outlined, 'Proveedores',
-                      '/purchases/suppliers',
-                      show: me.planAllows('purchases') &&
-                          me.can('suppliers.view')),
                   _item(context, Icons.account_balance, 'Tesorería',
                       '/treasury',
                       show: me.planAllows('purchases') &&
                           me.can('treasury.view')),
                   const Divider(),
-                  _item(context, Icons.assessment_outlined,
-                      'Estado de resultados', '/income-statement',
-                      show: me.can('income-statement.view')),
+                  // Reportes agrupa Análisis (gráficas) y Estado de resultados.
+                  _item(context, Icons.bar_chart_outlined, 'Reportes',
+                      '/reports',
+                      show: canDashboard || me.can('income-statement.view')),
                   // "Mi empresa" y "Cajas" viven ahora dentro de Ajustes.
                   _item(context, Icons.settings_outlined, 'Ajustes',
                       '/settings'),
