@@ -37,7 +37,7 @@ _Última actualización: 2026-08-25_
 
 ### Inicio (Home) ✅ / 🟡
 - ✅ Accesos: Nueva venta, Productos, Clientes, Taller, Caja.
-- ✅ **Navigation Drawer** (botón hamburguesa): menú lateral con los accesos (Dashboard, Ventas, Productos, Clientes, Mecánicos, Pago a mecánicos, Compras, Tesorería, Reportes, Ajustes, Cerrar sesión), gateados por permiso/plan.
+- ✅ **Navigation Drawer** (botón hamburguesa): menú lateral con los accesos (Dashboard, Ventas, Productos, Clientes, Mecánicos, Pagos, Compras, Tesorería, Reportes, Ajustes, Cerrar sesión), gateados por permiso/plan.
 - ✅ **Ajustes** (drawer → *Ajustes*, `/settings`): hub con **recuadros** — *Mi empresa* y *Cajas* —
   cada uno abre su pantalla. Preparado para crecer. Se quitaron del drawer **"Caja"** (ya está la
   tarjeta de caja en el inicio), **"Cajas (admin)"** y **"Mi empresa"** (ahora viven en Ajustes).
@@ -65,7 +65,7 @@ _Última actualización: 2026-08-25_
 - ✅ **Una caja por sucursal**: al crear, solo se ofrecen sucursales sin caja; si todas están ocupadas se avisa. Validado también en el backend (422 `branch_already_has_register`). Editar una caja sin moverla de sucursal siempre se permite (datos previos con varias cajas por sucursal). `GET /cash-registers/form-data` devuelve `register_id` por sucursal.
 - ✅ **Sucursales** (Ajustes → *Sucursales*): listar y editar **solo nombre, dirección y teléfono** (el alta/baja y el resto de campos quedan en la web). Endpoints `GET /branches`, `PUT /branches/{id}`. Gateado por `branches.view` / `branches.edit`.
 - ✅ **Crear caja y asignarla a un personal** (Ajustes → *Cajas*): listar/crear/editar cajas con sucursal + personal asignado. Requisito para que ese personal pueda abrir caja. Endpoints `GET/POST /cash-registers`, `GET /cash-registers/form-data`, `PUT /cash-registers/{id}`. Gateado por `plan:cash` + `cash-registers.view/create/edit`.
-- ⬜ Gastos con integración (pago a proveedor/CxP, pago a personal) — se manejan en el web.
+- ✅ Gastos con integración (pago a proveedor/CxP, pago a personal, servicios recurrentes) → ver **Pagos**.
 
 ### Clientes ✅
 - ✅ Listar/buscar clientes.
@@ -84,7 +84,8 @@ _Última actualización: 2026-08-25_
 ### Compras 🟡  (plan:purchases)
 - ✅ **Compras**: una pantalla con **tres tabs inferiores** — **Compras** (directas), **OCs** y **Proveedores** — cada uno gateado por su permiso (`purchases.view` / `purchase-orders.view` o `goods-receipts.view` / `suppliers.view`); si solo queda un tab visible se muestra sin barra. Cada tab tiene su botón de acción arriba (**Compra directa** / **Nueva OC** / **Nuevo proveedor**).
   - **Tab OCs**: lista **todas** las órdenes (enviada / parcial / recibida / anulada) con chip de estado, y filtro **Todas | Pendientes**. Tocar una pendiente → recibir; tocar una **recibida o anulada** → detalle en **solo lectura** (banner de estado, sin formulario ni botón). Endpoint `GET /purchase-orders?scope=all` (sin `scope` sigue devolviendo solo las por recibir, compatible con APKs viejas); las filas traen `status_label`.
-  - **Tab Compras**: compras directas con estado de pago; tocar → detalle con ítems y totales (`GET /purchases`, `GET /purchases/{id}`).
+  - **Tab Compras**: **todas** las compras — directas **y las generadas al recibir una OC** (distintivo azul "De OC OC-xxxxx"; nacen como cuenta por pagar). Filtro **Todas | Por pagar | Pagadas** arriba; FAB **+ Compra directa** abajo. Las no pagadas muestran su saldo. Tocar → detalle con ítems, totales, **saldo pendiente** e **historial de pagos** (`GET /purchases`, `GET /purchases/{id}`).
+  - ✅ **Pagar una compra desde la app** (parcial o total): botón **"Registrar pago"** en el detalle (permiso `accounts-payable.pay`) → monto (por defecto el saldo, botón "Todo"), origen **Caja** (caja abierta, valida saldo) o **Tesorería** (cuenta, valida saldo; visible con `treasury.view`), referencia opcional. Endpoint `POST /purchases/{id}/pay` — misma lógica que Cuentas por Pagar de la web: `SupplierPayment` + `CashMovement`/`TreasuryMovement`, `recalcPaymentStatus()`. Devuelve el detalle actualizado; la lista recarga al volver. Sin SQL.
   - **Tab Proveedores**: directorio (listar/buscar) y **alta rápida** (nombre, NIT, contacto, teléfono, email). `GET /suppliers`, `POST /suppliers` (`suppliers.create`). **Ya no está en el drawer** como entrada aparte.
 - ✅ **Órdenes de compra**: crear una OC desde el móvil (proveedor + productos con cantidad y costo). Queda en estado *enviada* (lista para recibir). Desde Recepción → "Nueva OC". Endpoint `POST /purchase-orders`. Gateado por `purchase-orders.create`.
 - ✅ **Compra directa** (contado, un paso): proveedor + almacén + productos → registra la **compra**, **suma stock** y **paga el gasto**. **Origen del pago elegible: Caja** (requiere caja abierta) **o una cuenta de Tesorería** (valida saldo; registra el movimiento y descuenta el saldo de la cuenta). El selector Caja/Tesorería aparece si el usuario tiene `treasury.view`. Tile en el Inicio + drawer. Endpoint `POST /purchases/direct` (`payment_source` = cash|treasury, `treasury_account_id`). Gateado por `purchases.create`.
@@ -110,7 +111,15 @@ _Última actualización: 2026-08-25_
 - ✅ **Pantalla de Mecánicos** en el menú: listado (activos e inactivos) y **alta/edición con todos los campos** (nombre, especialidad, teléfono, **% de comisión**, activo). Gateado por `mechanics.view/create/edit`. Endpoints `GET /mechanics/all`, `POST /mechanics`, `PUT /mechanics/{id}`.
 - ✅ **Mecánico en la recepción** (dropdown "Mecánico", opcional) — alimenta la comisión.
 
-### Pago a mecánicos ✅  (plan:workshop) — módulo nuevo (web + móvil)
+### Pagos ✅  (móvil, drawer → *Pagos*)
+Una pantalla con **cuatro tabs inferiores**, cada uno gateado por su permiso (<2 visibles → sin barra). Reemplaza a la entrada suelta "Pago a mecánicos". Todo registra **igual que la web** (misma categoría, descripción y referencia), así cae idéntico en Caja, Tesorería y el Estado de resultados. **Sin SQL.**
+- **Mecánicos** (`mechanic-payments.view` + plan workshop): la vista de liquidación por OT de abajo, sin cambios.
+- **Proveedores** (`accounts-payable.view` + plan purchases): **cuentas por pagar agrupadas por proveedor** — total por pagar, N facturas, la más antigua hace N días (rojo si >30), subtotal por proveedor, cada factura con saldo y antigüedad. Tocar → detalle de la compra, que ya permite **pagar parcial o total**. Endpoint `GET /purchases?unpaid=1` (solo con saldo, sin límite, más antigua primero, `days_old`).
+- **Personal** (`cash.operate`): personal activo con cargo y **último pago** (monto, período, fecha). Tocar → hoja: monto (sugiere el último), **período** (default "Sep 2026"), Caja/Tesorería, notas. Header "Pagado al personal este mes". Registra `expense_payroll` / `payroll` con referencia a `Personal`.
+- **Gastos** (`cash.operate` o `expense-services.view`): **servicios recurrentes** del catálogo `expense_services` (luz, agua, internet…) con **estado del mes** — ✓ "Pagado 05/09 · Bs 350" / ⚠ "Sin pagar este mes" — y pago en un toque con el **monto habitual precargado** y período; header "Gastos del mes"; FAB **+ Otro gasto** (operativo/transporte, concepto libre); **Nuevo servicio** (`expense-services.manage`); **Últimos gastos** (caja + tesorería). Endpoints `GET /expenses/overview`, `POST /expenses` (`kind` service|other|transport|payroll, `payment_source` cash|treasury), `POST /expense-services`.
+- Widget compartido `PaymentSourceField` (Caja/Tesorería + cuenta) para las hojas nuevas.
+
+### Pago a mecánicos ✅  (plan:workshop) — módulo nuevo (web + móvil) — ahora es el tab *Mecánicos* de Pagos
 - ✅ **Liquidación por OT**: por mecánico se listan sus **OTs entregadas** con comisión (% × mano de obra). **Pendientes** (seleccionables) y **Pagos realizados** agrupados (cada pago se despliega mostrando sus OTs). Se sabe exactamente qué OT se pagó y cuál no.
 - ✅ **Comprobante de pago en PDF**: cada pago tiene **Compartir comprobante** (empresa, mecánico, fecha, método/origen, OTs con comisión, total, notas y firma). Móvil: PDF nativo (`printing`). Web: página imprimible (`workshop.mechanic-payments.receipt`).
 - ✅ **Pagar seleccionando OTs**: eliges las OTs pendientes (o todas); el **Total a pagar** es un **campo editable** prellenado con la Σ de comisiones (se puede ajustar). Esas OTs quedan **pagadas y vinculadas al pago** (comisión congelada) sin importar el monto exacto pagado. **Origen Caja o Tesorería** (caja requiere sesión abierta, tesorería valida saldo). Registra el gasto (`expense_payroll` caja / `payroll` tesorería).

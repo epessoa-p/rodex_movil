@@ -34,16 +34,28 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
   int _index = 0;
 
   List<_Tab> _tabs(MeContext me) => [
-        if (me.can('purchases.view'))
-          const _Tab('Compras', Icons.shopping_bag_outlined,
-              Icons.shopping_bag, _DirectPurchasesTab()),
-        if (me.canAny(['purchase-orders.view', 'goods-receipts.view']))
-          const _Tab('OCs', Icons.receipt_long_outlined, Icons.receipt_long,
-              _OrdersTab()),
-        if (me.can('suppliers.view'))
-          const _Tab('Proveedores', Icons.storefront_outlined,
-              Icons.storefront, SuppliersTab()),
-      ];
+    if (me.can('purchases.view'))
+      const _Tab(
+        'Compras',
+        Icons.shopping_bag_outlined,
+        Icons.shopping_bag,
+        _DirectPurchasesTab(),
+      ),
+    if (me.canAny(['purchase-orders.view', 'goods-receipts.view']))
+      const _Tab(
+        'OCs',
+        Icons.receipt_long_outlined,
+        Icons.receipt_long,
+        _OrdersTab(),
+      ),
+    if (me.can('suppliers.view'))
+      const _Tab(
+        'Proveedores',
+        Icons.storefront_outlined,
+        Icons.storefront,
+        SuppliersTab(),
+      ),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -94,13 +106,24 @@ class _DirectPurchasesTab extends ConsumerStatefulWidget {
   const _DirectPurchasesTab();
 
   @override
-  ConsumerState<_DirectPurchasesTab> createState() => _DirectPurchasesTabState();
+  ConsumerState<_DirectPurchasesTab> createState() =>
+      _DirectPurchasesTabState();
 }
+
+enum _PayFilter { all, pending, paid }
 
 class _DirectPurchasesTabState extends ConsumerState<_DirectPurchasesTab> {
   List<DirectPurchaseSummary> _items = [];
+  _PayFilter _filter = _PayFilter.all;
   bool _loading = true;
   Object? _error;
+
+  List<DirectPurchaseSummary> get _visible => switch (_filter) {
+    _PayFilter.all => _items,
+    _PayFilter.pending =>
+      _items.where((c) => c.paymentStatus != 'paid').toList(),
+    _PayFilter.paid => _items.where((c) => c.paymentStatus == 'paid').toList(),
+  };
 
   @override
   void initState() {
@@ -109,12 +132,27 @@ class _DirectPurchasesTabState extends ConsumerState<_DirectPurchasesTab> {
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
-      final items = await ref.read(purchasesRepositoryProvider).directPurchases();
-      if (mounted) setState(() { _items = items; _loading = false; });
+      final items = await ref
+          .read(purchasesRepositoryProvider)
+          .directPurchases();
+      if (mounted) {
+        setState(() {
+          _items = items;
+          _loading = false;
+        });
+      }
     } on ApiException catch (e) {
-      if (mounted) setState(() { _error = e.message; _loading = false; });
+      if (mounted) {
+        setState(() {
+          _error = e.message;
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -125,65 +163,101 @@ class _DirectPurchasesTabState extends ConsumerState<_DirectPurchasesTab> {
     if (created == true) _load();
   }
 
-  void _open(DirectPurchaseSummary c) {
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => DirectPurchaseDetailScreen(purchaseId: c.id, code: c.code),
-    ));
+  Future<void> _open(DirectPurchaseSummary c) async {
+    // Devuelve true si se registraron pagos: el saldo/estado cambió.
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) =>
+            DirectPurchaseDetailScreen(purchaseId: c.id, code: c.code),
+      ),
+    );
+    if (changed == true) _load();
   }
 
   @override
   Widget build(BuildContext context) {
     final me = ref.watch(authControllerProvider).me;
-    final canCreate = (me?.planAllows('purchases') ?? false) &&
+    final canCreate =
+        (me?.planAllows('purchases') ?? false) &&
         (me?.can('purchases.create') ?? false);
 
-    return Column(
-      children: [
-        if (canCreate)
-          _ActionRow(
-            child: FilledButton.icon(
-              style: FilledButton.styleFrom(
-                  backgroundColor: Colors.brown,
-                  minimumSize: const Size.fromHeight(46)),
-              icon: const Icon(Icons.add_shopping_cart, size: 18),
-              label: const Text('Compra directa'),
+    final visible = _visible;
+
+    // Scaffold anidado solo para el FAB: queda flotando sobre la lista, encima
+    // de la barra de tabs, y el tab sigue siendo autocontenido.
+    return Scaffold(
+      floatingActionButton: canCreate
+          ? FloatingActionButton.extended(
               onPressed: _create,
+              icon: const Icon(Icons.add),
+              label: const Text('Compra directa'),
+            )
+          : null,
+      body: Column(
+        children: [
+          _ActionRow(
+            child: SegmentedButton<_PayFilter>(
+              segments: const [
+                ButtonSegment(value: _PayFilter.all, label: Text('Todas')),
+                ButtonSegment(
+                  value: _PayFilter.pending,
+                  label: Text('Por pagar'),
+                ),
+                ButtonSegment(value: _PayFilter.paid, label: Text('Pagadas')),
+              ],
+              selected: {_filter},
+              showSelectedIcon: false,
+              onSelectionChanged: (s) => setState(() => _filter = s.first),
             ),
           ),
-        Expanded(
-          child: _ListState(
-            loading: _loading,
-            error: _error,
-            onRetry: _load,
-            isEmpty: _items.isEmpty,
-            emptyIcon: Icons.shopping_bag_outlined,
-            emptyText: 'No hay compras directas.',
-            child: ListView.separated(
-              itemCount: _items.length,
-              separatorBuilder: (_, _) => const Divider(height: 1),
-              itemBuilder: (_, i) {
-                final c = _items[i];
-                final color = switch (c.paymentStatus) {
-                  'paid' => Colors.green,
-                  'partial' => Colors.orange,
-                  _ => Colors.red,
-                };
-                return _PurchaseRow(
-                  icon: Icons.shopping_bag_outlined,
-                  accent: Colors.brown,
-                  code: c.code,
-                  supplier: c.supplier,
-                  date: c.date,
-                  total: c.total,
-                  statusLabel: c.paymentLabel,
-                  statusColor: color,
-                  onTap: () => _open(c),
-                );
+          Expanded(
+            child: _ListState(
+              loading: _loading,
+              error: _error,
+              onRetry: _load,
+              isEmpty: visible.isEmpty,
+              emptyIcon: Icons.shopping_bag_outlined,
+              emptyText: switch (_filter) {
+                _PayFilter.pending => 'No hay compras por pagar.',
+                _PayFilter.paid => 'No hay compras pagadas.',
+                _PayFilter.all => 'No hay compras directas.',
               },
+              child: ListView.separated(
+                // Espacio al final para que el FAB no tape la última fila.
+                padding: const EdgeInsets.only(bottom: 88),
+                itemCount: visible.length,
+                separatorBuilder: (_, _) => const Divider(height: 1),
+                itemBuilder: (_, i) {
+                  final c = visible[i];
+                  final color = switch (c.paymentStatus) {
+                    'paid' => Colors.green,
+                    'partial' => Colors.orange,
+                    _ => Colors.red,
+                  };
+                  // Las compras nacidas de una OC se distinguen en azul y con
+                  // la OC de origen; el estado muestra el saldo si debe algo.
+                  return _PurchaseRow(
+                    icon: c.fromOrder
+                        ? Icons.receipt_long
+                        : Icons.shopping_bag_outlined,
+                    accent: c.fromOrder ? Colors.blue : Colors.brown,
+                    code: c.code,
+                    tag: c.fromOrder ? 'De OC ${c.orderCode}' : null,
+                    supplier: c.supplier,
+                    date: c.date,
+                    total: c.total,
+                    statusLabel: c.paymentStatus == 'paid'
+                        ? c.paymentLabel
+                        : '${c.paymentLabel} · saldo ${money(c.balance)}',
+                    statusColor: color,
+                    onTap: () => _open(c),
+                  );
+                },
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -214,12 +288,27 @@ class _OrdersTabState extends ConsumerState<_OrdersTab> {
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
-      final items = await ref.read(purchasesRepositoryProvider).orders(all: true);
-      if (mounted) setState(() { _items = items; _loading = false; });
+      final items = await ref
+          .read(purchasesRepositoryProvider)
+          .orders(all: true);
+      if (mounted) {
+        setState(() {
+          _items = items;
+          _loading = false;
+        });
+      }
     } on ApiException catch (e) {
-      if (mounted) setState(() { _error = e.message; _loading = false; });
+      if (mounted) {
+        setState(() {
+          _error = e.message;
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -246,18 +335,18 @@ class _OrdersTabState extends ConsumerState<_OrdersTab> {
       : _items;
 
   static Color _colorFor(String status) => switch (status) {
-        'sent' => Colors.blue,
-        'partial' => Colors.orange,
-        'received' => Colors.green,
-        'cancelled' => Colors.red,
-        _ => Colors.grey,
-      };
+    'sent' => Colors.blue,
+    'partial' => Colors.orange,
+    'received' => Colors.green,
+    'cancelled' => Colors.red,
+    _ => Colors.grey,
+  };
 
   @override
   Widget build(BuildContext context) {
     final canCreate =
         ref.watch(authControllerProvider).me?.can('purchase-orders.create') ??
-            false;
+        false;
     final visible = _visible;
 
     return Column(
@@ -268,9 +357,14 @@ class _OrdersTabState extends ConsumerState<_OrdersTab> {
               Expanded(
                 child: SegmentedButton<_OrderFilter>(
                   segments: const [
-                    ButtonSegment(value: _OrderFilter.all, label: Text('Todas')),
                     ButtonSegment(
-                        value: _OrderFilter.pending, label: Text('Pendientes')),
+                      value: _OrderFilter.all,
+                      label: Text('Todas'),
+                    ),
+                    ButtonSegment(
+                      value: _OrderFilter.pending,
+                      label: Text('Pendientes'),
+                    ),
                   ],
                   selected: {_filter},
                   showSelectedIcon: false,
@@ -334,10 +428,8 @@ class _ActionRow extends StatelessWidget {
   const _ActionRow({required this.child});
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-        child: child,
-      );
+  Widget build(BuildContext context) =>
+      Padding(padding: const EdgeInsets.fromLTRB(12, 12, 12, 8), child: child);
 }
 
 /// Loading / error / vacío / lista, con pull-to-refresh.
@@ -387,12 +479,14 @@ class _ListState extends StatelessWidget {
     return RefreshIndicator(
       onRefresh: onRetry,
       child: isEmpty
-          ? ListView(children: [
-              const SizedBox(height: 120),
-              Icon(emptyIcon, size: 56, color: Colors.black26),
-              const SizedBox(height: 12),
-              Center(child: Text(emptyText)),
-            ])
+          ? ListView(
+              children: [
+                const SizedBox(height: 120),
+                Icon(emptyIcon, size: 56, color: Colors.black26),
+                const SizedBox(height: 12),
+                Center(child: Text(emptyText)),
+              ],
+            )
           : child,
     );
   }
@@ -403,6 +497,7 @@ class _PurchaseRow extends StatelessWidget {
   final IconData icon;
   final Color accent;
   final String code;
+  final String? tag;
   final String? supplier;
   final String? date;
   final double total;
@@ -414,6 +509,7 @@ class _PurchaseRow extends StatelessWidget {
     required this.icon,
     required this.accent,
     required this.code,
+    this.tag,
     required this.supplier,
     required this.date,
     required this.total,
@@ -429,23 +525,53 @@ class _PurchaseRow extends StatelessWidget {
         backgroundColor: accent.withValues(alpha: .12),
         child: Icon(icon, color: accent),
       ),
-      title: Text(code, style: const TextStyle(fontWeight: FontWeight.w700)),
+      title: Row(
+        children: [
+          Flexible(
+            child: Text(
+              code,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (tag != null) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                tag!,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: accent,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text([
-            supplier ?? 'Sin proveedor',
-            ?date,
-          ].join('  ·  ')),
-          Text(statusLabel,
-              style: TextStyle(
-                  fontSize: 12,
-                  color: statusColor,
-                  fontWeight: FontWeight.w600)),
+          Text([supplier ?? 'Sin proveedor', ?date].join('  ·  ')),
+          Text(
+            statusLabel,
+            style: TextStyle(
+              fontSize: 12,
+              color: statusColor,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
-      trailing:
-          Text(money(total), style: const TextStyle(fontWeight: FontWeight.w700)),
+      trailing: Text(
+        money(total),
+        style: const TextStyle(fontWeight: FontWeight.w700),
+      ),
       onTap: onTap,
     );
   }

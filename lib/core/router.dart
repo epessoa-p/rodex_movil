@@ -24,7 +24,7 @@ import '../features/reports/income_statement_screen.dart';
 import '../features/reports/reports_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/treasury/treasury_screen.dart';
-import '../features/workshop/mechanic_payments_screen.dart';
+import '../features/payments/payments_screen.dart';
 import '../features/workshop/mechanics_screen.dart';
 import '../features/workshop/work_orders_screen.dart';
 import 'providers.dart';
@@ -68,9 +68,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           builder: (_, _) => const CashRegistersScreen()),
       GoRoute(path: '/workshop', builder: (_, _) => const WorkOrdersScreen()),
       GoRoute(path: '/agenda', builder: (_, _) => const AgendaScreen()),
-      GoRoute(
-          path: '/mechanic-payments',
-          builder: (_, _) => const MechanicPaymentsScreen()),
+      // Pagos: tabs Mecánicos / Proveedores / Personal / Gastos.
+      GoRoute(path: '/payments', builder: (_, _) => const PaymentsScreen()),
       GoRoute(path: '/mechanics', builder: (_, _) => const MechanicsScreen()),
       GoRoute(path: '/treasury', builder: (_, _) => const TreasuryScreen()),
       GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),

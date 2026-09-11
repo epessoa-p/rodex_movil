@@ -46,7 +46,9 @@ class _PoReceiveScreenState extends ConsumerState<PoReceiveScreen> {
 
   Future<void> _load() async {
     try {
-      final d = await ref.read(purchasesRepositoryProvider).orderDetail(widget.orderId);
+      final d = await ref
+          .read(purchasesRepositoryProvider)
+          .orderDetail(widget.orderId);
       if (!mounted) return;
       for (final it in d.items) {
         _qty[it.poItemId] = TextEditingController(
@@ -59,7 +61,12 @@ class _PoReceiveScreenState extends ConsumerState<PoReceiveScreen> {
         _loading = false;
       });
     } on ApiException catch (e) {
-      if (mounted) setState(() { _error = e.message; _loading = false; });
+      if (mounted) {
+        setState(() {
+          _error = e.message;
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -73,8 +80,10 @@ class _PoReceiveScreenState extends ConsumerState<PoReceiveScreen> {
 
     final items = <Map<String, dynamic>>[];
     for (final it in d.items) {
-      final v = double.tryParse(
-              (_qty[it.poItemId]?.text ?? '').replaceAll(',', '.')) ??
+      final v =
+          double.tryParse(
+            (_qty[it.poItemId]?.text ?? '').replaceAll(',', '.'),
+          ) ??
           0;
       if (v > 0) items.add({'po_item_id': it.poItemId, 'quantity': v});
     }
@@ -85,18 +94,22 @@ class _PoReceiveScreenState extends ConsumerState<PoReceiveScreen> {
 
     setState(() => _submitting = true);
     try {
-      final msg = await ref.read(purchasesRepositoryProvider).receive(
+      final msg = await ref
+          .read(purchasesRepositoryProvider)
+          .receive(
             widget.orderId,
             warehouseId: _warehouseId!,
             items: items,
-            invoiceNumber:
-                _invoiceCtrl.text.trim().isEmpty ? null : _invoiceCtrl.text.trim(),
-            notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
+            invoiceNumber: _invoiceCtrl.text.trim().isEmpty
+                ? null
+                : _invoiceCtrl.text.trim(),
+            notes: _notesCtrl.text.trim().isEmpty
+                ? null
+                : _notesCtrl.text.trim(),
           );
       if (!mounted) return;
       Navigator.pop(context, true);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(msg)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     } on ApiException catch (e) {
       if (mounted) {
         setState(() => _submitting = false);
@@ -105,8 +118,8 @@ class _PoReceiveScreenState extends ConsumerState<PoReceiveScreen> {
     }
   }
 
-  void _snack(String m) => ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text(m)));
+  void _snack(String m) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 
   /// Recibida o anulada: se consulta pero ya no se le puede recibir nada
   /// (el backend también lo rechaza con 422).
@@ -119,30 +132,35 @@ class _PoReceiveScreenState extends ConsumerState<PoReceiveScreen> {
     final readOnly = _readOnly;
     return Scaffold(
       appBar: AppBar(
-          title: Text(readOnly ? 'OC ${widget.code}' : 'Recibir ${widget.code}')),
+        title: Text(readOnly ? 'OC ${widget.code}' : 'Recibir ${widget.code}'),
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Text('$_error', textAlign: TextAlign.center),
-                  ),
-                )
-              : _content(d!),
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text('$_error', textAlign: TextAlign.center),
+              ),
+            )
+          : _content(d!),
       bottomNavigationBar: (d != null && !readOnly)
           ? SafeArea(
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: FilledButton.icon(
                   style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(50)),
+                    minimumSize: const Size.fromHeight(50),
+                  ),
                   icon: _submitting
                       ? const SizedBox(
                           width: 18,
                           height: 18,
                           child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
                       : const Icon(Icons.check),
                   label: const Text('Recibir y sumar al stock'),
                   onPressed: _submitting ? null : _receive,
@@ -158,8 +176,10 @@ class _PoReceiveScreenState extends ConsumerState<PoReceiveScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text(d.supplier ?? 'Sin proveedor',
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+        Text(
+          d.supplier ?? 'Sin proveedor',
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+        ),
         const SizedBox(height: 12),
 
         if (readOnly) ...[
@@ -170,7 +190,9 @@ class _PoReceiveScreenState extends ConsumerState<PoReceiveScreen> {
           DropdownButtonFormField<int>(
             initialValue: _warehouseId,
             decoration: const InputDecoration(
-                labelText: 'Almacén de destino', border: OutlineInputBorder()),
+              labelText: 'Almacén de destino',
+              border: OutlineInputBorder(),
+            ),
             items: [
               for (final w in d.warehouses)
                 DropdownMenuItem(value: w.id, child: Text(w.name)),
@@ -180,34 +202,36 @@ class _PoReceiveScreenState extends ConsumerState<PoReceiveScreen> {
           const SizedBox(height: 16),
         ],
 
-        const Text('Productos',
-            style: TextStyle(fontWeight: FontWeight.w700)),
+        const Text('Productos', style: TextStyle(fontWeight: FontWeight.w700)),
         const SizedBox(height: 4),
         for (final it in d.items) _itemRow(it, readOnly: readOnly),
 
         if (readOnly) const SizedBox(height: 8),
         if (!readOnly) ...[
-        const SizedBox(height: 16),
-        TextField(
-          controller: _invoiceCtrl,
-          decoration: const InputDecoration(
+          const SizedBox(height: 16),
+          TextField(
+            controller: _invoiceCtrl,
+            decoration: const InputDecoration(
               labelText: 'N° de factura (opcional)',
-              border: OutlineInputBorder()),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _notesCtrl,
-          minLines: 1,
-          maxLines: 3,
-          decoration: const InputDecoration(
-              labelText: 'Notas (opcional)', border: OutlineInputBorder()),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Se sumará al stock del almacén, avanzará la orden y se generará la '
-          'compra (cuenta por pagar) por lo recibido.',
-          style: TextStyle(color: Colors.black54, fontSize: 12),
-        ),
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _notesCtrl,
+            minLines: 1,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              labelText: 'Notas (opcional)',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Se sumará al stock del almacén, avanzará la orden y se generará la '
+            'compra (cuenta por pagar) por lo recibido.',
+            style: TextStyle(color: Colors.black54, fontSize: 12),
+          ),
         ],
       ],
     );
@@ -219,14 +243,18 @@ class _PoReceiveScreenState extends ConsumerState<PoReceiveScreen> {
       return Card(
         margin: const EdgeInsets.only(top: 8),
         child: ListTile(
-          title: Text(it.product ?? '—',
-              style: const TextStyle(fontWeight: FontWeight.w600)),
+          title: Text(
+            it.product ?? '—',
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
           subtitle: Text(
             'Pedido: ${qty(it.ordered)} · Recibido: ${qty(it.received)} ${it.unit ?? ''}',
             style: const TextStyle(color: Colors.black54, fontSize: 12),
           ),
-          trailing: Text(money(it.unitCost),
-              style: const TextStyle(fontWeight: FontWeight.w600)),
+          trailing: Text(
+            money(it.unitCost),
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
         ),
       );
     }
@@ -240,8 +268,10 @@ class _PoReceiveScreenState extends ConsumerState<PoReceiveScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(it.product ?? '—',
-                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                  Text(
+                    it.product ?? '—',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
                   const SizedBox(height: 2),
                   Text(
                     'Pedido: ${qty(it.ordered)} · Recibido: ${qty(it.received)} · '
@@ -262,7 +292,8 @@ class _PoReceiveScreenState extends ConsumerState<PoReceiveScreen> {
                   : TextField(
                       controller: _qty[it.poItemId],
                       keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true),
+                        decimal: true,
+                      ),
                       textAlign: TextAlign.center,
                       decoration: const InputDecoration(
                         labelText: 'Recibir',

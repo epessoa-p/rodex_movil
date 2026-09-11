@@ -49,36 +49,74 @@ class PoSummary {
   }
 }
 
-/// Resumen de una compra directa (no ligada a una OC).
+/// Resumen de una compra: directa, o generada al recibir una OC
+/// ([orderCode] != null). Estas últimas nacen como cuenta por pagar.
 class DirectPurchaseSummary {
   final int id;
   final String code;
+  final String? orderCode;
   final String? supplier;
   final String? date;
+  final int? daysOld;
   final double total;
+  final double paidAmount;
+  final double balance;
   final String paymentStatus; // pending | partial | paid
   final String paymentLabel;
 
   DirectPurchaseSummary({
     required this.id,
     required this.code,
+    this.orderCode,
     this.supplier,
     this.date,
+    this.daysOld,
     required this.total,
+    this.paidAmount = 0,
+    double? balance,
     required this.paymentStatus,
     required this.paymentLabel,
-  });
+  }) : balance = balance ?? (total - paidAmount);
+
+  bool get fromOrder => orderCode != null && orderCode!.isNotEmpty;
 
   factory DirectPurchaseSummary.fromJson(Map<String, dynamic> j) =>
       DirectPurchaseSummary(
         id: j['id'] as int,
         code: (j['code'] ?? '') as String,
+        orderCode: j['order_code'] as String?,
         supplier: j['supplier'] as String?,
         date: j['date'] as String?,
+        daysOld: (j['days_old'] as num?)?.toInt(),
         total: (j['total'] as num?)?.toDouble() ?? 0,
+        paidAmount: (j['paid_amount'] as num?)?.toDouble() ?? 0,
+        balance: (j['balance'] as num?)?.toDouble(),
         paymentStatus: (j['payment_status'] ?? 'pending') as String,
         paymentLabel: (j['payment_label'] ?? '') as String,
       );
+}
+
+/// Un pago registrado sobre una compra.
+class PurchasePayment {
+  final int id;
+  final String? date;
+  final double amount;
+  final String source; // 'Caja' o nombre de la cuenta de tesorería
+  final String? method;
+  PurchasePayment({
+    required this.id,
+    this.date,
+    required this.amount,
+    required this.source,
+    this.method,
+  });
+  factory PurchasePayment.fromJson(Map<String, dynamic> j) => PurchasePayment(
+    id: j['id'] as int,
+    date: j['date'] as String?,
+    amount: (j['amount'] as num?)?.toDouble() ?? 0,
+    source: (j['source'] ?? '') as String,
+    method: j['method'] as String?,
+  );
 }
 
 /// Ítem de una compra directa (para el detalle).
@@ -87,58 +125,74 @@ class PurchaseItemRow {
   final double quantity;
   final double unitCost;
   final double subtotal;
-  PurchaseItemRow(
-      {this.name,
-      required this.quantity,
-      required this.unitCost,
-      required this.subtotal});
+  PurchaseItemRow({
+    this.name,
+    required this.quantity,
+    required this.unitCost,
+    required this.subtotal,
+  });
   factory PurchaseItemRow.fromJson(Map<String, dynamic> j) => PurchaseItemRow(
-        name: j['name'] as String?,
-        quantity: (j['quantity'] as num?)?.toDouble() ?? 0,
-        unitCost: (j['unit_cost'] as num?)?.toDouble() ?? 0,
-        subtotal: (j['subtotal'] as num?)?.toDouble() ?? 0,
-      );
+    name: j['name'] as String?,
+    quantity: (j['quantity'] as num?)?.toDouble() ?? 0,
+    unitCost: (j['unit_cost'] as num?)?.toDouble() ?? 0,
+    subtotal: (j['subtotal'] as num?)?.toDouble() ?? 0,
+  );
 }
 
-/// Detalle de una compra directa.
+/// Detalle de una compra (ítems, saldo e historial de pagos).
 class DirectPurchaseDetail {
   final int id;
   final String code;
+  final String? orderCode;
   final String? supplier;
   final String? date;
   final String? invoiceNumber;
   final String? notes;
   final double total;
   final double paidAmount;
+  final String paymentStatus;
   final String paymentLabel;
   final List<PurchaseItemRow> items;
+  final List<PurchasePayment> payments;
 
   DirectPurchaseDetail({
     required this.id,
     required this.code,
+    this.orderCode,
     this.supplier,
     this.date,
     this.invoiceNumber,
     this.notes,
     required this.total,
     required this.paidAmount,
+    this.paymentStatus = 'pending',
     required this.paymentLabel,
     required this.items,
+    this.payments = const [],
   });
+
+  double get balance => (total - paidAmount).clamp(0, double.infinity);
+  bool get isPaid => paymentStatus == 'paid' || balance <= 0.001;
+  bool get fromOrder => orderCode != null && orderCode!.isNotEmpty;
 
   factory DirectPurchaseDetail.fromJson(Map<String, dynamic> j) =>
       DirectPurchaseDetail(
         id: j['id'] as int,
         code: (j['code'] ?? '') as String,
+        orderCode: j['order_code'] as String?,
         supplier: j['supplier'] as String?,
         date: j['date'] as String?,
         invoiceNumber: j['invoice_number'] as String?,
         notes: j['notes'] as String?,
         total: (j['total'] as num?)?.toDouble() ?? 0,
         paidAmount: (j['paid_amount'] as num?)?.toDouble() ?? 0,
+        paymentStatus: (j['payment_status'] ?? 'pending') as String,
         paymentLabel: (j['payment_label'] ?? '') as String,
         items: ((j['items'] as List?) ?? [])
             .map((e) => PurchaseItemRow.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        payments: ((j['payments'] as List?) ?? [])
+            .map((e) => PurchasePayment.fromJson(e as Map<String, dynamic>))
             .toList(),
       );
 }
@@ -164,14 +218,14 @@ class PoItem {
   });
 
   factory PoItem.fromJson(Map<String, dynamic> j) => PoItem(
-        poItemId: j['po_item_id'] as int,
-        product: j['product'] as String?,
-        unit: j['unit'] as String?,
-        ordered: (j['ordered'] as num?)?.toDouble() ?? 0,
-        received: (j['received'] as num?)?.toDouble() ?? 0,
-        pending: (j['pending'] as num?)?.toDouble() ?? 0,
-        unitCost: (j['unit_cost'] as num?)?.toDouble() ?? 0,
-      );
+    poItemId: j['po_item_id'] as int,
+    product: j['product'] as String?,
+    unit: j['unit'] as String?,
+    ordered: (j['ordered'] as num?)?.toDouble() ?? 0,
+    received: (j['received'] as num?)?.toDouble() ?? 0,
+    pending: (j['pending'] as num?)?.toDouble() ?? 0,
+    unitCost: (j['unit_cost'] as num?)?.toDouble() ?? 0,
+  );
 }
 
 class WarehouseOption {
@@ -201,17 +255,17 @@ class PoDetail {
   });
 
   factory PoDetail.fromJson(Map<String, dynamic> j) => PoDetail(
-        id: j['id'] as int,
-        code: j['code'] as String,
-        supplier: j['supplier'] as String?,
-        status: (j['status'] ?? '') as String,
-        items: ((j['items'] as List?) ?? [])
-            .map((e) => PoItem.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        warehouses: ((j['warehouses'] as List?) ?? [])
-            .map((e) => WarehouseOption.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
+    id: j['id'] as int,
+    code: j['code'] as String,
+    supplier: j['supplier'] as String?,
+    status: (j['status'] ?? '') as String,
+    items: ((j['items'] as List?) ?? [])
+        .map((e) => PoItem.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    warehouses: ((j['warehouses'] as List?) ?? [])
+        .map((e) => WarehouseOption.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
 }
 
 /// Proveedor (para el directorio y alta rápida).
@@ -233,13 +287,13 @@ class Supplier {
   });
 
   factory Supplier.fromJson(Map<String, dynamic> j) => Supplier(
-        id: j['id'] as int,
-        name: j['name'] as String,
-        nit: j['nit'] as String?,
-        contactName: j['contact_name'] as String?,
-        phone: j['phone'] as String?,
-        email: j['email'] as String?,
-      );
+    id: j['id'] as int,
+    name: j['name'] as String,
+    nit: j['nit'] as String?,
+    contactName: j['contact_name'] as String?,
+    phone: j['phone'] as String?,
+    email: j['email'] as String?,
+  );
 }
 
 class PurchasesRepository {
@@ -260,13 +314,16 @@ class PurchasesRepository {
     String? phone,
     String? email,
   }) async {
-    final data = await _api.post('/suppliers', body: {
-      'name': name,
-      'nit': ?nit,
-      'contact_name': ?contactName,
-      'phone': ?phone,
-      'email': ?email,
-    });
+    final data = await _api.post(
+      '/suppliers',
+      body: {
+        'name': name,
+        'nit': ?nit,
+        'contact_name': ?contactName,
+        'phone': ?phone,
+        'email': ?email,
+      },
+    );
     return Supplier.fromJson((data as Map<String, dynamic>)['data']);
   }
 
@@ -281,15 +338,18 @@ class PurchasesRepository {
     String? invoiceNumber,
     String? notes,
   }) async {
-    final data = await _api.post('/purchases/direct', body: {
-      'supplier_id': supplierId,
-      'warehouse_id': warehouseId,
-      'payment_source': paymentSource,
-      'treasury_account_id': ?treasuryAccountId,
-      'items': items,
-      'invoice_number': ?invoiceNumber,
-      'notes': ?notes,
-    });
+    final data = await _api.post(
+      '/purchases/direct',
+      body: {
+        'supplier_id': supplierId,
+        'warehouse_id': warehouseId,
+        'payment_source': paymentSource,
+        'treasury_account_id': ?treasuryAccountId,
+        'items': items,
+        'invoice_number': ?invoiceNumber,
+        'notes': ?notes,
+      },
+    );
     return (data as Map<String, dynamic>)['data'] as Map<String, dynamic>;
   }
 
@@ -301,38 +361,74 @@ class PurchasesRepository {
     String? expectedDate,
     String? notes,
   }) async {
-    final data = await _api.post('/purchase-orders', body: {
-      'supplier_id': supplierId,
-      'items': items,
-      'expected_date': ?expectedDate,
-      'notes': ?notes,
-    });
+    final data = await _api.post(
+      '/purchase-orders',
+      body: {
+        'supplier_id': supplierId,
+        'items': items,
+        'expected_date': ?expectedDate,
+        'notes': ?notes,
+      },
+    );
     return PoSummary.fromJson((data as Map<String, dynamic>)['data']);
   }
 
   /// Órdenes de compra. Por defecto solo las por recibir; con [all] devuelve
   /// también las recibidas y anuladas (todo salvo borradores).
   Future<List<PoSummary>> orders({bool all = false}) async {
-    final data = await _api.get('/purchase-orders',
-        query: all ? {'scope': 'all'} : null);
+    final data = await _api.get(
+      '/purchase-orders',
+      query: all ? {'scope': 'all'} : null,
+    );
     return (((data as Map<String, dynamic>)['data'] as List?) ?? [])
         .map((e) => PoSummary.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 
   /// Compras directas (no ligadas a una OC).
-  Future<List<DirectPurchaseSummary>> directPurchases() async {
-    final data = await _api.get('/purchases');
+  /// Compras. Con [unpaid] devuelve solo las que tienen saldo (cuentas por
+  /// pagar), sin límite y la más antigua primero.
+  Future<List<DirectPurchaseSummary>> directPurchases({bool unpaid = false}) async {
+    final data = await _api.get('/purchases',
+        query: unpaid ? {'unpaid': 1} : null);
     return (((data as Map<String, dynamic>)['data'] as List?) ?? [])
         .map((e) => DirectPurchaseSummary.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 
   /// Detalle de una compra directa (con ítems).
+  /// Pago (parcial o total) de una compra. [source] = 'cash' | 'treasury'.
+  /// Devuelve el detalle actualizado (saldo, estado, historial de pagos).
+  Future<DirectPurchaseDetail> payPurchase(
+    int id, {
+    required double amount,
+    required String source,
+    int? treasuryAccountId,
+    String? method,
+    String? reference,
+    String? notes,
+  }) async {
+    final data = await _api.post(
+      '/purchases/$id/pay',
+      body: {
+        'amount': amount,
+        'payment_source': source,
+        'treasury_account_id': ?treasuryAccountId,
+        'method': ?method,
+        'reference': ?reference,
+        'notes': ?notes,
+      },
+    );
+    return DirectPurchaseDetail.fromJson(
+      (data as Map<String, dynamic>)['data'],
+    );
+  }
+
   Future<DirectPurchaseDetail> directPurchaseDetail(int id) async {
     final data = await _api.get('/purchases/$id');
     return DirectPurchaseDetail.fromJson(
-        (data as Map<String, dynamic>)['data']);
+      (data as Map<String, dynamic>)['data'],
+    );
   }
 
   Future<PoDetail> orderDetail(int id) async {
@@ -349,12 +445,15 @@ class PurchasesRepository {
     String? invoiceNumber,
     String? notes,
   }) async {
-    final data = await _api.post('/purchase-orders/$id/receive', body: {
-      'warehouse_id': warehouseId,
-      'items': items,
-      'invoice_number': ?invoiceNumber,
-      'notes': ?notes,
-    });
+    final data = await _api.post(
+      '/purchase-orders/$id/receive',
+      body: {
+        'warehouse_id': warehouseId,
+        'items': items,
+        'invoice_number': ?invoiceNumber,
+        'notes': ?notes,
+      },
+    );
     final d = (data as Map<String, dynamic>)['data'] as Map<String, dynamic>;
     return (d['message'] ?? 'Recepción registrada') as String;
   }

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/providers.dart';
+import '../payments/payments_screen.dart' show canSeePayments;
 
 /// Menú lateral (Navigation Drawer) con los accesos de la app, gateados por
 /// permiso/plan. Se abre con el botón de hamburguesa del inicio.
@@ -82,10 +83,9 @@ class AppDrawer extends ConsumerWidget {
                       '/mechanics',
                       show: me.planAllows('workshop') &&
                           me.can('mechanics.view')),
-                  _item(context, Icons.payments_outlined, 'Pago a mecánicos',
-                      '/mechanic-payments',
-                      show: me.planAllows('workshop') &&
-                          me.can('mechanic-payments.view')),
+                  // Pagos agrupa Mecánicos / Proveedores / Personal / Gastos.
+                  _item(context, Icons.payments_outlined, 'Pagos', '/payments',
+                      show: canSeePayments(me)),
                   // Compras agrupa los tabs Compras / OCs / Proveedores.
                   _item(context, Icons.shopping_bag_outlined, 'Compras',
                       '/purchases/receptions',

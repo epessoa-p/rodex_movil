@@ -79,29 +79,37 @@ class _DirectPurchaseScreenState extends ConsumerState<DirectPurchaseScreen> {
           _warehouses = catalogs.warehouses;
           _accounts = accounts;
           _supplierId = suppliers.isNotEmpty ? suppliers.first.id : null;
-          _warehouseId =
-              catalogs.warehouses.isNotEmpty ? catalogs.warehouses.first.id : null;
+          _warehouseId = catalogs.warehouses.isNotEmpty
+              ? catalogs.warehouses.first.id
+              : null;
           _treasuryAccountId = accounts.isNotEmpty ? accounts.first.id : null;
           _loading = false;
         });
       }
     } on ApiException catch (e) {
-      if (mounted) setState(() { _error = e.message; _loading = false; });
+      if (mounted) {
+        setState(() {
+          _error = e.message;
+          _loading = false;
+        });
+      }
     }
   }
 
   Future<void> _addItem() async {
     Product? picked;
-    await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => ProductsScreen(
-        requireStock: false,
-        hideInitialStock: true,
-        onPick: (p) {
-          picked = p;
-          Navigator.of(context).pop();
-        },
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ProductsScreen(
+          requireStock: false,
+          hideInitialStock: true,
+          onPick: (p) {
+            picked = p;
+            Navigator.of(context).pop();
+          },
+        ),
       ),
-    ));
+    );
     if (picked == null || !mounted) return;
 
     final qtyCtrl = TextEditingController(text: '1');
@@ -110,33 +118,40 @@ class _DirectPurchaseScreenState extends ConsumerState<DirectPurchaseScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(picked!.name, maxLines: 2, overflow: TextOverflow.ellipsis),
-        content: Row(children: [
-          Expanded(
-            child: TextField(
-              controller: qtyCtrl,
-              autofocus: true,
-              keyboardType: const TextInputType.numberWithOptions(),
-              decoration: const InputDecoration(labelText: 'Cantidad'),
+        content: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: qtyCtrl,
+                autofocus: true,
+                keyboardType: const TextInputType.numberWithOptions(),
+                decoration: const InputDecoration(labelText: 'Cantidad'),
+              ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TextField(
-              controller: costCtrl,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(
-                  labelText: 'Costo', prefixText: '$currencySymbol '),
+            const SizedBox(width: 10),
+            Expanded(
+              child: TextField(
+                controller: costCtrl,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: InputDecoration(
+                  labelText: 'Costo',
+                  prefixText: '$currencySymbol ',
+                ),
+              ),
             ),
-          ),
-        ]),
+          ],
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancelar')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Agregar')),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Agregar'),
+          ),
         ],
       ),
     );
@@ -162,19 +177,22 @@ class _DirectPurchaseScreenState extends ConsumerState<DirectPurchaseScreen> {
 
     setState(() => _saving = true);
     try {
-      final res = await ref.read(purchasesRepositoryProvider).directPurchase(
+      final res = await ref
+          .read(purchasesRepositoryProvider)
+          .directPurchase(
             supplierId: _supplierId!,
             warehouseId: _warehouseId!,
             paymentSource: _source,
-            treasuryAccountId:
-                _source == 'treasury' ? _treasuryAccountId : null,
+            treasuryAccountId: _source == 'treasury'
+                ? _treasuryAccountId
+                : null,
             items: [
               for (final l in _lines)
                 {
                   'product_id': l.productId,
                   'quantity': l.quantity.toInt(),
                   'unit_cost': l.unitCost,
-                }
+                },
             ],
             notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
           );
@@ -183,9 +201,13 @@ class _DirectPurchaseScreenState extends ConsumerState<DirectPurchaseScreen> {
       ref.invalidate(cashSessionProvider);
       if (!mounted) return;
       Navigator.pop(context, true);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
           content: Text(
-              'Compra ${res['code'] ?? ''} registrada (${money(_total)}).')));
+            'Compra ${res['code'] ?? ''} registrada (${money(_total)}).',
+          ),
+        ),
+      );
     } on ApiException catch (e) {
       if (mounted) {
         setState(() => _saving = false);
@@ -204,181 +226,208 @@ class _DirectPurchaseScreenState extends ConsumerState<DirectPurchaseScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Text('$_error', textAlign: TextAlign.center),
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text('$_error', textAlign: TextAlign.center),
+              ),
+            )
+          : _suppliers.isEmpty
+          ? const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Text(
+                  'No hay proveedores. Crea uno primero en Proveedores.',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            )
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                _Note(source: _source),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int>(
+                  initialValue: _supplierId,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Proveedor',
+                    border: OutlineInputBorder(),
                   ),
-                )
-              : _suppliers.isEmpty
-                  ? const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(24),
-                        child: Text(
-                            'No hay proveedores. Crea uno primero en Proveedores.',
-                            textAlign: TextAlign.center),
-                      ),
-                    )
-                  : ListView(
-                      padding: const EdgeInsets.all(16),
-                      children: [
-                        _Note(source: _source),
-                        const SizedBox(height: 12),
-                        DropdownButtonFormField<int>(
-                          initialValue: _supplierId,
-                          isExpanded: true,
-                          decoration: const InputDecoration(
-                              labelText: 'Proveedor',
-                              border: OutlineInputBorder()),
-                          items: [
-                            for (final s in _suppliers)
-                              DropdownMenuItem(
-                                  value: s.id, child: Text(s.name)),
-                          ],
-                          onChanged: (v) => setState(() => _supplierId = v),
-                        ),
-                        const SizedBox(height: 12),
-                        DropdownButtonFormField<int>(
-                          initialValue: _warehouseId,
-                          isExpanded: true,
-                          decoration: const InputDecoration(
-                              labelText: 'Almacén (destino del stock)',
-                              border: OutlineInputBorder()),
-                          items: [
-                            for (final w in _warehouses)
-                              DropdownMenuItem(
-                                  value: w.id, child: Text(w.name)),
-                          ],
-                          onChanged: (v) => setState(() => _warehouseId = v),
-                        ),
-                        if (_canTreasury) ...[
-                          const SizedBox(height: 16),
-                          const Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text('Pagar con',
-                                style: TextStyle(fontWeight: FontWeight.w700)),
-                          ),
-                          const SizedBox(height: 6),
-                          SegmentedButton<String>(
-                            segments: const [
-                              ButtonSegment(
-                                  value: 'cash',
-                                  label: Text('Caja'),
-                                  icon: Icon(Icons.savings_outlined)),
-                              ButtonSegment(
-                                  value: 'treasury',
-                                  label: Text('Tesorería'),
-                                  icon: Icon(Icons.account_balance)),
-                            ],
-                            selected: {_source},
-                            onSelectionChanged: (s) =>
-                                setState(() => _source = s.first),
-                          ),
-                          if (_source == 'treasury') ...[
-                            const SizedBox(height: 12),
-                            if (_accounts.isEmpty)
-                              const Text(
-                                  'No hay cuentas de tesorería. Crea una en Tesorería.',
-                                  style: TextStyle(color: Colors.red))
-                            else
-                              DropdownButtonFormField<int>(
-                                initialValue: _treasuryAccountId,
-                                isExpanded: true,
-                                decoration: const InputDecoration(
-                                    labelText: 'Cuenta',
-                                    border: OutlineInputBorder()),
-                                items: [
-                                  for (final a in _accounts)
-                                    DropdownMenuItem(
-                                        value: a.id,
-                                        child: Text(
-                                            '${a.name} · ${money(a.balance)}')),
-                                ],
-                                onChanged: (v) =>
-                                    setState(() => _treasuryAccountId = v),
-                              ),
-                          ],
-                        ],
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('Productos',
-                                style: TextStyle(fontWeight: FontWeight.w700)),
-                            TextButton.icon(
-                              onPressed: _addItem,
-                              icon: const Icon(Icons.add),
-                              label: const Text('Agregar'),
-                            ),
-                          ],
-                        ),
-                        if (_lines.isEmpty)
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 12),
-                            child: Text('Sin productos.',
-                                style: TextStyle(color: Colors.black54)),
-                          )
-                        else
-                          for (int i = 0; i < _lines.length; i++)
-                            Card(
-                              child: ListTile(
-                                dense: true,
-                                title: Text(_lines[i].name),
-                                subtitle: Text(
-                                    '${qty(_lines[i].quantity)} x ${money(_lines[i].unitCost)}'),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(money(_lines[i].subtotal),
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.w700)),
-                                    IconButton(
-                                      icon: const Icon(Icons.close,
-                                          color: Colors.red),
-                                      onPressed: () =>
-                                          setState(() => _lines.removeAt(i)),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _notes,
-                          minLines: 1,
-                          maxLines: 3,
-                          decoration: const InputDecoration(
-                              labelText: 'Notas (opcional)',
-                              border: OutlineInputBorder()),
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text('Total a pagar',
-                                style: TextStyle(
-                                    fontSize: 16, fontWeight: FontWeight.w700)),
-                            Text(money(_total),
-                                style: const TextStyle(
-                                    fontSize: 20, fontWeight: FontWeight.w800)),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        FilledButton.icon(
-                          style: FilledButton.styleFrom(
-                              minimumSize: const Size.fromHeight(50)),
-                          icon: _saving
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2, color: Colors.white))
-                              : const Icon(Icons.check),
-                          label: const Text('Registrar compra'),
-                          onPressed: _saving ? null : _save,
-                        ),
-                      ],
+                  items: [
+                    for (final s in _suppliers)
+                      DropdownMenuItem(value: s.id, child: Text(s.name)),
+                  ],
+                  onChanged: (v) => setState(() => _supplierId = v),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int>(
+                  initialValue: _warehouseId,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Almacén (destino del stock)',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    for (final w in _warehouses)
+                      DropdownMenuItem(value: w.id, child: Text(w.name)),
+                  ],
+                  onChanged: (v) => setState(() => _warehouseId = v),
+                ),
+                if (_canTreasury) ...[
+                  const SizedBox(height: 16),
+                  const Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Pagar con',
+                      style: TextStyle(fontWeight: FontWeight.w700),
                     ),
+                  ),
+                  const SizedBox(height: 6),
+                  SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(
+                        value: 'cash',
+                        label: Text('Caja'),
+                        icon: Icon(Icons.savings_outlined),
+                      ),
+                      ButtonSegment(
+                        value: 'treasury',
+                        label: Text('Tesorería'),
+                        icon: Icon(Icons.account_balance),
+                      ),
+                    ],
+                    selected: {_source},
+                    onSelectionChanged: (s) =>
+                        setState(() => _source = s.first),
+                  ),
+                  if (_source == 'treasury') ...[
+                    const SizedBox(height: 12),
+                    if (_accounts.isEmpty)
+                      const Text(
+                        'No hay cuentas de tesorería. Crea una en Tesorería.',
+                        style: TextStyle(color: Colors.red),
+                      )
+                    else
+                      DropdownButtonFormField<int>(
+                        initialValue: _treasuryAccountId,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Cuenta',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: [
+                          for (final a in _accounts)
+                            DropdownMenuItem(
+                              value: a.id,
+                              child: Text('${a.name} · ${money(a.balance)}'),
+                            ),
+                        ],
+                        onChanged: (v) =>
+                            setState(() => _treasuryAccountId = v),
+                      ),
+                  ],
+                ],
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Productos',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    TextButton.icon(
+                      onPressed: _addItem,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Agregar'),
+                    ),
+                  ],
+                ),
+                if (_lines.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Text(
+                      'Sin productos.',
+                      style: TextStyle(color: Colors.black54),
+                    ),
+                  )
+                else
+                  for (int i = 0; i < _lines.length; i++)
+                    Card(
+                      child: ListTile(
+                        dense: true,
+                        title: Text(_lines[i].name),
+                        subtitle: Text(
+                          '${qty(_lines[i].quantity)} x ${money(_lines[i].unitCost)}',
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              money(_lines[i].subtotal),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close, color: Colors.red),
+                              onPressed: () =>
+                                  setState(() => _lines.removeAt(i)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _notes,
+                  minLines: 1,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Notas (opcional)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Total a pagar',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      money(_total),
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(50),
+                  ),
+                  icon: _saving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.check),
+                  label: const Text('Registrar compra'),
+                  onPressed: _saving ? null : _save,
+                ),
+              ],
+            ),
     );
   }
 }
@@ -390,20 +439,22 @@ class _Note extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = source == 'treasury'
         ? 'Registra la compra, suma el stock al almacén y paga desde la cuenta '
-            'de tesorería elegida (gasto).'
+              'de tesorería elegida (gasto).'
         : 'Registra la compra, suma el stock al almacén y paga desde la caja '
-            'abierta (gasto). Necesitas tener la caja abierta.';
+              'abierta (gasto). Necesitas tener la caja abierta.';
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.amber.withValues(alpha: .12),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Row(children: [
-        const Icon(Icons.info_outline, color: Colors.amber, size: 20),
-        const SizedBox(width: 8),
-        Expanded(child: Text(text, style: const TextStyle(fontSize: 12))),
-      ]),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline, color: Colors.amber, size: 20),
+          const SizedBox(width: 8),
+          Expanded(child: Text(text, style: const TextStyle(fontSize: 12))),
+        ],
+      ),
     );
   }
 }

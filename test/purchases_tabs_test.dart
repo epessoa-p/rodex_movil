@@ -42,10 +42,16 @@ class _FakeRepo extends PurchasesRepository {
       ];
 
   @override
-  Future<List<DirectPurchaseSummary>> directPurchases() async => [
+  Future<List<DirectPurchaseSummary>> directPurchases({bool unpaid = false}) async => [
         DirectPurchaseSummary(
             id: 7, code: 'COM-00007', supplier: 'Ferretería', date: '2026-09-11',
             total: 80, paymentStatus: 'paid', paymentLabel: 'Pagada'),
+        // Nacida al recibir una OC: cuenta por pagar con saldo.
+        DirectPurchaseSummary(
+            id: 8, code: 'COM-00008', orderCode: 'OC-00002',
+            supplier: 'Honda Import', date: '2026-09-10',
+            total: 1200, paidAmount: 400, paymentStatus: 'partial',
+            paymentLabel: 'Pago parcial'),
       ];
 
   @override
@@ -65,15 +71,34 @@ void main() {
   testWidgets('Con todos los permisos: 3 tabs, y la OC recibida sigue visible',
       (tester) async {
     await tester.pumpWidget(_app(const [
-      'purchases.view', 'purchase-orders.view', 'suppliers.view',
+      'purchases.view', 'purchases.create',
+      'purchase-orders.view', 'suppliers.view',
     ]));
     await tester.pumpAndSettle();
 
     expect(find.byType(NavigationBar), findsOneWidget);
     expect(find.byType(NavigationDestination), findsNWidgets(3));
 
-    // Tab 1 (Compras) por defecto.
+    // Tab 1 (Compras) por defecto: FAB "+ Compra directa" y filtro de pago arriba.
     expect(find.text('COM-00007'), findsOneWidget);
+    expect(find.widgetWithText(FloatingActionButton, 'Compra directa'),
+        findsOneWidget);
+    expect(find.text('Por pagar'), findsOneWidget);
+
+    // La compra nacida de una OC se distingue y muestra su saldo pendiente.
+    expect(find.text('De OC OC-00002'), findsOneWidget);
+    expect(find.textContaining('saldo'), findsOneWidget);
+
+    // COM-00007 está pagada: con "Por pagar" queda solo la de OC; con
+    // "Pagadas" ocurre lo contrario.
+    await tester.tap(find.text('Por pagar'));
+    await tester.pumpAndSettle();
+    expect(find.text('COM-00007'), findsNothing);
+    expect(find.text('COM-00008'), findsOneWidget);
+    await tester.tap(find.text('Pagadas'));
+    await tester.pumpAndSettle();
+    expect(find.text('COM-00007'), findsOneWidget);
+    expect(find.text('COM-00008'), findsNothing);
 
     // Tab OCs: pendiente + recibida.
     await tester.tap(find.text('OCs'));
