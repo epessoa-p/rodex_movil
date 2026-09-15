@@ -388,9 +388,13 @@ class PurchasesRepository {
   /// Compras directas (no ligadas a una OC).
   /// Compras. Con [unpaid] devuelve solo las que tienen saldo (cuentas por
   /// pagar), sin límite y la más antigua primero.
-  Future<List<DirectPurchaseSummary>> directPurchases({bool unpaid = false}) async {
-    final data = await _api.get('/purchases',
-        query: unpaid ? {'unpaid': 1} : null);
+  Future<List<DirectPurchaseSummary>> directPurchases({
+    bool unpaid = false,
+  }) async {
+    final data = await _api.get(
+      '/purchases',
+      query: unpaid ? {'unpaid': 1} : null,
+    );
     return (((data as Map<String, dynamic>)['data'] as List?) ?? [])
         .map((e) => DirectPurchaseSummary.fromJson(e as Map<String, dynamic>))
         .toList();

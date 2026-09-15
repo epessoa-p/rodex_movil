@@ -58,15 +58,28 @@ class IncomeStatementRepository {
         .get('/income-statement', query: {'from': from, 'to': to});
     return IncomeStatement.fromJson((data as Map<String, dynamic>)['data']);
   }
+
+  /// Todo el historial: el backend fija `from` en el primer movimiento
+  /// registrado (viene en `report.from`) y `to` en hoy.
+  Future<IncomeStatement> all() async {
+    final data = await _api.get('/income-statement', query: {'all': 1});
+    return IncomeStatement.fromJson((data as Map<String, dynamic>)['data']);
+  }
 }
 
 final incomeStatementRepositoryProvider = Provider<IncomeStatementRepository>(
   (ref) => IncomeStatementRepository(ref.read(apiClientProvider)),
 );
 
-/// Estado de resultados por rango "from|to" (YYYY-MM-DD|YYYY-MM-DD).
+/// Clave del provider para "desde el inicio de los tiempos".
+const incomeStatementAllKey = 'all';
+
+/// Estado de resultados por rango "from|to" (YYYY-MM-DD|YYYY-MM-DD) o
+/// [incomeStatementAllKey] para todo el historial.
 final incomeStatementProvider =
     FutureProvider.family<IncomeStatement, String>((ref, key) {
+  final repo = ref.read(incomeStatementRepositoryProvider);
+  if (key == incomeStatementAllKey) return repo.all();
   final parts = key.split('|');
-  return ref.read(incomeStatementRepositoryProvider).get(parts[0], parts[1]);
+  return repo.get(parts[0], parts[1]);
 });

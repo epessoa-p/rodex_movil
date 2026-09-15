@@ -5,6 +5,7 @@ import '../../core/format.dart';
 import '../../core/models.dart';
 import '../workshop/work_order_detail_screen.dart';
 import 'overview_repository.dart';
+import 'widgets/ranking_card.dart';
 
 /// Dashboard operativo del día (toda la empresa): ventas de hoy, OTs y motos
 /// en taller, citas, stock, ranking de servicios del mes y OTs recientes.
@@ -109,7 +110,19 @@ class _Body extends StatelessWidget {
           const SizedBox(height: 12),
           _NextAppointmentCard(appt: w.appointments.next),
           const SizedBox(height: 12),
-          _TopServicesCard(services: w.topServices),
+          RankingCard(
+            title: 'Ventas por servicio',
+            icon: Icons.handyman_outlined,
+            hint: 'este mes',
+            emptyText: 'Aún no hay servicios facturados este mes.',
+            items: [
+              for (final s in w.topServices)
+                RankingItem(
+                    label: s.label,
+                    amount: s.amount,
+                    qty: s.count.toDouble()),
+            ],
+          ),
           const SizedBox(height: 12),
           _RecentOrdersCard(orders: w.recent),
         ],
@@ -269,80 +282,6 @@ class _NextAppointmentCard extends StatelessWidget {
             : Text(a!.time!,
                 style: const TextStyle(
                     fontSize: 18, fontWeight: FontWeight.w800)),
-      ),
-    );
-  }
-}
-
-/// Ranking de servicios por ingreso en el mes.
-class _TopServicesCard extends StatelessWidget {
-  final List<ServiceSale> services;
-  const _TopServicesCard({required this.services});
-
-  @override
-  Widget build(BuildContext context) {
-    final max = services.isEmpty
-        ? 1.0
-        : services.map((s) => s.amount).reduce((a, b) => a > b ? a : b);
-    final primary = Theme.of(context).colorScheme.primary;
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.handyman_outlined, size: 18, color: Colors.black54),
-                SizedBox(width: 6),
-                Text('Ventas por servicio',
-                    style: TextStyle(fontWeight: FontWeight.w700)),
-                Spacer(),
-                Text('este mes',
-                    style: TextStyle(fontSize: 11, color: Colors.black45)),
-              ],
-            ),
-            const SizedBox(height: 10),
-            if (services.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
-                child: Text('Aún no hay servicios facturados este mes.',
-                    style: TextStyle(color: Colors.black54)),
-              )
-            else
-              for (final s in services) ...[
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(s.label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.w600)),
-                    ),
-                    const SizedBox(width: 8),
-                    Text('×${s.count}',
-                        style: const TextStyle(
-                            fontSize: 11, color: Colors.black45)),
-                    const SizedBox(width: 10),
-                    Text(money(s.amount),
-                        style: const TextStyle(fontWeight: FontWeight.w700)),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: max > 0 ? (s.amount / max).clamp(0, 1).toDouble() : 0,
-                    minHeight: 6,
-                    backgroundColor: primary.withValues(alpha: .10),
-                    color: primary,
-                  ),
-                ),
-                const SizedBox(height: 10),
-              ],
-          ],
-        ),
       ),
     );
   }

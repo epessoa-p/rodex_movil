@@ -16,7 +16,13 @@ class IncomeStatementScreen extends ConsumerStatefulWidget {
       _IncomeStatementScreenState();
 }
 
-enum _Preset { thisMonth, lastMonth, custom }
+enum _Preset { thisMonth, lastMonth, all, custom }
+
+/// "yyyy-mm-dd" → "dd/mm/yyyy".
+String _dmy(String iso) {
+  final p = iso.split('-');
+  return p.length == 3 ? '${p[2]}/${p[1]}/${p[0]}' : iso;
+}
 
 class _IncomeStatementScreenState extends ConsumerState<IncomeStatementScreen> {
   _Preset _preset = _Preset.thisMonth;
@@ -42,6 +48,9 @@ class _IncomeStatementScreenState extends ConsumerState<IncomeStatementScreen> {
           _from = DateTime(now.year, now.month - 1, 1);
           _to = DateTime(now.year, now.month, 0); // último día del mes anterior
           break;
+        case _Preset.all:
+          // El rango real lo decide el backend (primer movimiento → hoy).
+          break;
         case _Preset.custom:
           break;
       }
@@ -66,8 +75,22 @@ class _IncomeStatementScreenState extends ConsumerState<IncomeStatementScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final key = '${_ymd(_from)}|${_ymd(_to)}';
+    final key = _preset == _Preset.all
+        ? incomeStatementAllKey
+        : '${_ymd(_from)}|${_ymd(_to)}';
     final async = ref.watch(incomeStatementProvider(key));
+
+    // Cabecera de rango: en "Todo" se muestra la fecha real del primer
+    // movimiento que devuelve el backend.
+    final String rangeText;
+    if (_preset == _Preset.all) {
+      final from = async.valueOrNull?.from;
+      rangeText = from == null || from.isEmpty
+          ? 'Desde el inicio  —  hoy'
+          : 'Desde ${_dmy(from)}  —  hoy';
+    } else {
+      rangeText = '${_ymd(_from)}  —  ${_ymd(_to)}';
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('Estado de resultados')),
@@ -85,10 +108,17 @@ class _IncomeStatementScreenState extends ConsumerState<IncomeStatementScreen> {
                       ButtonSegment(
                           value: _Preset.lastMonth, label: Text('Mes ant.')),
                       ButtonSegment(
+                          value: _Preset.all, label: Text('Todo')),
+                      ButtonSegment(
                           value: _Preset.custom, label: Text('Rango')),
                     ],
                     selected: {_preset},
                     showSelectedIcon: false,
+                    style: const ButtonStyle(
+                      visualDensity: VisualDensity.compact,
+                      padding: WidgetStatePropertyAll(
+                          EdgeInsets.symmetric(horizontal: 8)),
+                    ),
                     onSelectionChanged: (s) {
                       final p = s.first;
                       if (p == _Preset.custom) {
@@ -107,7 +137,7 @@ class _IncomeStatementScreenState extends ConsumerState<IncomeStatementScreen> {
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                '${_ymd(_from)}  —  ${_ymd(_to)}',
+                rangeText,
                 style: const TextStyle(fontSize: 12, color: Colors.black54),
               ),
             ),
@@ -129,7 +159,7 @@ class _IncomeStatementScreenState extends ConsumerState<IncomeStatementScreen> {
                     const SizedBox(height: 12),
                     _section('Egresos', r.expense, r.totalExpense, Colors.red),
                     const SizedBox(height: 12),
-                    _resultCard(r.net),
+                    _resultCard(r.net, _preset == _Preset.all),
                     const SizedBox(height: 20),
                   ],
                 ),
@@ -186,7 +216,7 @@ class _IncomeStatementScreenState extends ConsumerState<IncomeStatementScreen> {
     );
   }
 
-  Widget _resultCard(double net) {
+  Widget _resultCard(double net, bool all) {
     final positive = net >= 0;
     final color = positive ? Colors.green : Colors.red;
     return Card(
@@ -199,8 +229,8 @@ class _IncomeStatementScreenState extends ConsumerState<IncomeStatementScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Resultado del período',
-                    style: TextStyle(fontSize: 12, color: Colors.black54)),
+                Text(all ? 'Resultado acumulado' : 'Resultado del período',
+                    style: const TextStyle(fontSize: 12, color: Colors.black54)),
                 Text(positive ? 'Utilidad' : 'Pérdida',
                     style: const TextStyle(fontWeight: FontWeight.w700)),
               ],

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
+import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/providers.dart';
 import 'treasury_account_screen.dart';
@@ -42,15 +43,16 @@ class TreasuryScreen extends ConsumerWidget {
             children: [
               _TotalCard(total: o.totalBalance),
               const SizedBox(height: 16),
-              Text('Cuentas',
-                  style: Theme.of(context).textTheme.titleMedium),
+              Text('Cuentas', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               if (o.accounts.isEmpty)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 24),
                   child: Center(
-                    child: Text('Aún no hay cuentas. Crea la primera.',
-                        style: TextStyle(color: Colors.black54)),
+                    child: Text(
+                      'Aún no hay cuentas. Crea la primera.',
+                      style: TextStyle(color: Colors.black54),
+                    ),
                   ),
                 )
               else
@@ -90,12 +92,15 @@ class _TotalCard extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             const Expanded(
-              child: Text('Saldo total',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+              child: Text(
+                'Saldo total',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+              ),
             ),
-            Text(money(total),
-                style: const TextStyle(
-                    fontSize: 20, fontWeight: FontWeight.w800)),
+            Text(
+              money(total),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            ),
           ],
         ),
       ),
@@ -113,24 +118,35 @@ class _AccountTile extends StatelessWidget {
     return Card(
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor:
-              (isBank ? Colors.indigo : Colors.green).withValues(alpha: .15),
-          child: Icon(isBank ? Icons.account_balance : Icons.payments_outlined,
-              color: isBank ? Colors.indigo : Colors.green),
+          backgroundColor: (isBank ? Colors.indigo : Colors.green).withValues(
+            alpha: .15,
+          ),
+          child: Icon(
+            isBank ? Icons.account_balance : Icons.payments_outlined,
+            color: isBank ? Colors.indigo : Colors.green,
+          ),
         ),
-        title: Text(account.name,
-            style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text([
-          account.typeLabel,
-          if (account.bankName != null && account.bankName!.isNotEmpty)
-            account.bankName,
-          if (!account.active) '(inactiva)',
-        ].whereType<String>().join(' · ')),
-        trailing: Text(money(account.balance),
-            style: const TextStyle(fontWeight: FontWeight.w800)),
-        onTap: () => Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => TreasuryAccountScreen(accountId: account.id),
-        )),
+        title: Text(
+          account.name,
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+        subtitle: Text(
+          [
+            account.typeLabel,
+            if (account.bankName != null && account.bankName!.isNotEmpty)
+              account.bankName,
+            if (!account.active) '(inactiva)',
+          ].whereType<String>().join(' · '),
+        ),
+        trailing: Text(
+          money(account.balance),
+          style: const TextStyle(fontWeight: FontWeight.w800),
+        ),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => TreasuryAccountScreen(accountId: account.id),
+          ),
+        ),
       ),
     );
   }
@@ -168,26 +184,28 @@ class _NewAccountSheetState extends ConsumerState<_NewAccountSheet> {
     }
     setState(() => _saving = true);
     try {
-      await ref.read(treasuryRepositoryProvider).createAccount(
+      await ref
+          .read(treasuryRepositoryProvider)
+          .createAccount(
             name: _name.text.trim(),
             type: _type,
             bankName: _bank.text.trim().isEmpty ? null : _bank.text.trim(),
-            accountNumber:
-                _number.text.trim().isEmpty ? null : _number.text.trim(),
-            openingBalance:
-                double.tryParse(_opening.text.replaceAll(',', '.')),
+            accountNumber: _number.text.trim().isEmpty
+                ? null
+                : _number.text.trim(),
+            openingBalance: double.tryParse(_opening.text.replaceAll(',', '.')),
           );
       if (mounted) Navigator.pop(context, true);
     } on ApiException catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        _snack(e.message);
+        AppToast.apiError(context, e);
       }
     }
   }
 
   void _snack(String m) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+      AppToast.error(context, m, title: 'Revisa el formulario');
 
   @override
   Widget build(BuildContext context) {
@@ -203,19 +221,23 @@ class _NewAccountSheetState extends ConsumerState<_NewAccountSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Nueva cuenta',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+          const Text(
+            'Nueva cuenta',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          ),
           const SizedBox(height: 16),
           SegmentedButton<String>(
             segments: const [
               ButtonSegment(
-                  value: 'cash',
-                  label: Text('Efectivo'),
-                  icon: Icon(Icons.payments_outlined)),
+                value: 'cash',
+                label: Text('Efectivo'),
+                icon: Icon(Icons.payments_outlined),
+              ),
               ButtonSegment(
-                  value: 'bank',
-                  label: Text('Banco'),
-                  icon: Icon(Icons.account_balance)),
+                value: 'bank',
+                label: Text('Banco'),
+                icon: Icon(Icons.account_balance),
+              ),
             ],
             selected: {_type},
             onSelectionChanged: (s) => setState(() => _type = s.first),
@@ -224,42 +246,52 @@ class _NewAccountSheetState extends ConsumerState<_NewAccountSheet> {
           TextField(
             controller: _name,
             decoration: const InputDecoration(
-                labelText: 'Nombre *', border: OutlineInputBorder()),
+              labelText: 'Nombre *',
+              border: OutlineInputBorder(),
+            ),
           ),
           if (isBank) ...[
             const SizedBox(height: 12),
             TextField(
               controller: _bank,
               decoration: const InputDecoration(
-                  labelText: 'Banco', border: OutlineInputBorder()),
+                labelText: 'Banco',
+                border: OutlineInputBorder(),
+              ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _number,
               decoration: const InputDecoration(
-                  labelText: 'N° de cuenta', border: OutlineInputBorder()),
+                labelText: 'N° de cuenta',
+                border: OutlineInputBorder(),
+              ),
             ),
           ],
           const SizedBox(height: 12),
           TextField(
             controller: _opening,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
-                labelText: 'Saldo de apertura (opcional)',
-                prefixText: '$currencySymbol ',
-                border: const OutlineInputBorder()),
+              labelText: 'Saldo de apertura (opcional)',
+              prefixText: '$currencySymbol ',
+              border: const OutlineInputBorder(),
+            ),
           ),
           const SizedBox(height: 16),
           FilledButton.icon(
-            style:
-                FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+            ),
             icon: _saving
                 ? const SizedBox(
                     width: 18,
                     height: 18,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white))
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
                 : const Icon(Icons.check),
             label: const Text('Crear cuenta'),
             onPressed: _saving ? null : _save,

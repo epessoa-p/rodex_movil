@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
+import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/providers.dart';
 import '../../core/sheet_focus.dart';
@@ -170,9 +171,7 @@ class ExpensesTab extends ConsumerWidget {
     ref.invalidate(expensesOverviewProvider);
     ref.invalidate(cashSessionProvider);
     ref.invalidate(treasuryAccountsProvider);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Gasto registrado: ${money(m.amount)}')),
-    );
+    AppToast.success(context, 'Gasto registrado: ${money(m.amount)}');
   }
 
   Future<void> _payService(
@@ -205,9 +204,7 @@ class ExpensesTab extends ConsumerWidget {
     );
     if (created != null && context.mounted) {
       ref.invalidate(expensesOverviewProvider);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Servicio "${created.name}" agregado.')),
-      );
+      AppToast.success(context, 'Servicio "${created.name}" agregado.');
     }
   }
 }
@@ -360,13 +357,13 @@ class _ExpenseSheetState extends ConsumerState<_ExpenseSheet> {
     } on ApiException catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        _snack(e.message);
+        AppToast.apiError(context, e);
       }
     }
   }
 
   void _snack(String m) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+      AppToast.error(context, m, title: 'Revisa el formulario');
 
   @override
   Widget build(BuildContext context) {
@@ -503,8 +500,10 @@ class _NewServiceSheetState extends ConsumerState<_NewServiceSheet> {
 
   Future<void> _submit() async {
     if (_name.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('El nombre es obligatorio.')),
+      AppToast.error(
+        context,
+        'El nombre es obligatorio.',
+        title: 'Revisa el formulario',
       );
       return;
     }
@@ -521,9 +520,7 @@ class _NewServiceSheetState extends ConsumerState<_NewServiceSheet> {
     } on ApiException catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.message)));
+        AppToast.apiError(context, e);
       }
     }
   }

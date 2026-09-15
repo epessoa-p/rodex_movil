@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
+import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
 import '../pos/pos_repository.dart';
@@ -18,9 +19,8 @@ class CashScreen extends ConsumerWidget {
       body: session.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('$e')),
-        data: (s) => s == null
-            ? const _OpenCashForm()
-            : _OpenSessionView(session: s),
+        data: (s) =>
+            s == null ? const _OpenCashForm() : _OpenSessionView(session: s),
       ),
     );
   }
@@ -74,21 +74,31 @@ class _OpenSessionViewState extends ConsumerState<_OpenSessionView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Caja abierta',
-                      style:
-                          TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                  const Text(
+                    'Caja abierta',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                  ),
                   const SizedBox(height: 8),
                   _row('Caja', session.cashRegister ?? '-'),
                   _row('Sucursal', session.branch ?? '-'),
                   const Divider(),
                   _row('Monto inicial', money(session.openingAmount)),
-                  _row('Ingresos', '+ ${money(session.totalIncome)}',
-                      color: Colors.green),
-                  _row('Gastos', '- ${money(session.totalExpense)}',
-                      color: Colors.red),
+                  _row(
+                    'Ingresos',
+                    '+ ${money(session.totalIncome)}',
+                    color: Colors.green,
+                  ),
+                  _row(
+                    'Gastos',
+                    '- ${money(session.totalExpense)}',
+                    color: Colors.red,
+                  ),
                   const Divider(),
-                  _row('Esperado en caja', money(session.expectedAmount),
-                      bold: true),
+                  _row(
+                    'Esperado en caja',
+                    money(session.expectedAmount),
+                    bold: true,
+                  ),
                 ],
               ),
             ),
@@ -99,7 +109,8 @@ class _OpenSessionViewState extends ConsumerState<_OpenSessionView> {
               Expanded(
                 child: OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(46)),
+                    minimumSize: const Size.fromHeight(46),
+                  ),
                   icon: const Icon(Icons.remove_circle_outline),
                   label: const Text('Registrar gasto'),
                   onPressed: _expenseDialog,
@@ -109,8 +120,9 @@ class _OpenSessionViewState extends ConsumerState<_OpenSessionView> {
               Expanded(
                 child: FilledButton.icon(
                   style: FilledButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      minimumSize: const Size.fromHeight(46)),
+                    backgroundColor: Colors.red,
+                    minimumSize: const Size.fromHeight(46),
+                  ),
                   icon: const Icon(Icons.lock_outline),
                   label: const Text('Cerrar caja'),
                   onPressed: _closeDialog,
@@ -119,8 +131,10 @@ class _OpenSessionViewState extends ConsumerState<_OpenSessionView> {
             ],
           ),
           const SizedBox(height: 20),
-          const Text('Movimientos',
-              style: TextStyle(fontWeight: FontWeight.w700)),
+          const Text(
+            'Movimientos',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
           const SizedBox(height: 8),
           _MovementsList(future: _movements),
         ],
@@ -128,22 +142,23 @@ class _OpenSessionViewState extends ConsumerState<_OpenSessionView> {
     );
   }
 
-  Widget _row(String k, String v,
-          {bool bold = false, Color? color}) =>
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 3),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(k, style: const TextStyle(color: Colors.black54)),
-            Text(v,
-                style: TextStyle(
-                    fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
-                    fontSize: bold ? 16 : null,
-                    color: color)),
-          ],
+  Widget _row(String k, String v, {bool bold = false, Color? color}) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 3),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(k, style: const TextStyle(color: Colors.black54)),
+        Text(
+          v,
+          style: TextStyle(
+            fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
+            fontSize: bold ? 16 : null,
+            color: color,
+          ),
         ),
-      );
+      ],
+    ),
+  );
 
   Future<void> _expenseDialog() async {
     final amountCtrl = TextEditingController();
@@ -161,10 +176,13 @@ class _OpenSessionViewState extends ConsumerState<_OpenSessionView> {
               TextField(
                 controller: amountCtrl,
                 autofocus: true,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 decoration: InputDecoration(
-                    labelText: 'Monto', prefixText: '$currencySymbol '),
+                  labelText: 'Monto',
+                  prefixText: '$currencySymbol ',
+                ),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
@@ -180,17 +198,20 @@ class _OpenSessionViewState extends ConsumerState<_OpenSessionView> {
               TextField(
                 controller: conceptCtrl,
                 decoration: const InputDecoration(
-                    labelText: 'Concepto (opcional)'),
+                  labelText: 'Concepto (opcional)',
+                ),
               ),
             ],
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancelar')),
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancelar'),
+            ),
             FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Registrar')),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Registrar'),
+            ),
           ],
         ),
       ),
@@ -201,13 +222,16 @@ class _OpenSessionViewState extends ConsumerState<_OpenSessionView> {
     if (amount <= 0) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Ingresa un monto válido.')));
+          const SnackBar(content: Text('Ingresa un monto válido.')),
+        );
       }
       return;
     }
 
     try {
-      await ref.read(posRepositoryProvider).registerExpense(
+      await ref
+          .read(posRepositoryProvider)
+          .registerExpense(
             amount: amount,
             category: category,
             concept: conceptCtrl.text.trim().isEmpty
@@ -217,20 +241,21 @@ class _OpenSessionViewState extends ConsumerState<_OpenSessionView> {
       ref.invalidate(cashSessionProvider);
       _reloadMovements();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Gasto registrado.')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Gasto registrado.')));
       }
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.message)));
+        AppToast.apiError(context, e);
       }
     }
   }
 
   Future<void> _closeDialog() async {
-    final controller =
-        TextEditingController(text: session.expectedAmount.toStringAsFixed(2));
+    final controller = TextEditingController(
+      text: session.expectedAmount.toStringAsFixed(2),
+    );
     final amount = await showDialog<double>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -248,12 +273,14 @@ class _OpenSessionViewState extends ConsumerState<_OpenSessionView> {
                 TextField(
                   controller: controller,
                   autofocus: true,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   onChanged: (_) => setLocal(() {}),
                   decoration: InputDecoration(
-                      labelText: 'Monto contado en caja',
-                      prefixText: '$currencySymbol '),
+                    labelText: 'Monto contado en caja',
+                    prefixText: '$currencySymbol ',
+                  ),
                 ),
                 const SizedBox(height: 8),
                 _row(
@@ -268,8 +295,9 @@ class _OpenSessionViewState extends ConsumerState<_OpenSessionView> {
             ),
             actions: [
               TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Cancelar')),
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancelar'),
+              ),
               FilledButton(
                 onPressed: () => Navigator.pop(ctx, counted),
                 child: const Text('Cerrar'),
@@ -284,13 +312,13 @@ class _OpenSessionViewState extends ConsumerState<_OpenSessionView> {
       await ref.read(posRepositoryProvider).closeSession(closingAmount: amount);
       ref.invalidate(cashSessionProvider);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Caja cerrada.')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Caja cerrada.')));
       }
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.message)));
+        AppToast.apiError(context, e);
       }
     }
   }
@@ -314,8 +342,10 @@ class _MovementsList extends StatelessWidget {
         if (snap.hasError) {
           return Padding(
             padding: const EdgeInsets.all(12),
-            child: Text('No se pudieron cargar los movimientos.\n${snap.error}',
-                style: const TextStyle(color: Colors.black54)),
+            child: Text(
+              'No se pudieron cargar los movimientos.\n${snap.error}',
+              style: const TextStyle(color: Colors.black54),
+            ),
           );
         }
         final items = snap.data ?? [];
@@ -323,8 +353,11 @@ class _MovementsList extends StatelessWidget {
           return const Padding(
             padding: EdgeInsets.symmetric(vertical: 16),
             child: Center(
-                child: Text('Aún no hay movimientos en esta caja.',
-                    style: TextStyle(color: Colors.black54))),
+              child: Text(
+                'Aún no hay movimientos en esta caja.',
+                style: TextStyle(color: Colors.black54),
+              ),
+            ),
           );
         }
         return Column(
@@ -335,25 +368,26 @@ class _MovementsList extends StatelessWidget {
                 child: ListTile(
                   dense: true,
                   leading: CircleAvatar(
-                    backgroundColor:
-                        (m.isExpense ? Colors.red : Colors.green)
-                            .withValues(alpha: .12),
+                    backgroundColor: (m.isExpense ? Colors.red : Colors.green)
+                        .withValues(alpha: .12),
                     child: Icon(
-                        m.isExpense
-                            ? Icons.arrow_upward
-                            : Icons.arrow_downward,
-                        color: m.isExpense ? Colors.red : Colors.green,
-                        size: 18),
+                      m.isExpense ? Icons.arrow_upward : Icons.arrow_downward,
+                      color: m.isExpense ? Colors.red : Colors.green,
+                      size: 18,
+                    ),
                   ),
-                  title: Text(m.description?.isNotEmpty == true
-                      ? m.description!
-                      : m.category),
+                  title: Text(
+                    m.description?.isNotEmpty == true
+                        ? m.description!
+                        : m.category,
+                  ),
                   subtitle: Text(m.category),
                   trailing: Text(
                     '${m.isExpense ? '-' : '+'} ${money(m.amount)}',
                     style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: m.isExpense ? Colors.red : Colors.green),
+                      fontWeight: FontWeight.w700,
+                      color: m.isExpense ? Colors.red : Colors.green,
+                    ),
                   ),
                 ),
               ),
@@ -405,7 +439,9 @@ class _OpenCashFormState extends ConsumerState<_OpenCashForm> {
     if (_selected == null) return;
     setState(() => _submitting = true);
     try {
-      await ref.read(posRepositoryProvider).openSession(
+      await ref
+          .read(posRepositoryProvider)
+          .openSession(
             cashRegisterId: _selected!,
             openingAmount: double.tryParse(_amount.text) ?? 0,
           );
@@ -413,8 +449,7 @@ class _OpenCashFormState extends ConsumerState<_OpenCashForm> {
     } on ApiException catch (e) {
       if (mounted) {
         setState(() => _submitting = false);
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.message)));
+        AppToast.apiError(context, e);
       }
     }
   }
@@ -442,8 +477,10 @@ class _OpenCashFormState extends ConsumerState<_OpenCashForm> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        const Text('Abrir caja',
-            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+        const Text(
+          'Abrir caja',
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+        ),
         const SizedBox(height: 12),
         for (final r in registers)
           Card(
@@ -458,9 +495,9 @@ class _OpenCashFormState extends ConsumerState<_OpenCashForm> {
                     : null,
               ),
               title: Text(r.name),
-              subtitle: Text(r.hasSession
-                  ? 'Ya tiene una sesión abierta'
-                  : (r.branch ?? '')),
+              subtitle: Text(
+                r.hasSession ? 'Ya tiene una sesión abierta' : (r.branch ?? ''),
+              ),
               onTap: r.hasSession
                   ? null
                   : () => setState(() => _selected = r.id),
@@ -471,7 +508,9 @@ class _OpenCashFormState extends ConsumerState<_OpenCashForm> {
           controller: _amount,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           decoration: InputDecoration(
-              labelText: 'Monto inicial', prefixText: '$currencySymbol '),
+            labelText: 'Monto inicial',
+            prefixText: '$currencySymbol ',
+          ),
         ),
         const SizedBox(height: 20),
         FilledButton.icon(

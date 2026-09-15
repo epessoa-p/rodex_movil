@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
+import '../agenda/agenda_repository.dart';
 import '../pos/pos_repository.dart';
 import '../workshop/workshop_repository.dart';
 import 'app_drawer.dart';
@@ -24,6 +25,9 @@ class HomeScreen extends ConsumerWidget {
     final canSell = me.planAllows('sales') &&
         me.canAny(['pos.access', 'sales.create']);
     final canWorkshop = me.planAllows('workshop') && me.can('workshop.view');
+    final canAgenda =
+        me.planAllows('workshop') && me.can('appointments.view');
+    final today = _todayIso();
 
     return Scaffold(
       drawer: const AppDrawer(),
@@ -54,6 +58,7 @@ class HomeScreen extends ConsumerWidget {
           ref.invalidate(cashSessionProvider);
           ref.invalidate(todaySummaryProvider);
           ref.invalidate(workOrdersSummaryProvider);
+          ref.invalidate(agendaDayProvider(today));
         },
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -68,10 +73,34 @@ class HomeScreen extends ConsumerWidget {
               const SizedBox(height: 12),
               _DaySummaryCard(summary: ref.watch(todaySummaryProvider)),
             ],
-            if (canWorkshop) ...[
+            // OTs y Citas de hoy comparten fila (si solo aplica una, ocupa
+            // todo el ancho).
+            if (canWorkshop || canAgenda) ...[
               const SizedBox(height: 12),
-              _WorkOrdersSummaryCard(
-                  summary: ref.watch(workOrdersSummaryProvider)),
+              // IntrinsicHeight: el Row va dentro de un ListView (alto no
+              // acotado), así ambas tarjetas quedan de la misma altura.
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (canWorkshop)
+                      Expanded(
+                        child: _WorkOrdersMiniStat(
+                          summary: ref.watch(workOrdersSummaryProvider),
+                          onTap: () => context.push('/workshop'),
+                        ),
+                      ),
+                    if (canWorkshop && canAgenda) const SizedBox(width: 12),
+                    if (canAgenda)
+                      Expanded(
+                        child: _AppointmentsMiniStat(
+                          day: ref.watch(agendaDayProvider(today)),
+                          onTap: () => context.push('/agenda'),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ],
             const SizedBox(height: 20),
             Text('Acciones', style: Theme.of(context).textTheme.titleMedium),
@@ -248,56 +277,136 @@ class _DaySummaryCard extends StatelessWidget {
   }
 }
 
-class _WorkOrdersSummaryCard extends StatelessWidget {
-  final AsyncValue<WorkOrdersSummary> summary;
-  const _WorkOrdersSummaryCard({required this.summary});
+/// "yyyy-mm-dd" de hoy (clave de `agendaDayProvider`).
+String _todayIso() {
+  final d = DateTime.now();
+  String two(int n) => n.toString().padLeft(2, '0');
+  return '${d.year}-${two(d.month)}-${two(d.day)}';
+}
+
+/// Tarjeta compacta para la fila "OTs hoy · Citas hoy": ícono, etiqueta,
+/// número grande y una sub-línea. Con `Expanded` a cada lado quedan parejas.
+class _MiniStat extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String label;
+  final AsyncValue<(String, String)> value; // (número grande, sub-línea)
+  final VoidCallback? onTap;
+  const _MiniStat({
+    required this.icon,
+    required this.color,
+    required this.label,
+    required this.value,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final outline = Theme.of(context).colorScheme.outline;
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: summary.when(
-          loading: () => const SizedBox(
-              height: 48,
-              child: Center(child: CircularProgressIndicator())),
-          error: (e, _) => Row(children: const [
-            Icon(Icons.error_outline, color: Colors.red),
-            SizedBox(width: 8),
-            Expanded(child: Text('No se pudo cargar el resumen')),
-          ]),
-          data: (s) => Row(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                backgroundColor: Colors.deepPurple.withValues(alpha: .15),
-                child: const Icon(Icons.build_circle_outlined,
-                    color: Colors.deepPurple),
+              Row(
+                children: [
+                  Icon(icon, size: 18, color: color),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 13)),
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
+              const SizedBox(height: 6),
+              value.when(
+                loading: () => const SizedBox(
+                    height: 34,
+                    child: Center(
+                        child: SizedBox(
+                            width: 18,
+                            height: 18,
+                            child:
+                                CircularProgressIndicator(strokeWidth: 2)))),
+                error: (e, _) => const SizedBox(
+                  height: 34,
+                  child: Row(children: [
+                    Icon(Icons.error_outline, color: Colors.red, size: 16),
+                    SizedBox(width: 4),
+                    Expanded(
+                        child: Text('Sin datos',
+                            style: TextStyle(fontSize: 12))),
+                  ]),
+                ),
+                data: (v) => Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      s.scope == 'all' ? 'OTs de hoy' : 'Mis OTs de hoy',
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    Text(
-                      '${s.receivedToday} ${s.receivedToday == 1 ? 'recibida' : 'recibidas'} · ${s.active} ${s.active == 1 ? 'activa' : 'activas'}',
-                      style: TextStyle(
-                          color: Theme.of(context).colorScheme.outline,
-                          fontSize: 13),
-                    ),
+                    Text(v.$1,
+                        style: const TextStyle(
+                            fontSize: 22, fontWeight: FontWeight.w800)),
+                    Text(v.$2,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: outline, fontSize: 12)),
                   ],
                 ),
               ),
-              Text('${s.active}',
-                  style: const TextStyle(
-                      fontSize: 20, fontWeight: FontWeight.w800)),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+class _WorkOrdersMiniStat extends StatelessWidget {
+  final AsyncValue<WorkOrdersSummary> summary;
+  final VoidCallback? onTap;
+  const _WorkOrdersMiniStat({required this.summary, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return _MiniStat(
+      icon: Icons.build_circle_outlined,
+      color: Colors.deepPurple,
+      label: summary.valueOrNull?.scope == 'all' ? 'OTs hoy' : 'Mis OTs hoy',
+      onTap: onTap,
+      value: summary.whenData((s) => (
+            '${s.receivedToday}',
+            '${s.receivedToday == 1 ? 'recibida' : 'recibidas'} · ${s.active} ${s.active == 1 ? 'activa' : 'activas'}',
+          )),
+    );
+  }
+}
+
+class _AppointmentsMiniStat extends StatelessWidget {
+  final AsyncValue<AgendaDay> day;
+  final VoidCallback? onTap;
+  const _AppointmentsMiniStat({required this.day, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return _MiniStat(
+      icon: Icons.calendar_month_outlined,
+      color: Colors.pink,
+      label: 'Citas hoy',
+      onTap: onTap,
+      value: day.whenData((d) {
+        final pending = d.programada + d.confirmada;
+        return (
+          '${d.total}',
+          d.total == 0
+              ? 'sin citas'
+              : '$pending ${pending == 1 ? 'pendiente' : 'pendientes'} · ${d.completada} ${d.completada == 1 ? 'completada' : 'completadas'}',
+        );
+      }),
     );
   }
 }

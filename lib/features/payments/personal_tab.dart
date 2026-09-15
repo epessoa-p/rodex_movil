@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
+import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/sheet_focus.dart';
 import '../pos/pos_repository.dart' show cashSessionProvider;
@@ -96,10 +97,9 @@ class PersonalTab extends ConsumerWidget {
       ref.invalidate(expensesOverviewProvider);
       ref.invalidate(cashSessionProvider);
       ref.invalidate(treasuryAccountsProvider);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Pago a ${p.name} registrado: ${money(done.amount)}'),
-        ),
+      AppToast.success(
+        context,
+        'Pago a ${p.name} registrado: ${money(done.amount)}',
       );
     }
   }
@@ -148,43 +148,37 @@ class _PayrollSheet extends ConsumerStatefulWidget {
   ConsumerState<_PayrollSheet> createState() => _PayrollSheetState();
 }
 
+/// Períodos de pago a personal: los mismos valores que el select de la web,
+/// porque van dentro de la descripción del movimiento ("Pago a personal (Quincena) · …").
+const _periodOptions = ['Día', 'Semana', 'Quincena', 'Mes', 'Otro'];
+
 class _PayrollSheetState extends ConsumerState<_PayrollSheet> {
   final _amount = TextEditingController();
   late final SheetFocus _focus = SheetFocus(this);
-  late final TextEditingController _period;
+  final _otherPeriod = TextEditingController(); // solo si el período es "Otro"
   final _notes = TextEditingController();
+  String _period = 'Mes';
   PaymentSource? _source = const PaymentSource.cash();
   bool _saving = false;
 
   @override
   void initState() {
     super.initState();
-    // Período por defecto: mes actual, ej. "Sep 2026" (sin depender del locale
-    // de intl, que la app no inicializa).
-    const months = [
-      'Ene',
-      'Feb',
-      'Mar',
-      'Abr',
-      'May',
-      'Jun',
-      'Jul',
-      'Ago',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dic',
-    ];
-    final now = DateTime.now();
-    _period = TextEditingController(
-      text: '${months[now.month - 1]} ${now.year}',
-    );
-    // Sugerir el mismo monto del último pago.
-    if (widget.person.lastPayment != null) {
-      final v = widget.person.lastPayment!.amount;
+    final last = widget.person.lastPayment;
+    if (last != null) {
+      // Sugerir el mismo monto y el mismo período del último pago.
+      final v = last.amount;
       _amount.text = v == v.roundToDouble()
           ? v.toStringAsFixed(0)
           : v.toStringAsFixed(2);
+      if (last.period != null) {
+        if (_periodOptions.contains(last.period)) {
+          _period = last.period!;
+        } else {
+          _period = 'Otro';
+          _otherPeriod.text = last.period!;
+        }
+      }
     }
   }
 
@@ -192,9 +186,16 @@ class _PayrollSheetState extends ConsumerState<_PayrollSheet> {
   void dispose() {
     _amount.dispose();
     _focus.dispose();
-    _period.dispose();
+    _otherPeriod.dispose();
     _notes.dispose();
     super.dispose();
+  }
+
+  /// Texto que viaja como `period`: la opción, o lo escrito si es "Otro".
+  String get _periodValue {
+    if (_period != 'Otro') return _period;
+    final custom = _otherPeriod.text.trim();
+    return custom.isEmpty ? 'Otro' : custom;
   }
 
   Future<void> _submit() async {
@@ -212,7 +213,7 @@ class _PayrollSheetState extends ConsumerState<_PayrollSheet> {
             amount: amount,
             source: source.source,
             personalId: widget.person.id,
-            period: _period.text.trim().isEmpty ? null : _period.text.trim(),
+            period: _periodValue,
             treasuryAccountId: source.treasuryAccountId,
             notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
           );
@@ -220,13 +221,13 @@ class _PayrollSheetState extends ConsumerState<_PayrollSheet> {
     } on ApiException catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        _snack(e.message);
+        AppToast.apiError(context, e);
       }
     }
   }
 
   void _snack(String m) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+      AppToast.error(context, m, title: 'Revisa el formulario');
 
   @override
   Widget build(BuildContext context) {
@@ -260,16 +261,38 @@ class _PayrollSheetState extends ConsumerState<_PayrollSheet> {
                 border: const OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _period,
-              textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
-                labelText: 'Período',
-                helperText: 'Ej.: Sep 2026, Quincena 1, Adelanto',
-                border: OutlineInputBorder(),
-              ),
+            const SizedBox(height: 14),
+            const Text(
+              'Período',
+              style: TextStyle(fontSize: 12, color: Colors.black54),
             ),
+            const SizedBox(height: 6),
+            // Selección fija (igual que la web): Día / Semana / Quincena / Mes / Otro.
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                for (final p in _periodOptions)
+                  ChoiceChip(
+                    label: Text(p),
+                    selected: _period == p,
+                    onSelected: (_) => setState(() => _period = p),
+                  ),
+              ],
+            ),
+            if (_period == 'Otro') ...[
+              const SizedBox(height: 10),
+              TextField(
+                controller: _otherPeriod,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(
+                  labelText: '¿Qué se paga?',
+                  hintText: 'Ej.: Bono, Adelanto, Aguinaldo',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             PaymentSourceField(onChanged: (s) => setState(() => _source = s)),
             const SizedBox(height: 12),
