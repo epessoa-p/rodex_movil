@@ -202,12 +202,10 @@ class _DirectPurchaseScreenState extends ConsumerState<DirectPurchaseScreen> {
       ref.invalidate(cashSessionProvider);
       if (!mounted) return;
       Navigator.pop(context, true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Compra ${res['code'] ?? ''} registrada (${money(_total)}).',
-          ),
-        ),
+      AppToast.success(
+        context,
+        'Compra ${res['code'] ?? ''} registrada (${money(_total)}).',
+        title: 'Compra registrada',
       );
     } on ApiException catch (e) {
       if (mounted) {

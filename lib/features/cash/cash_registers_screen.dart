@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
+import '../../core/app_toast.dart';
 import 'cash_admin_repository.dart';
 
 /// Administración de cajas: crear una caja y asignarla a un personal
@@ -27,7 +28,10 @@ class _CashRegistersScreenState extends ConsumerState<CashRegistersScreen> {
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final repo = ref.read(cashAdminRepositoryProvider);
       final results = await Future.wait([repo.registers(), repo.formData()]);
@@ -39,7 +43,12 @@ class _CashRegistersScreenState extends ConsumerState<CashRegistersScreen> {
         });
       }
     } on ApiException catch (e) {
-      if (mounted) setState(() { _error = e.message; _loading = false; });
+      if (mounted) {
+        setState(() {
+          _error = e.message;
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -51,10 +60,11 @@ class _CashRegistersScreenState extends ConsumerState<CashRegistersScreen> {
       return;
     }
     // Regla: una caja por sucursal. Al crear, solo se ofrecen las libres.
-    if (editing == null &&
-        !form.branches.any((b) => !b.isTaken())) {
-      _snack('Todas las sucursales ya tienen su caja. '
-          'Solo se permite una caja por sucursal.');
+    if (editing == null && !form.branches.any((b) => !b.isTaken())) {
+      _snack(
+        'Todas las sucursales ya tienen su caja. '
+        'Solo se permite una caja por sucursal.',
+      );
       return;
     }
 
@@ -66,8 +76,8 @@ class _CashRegistersScreenState extends ConsumerState<CashRegistersScreen> {
     if (saved == true) _load();
   }
 
-  void _snack(String m) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+  // Validaciones y errores locales: toast rojo arriba (visible sobre hojas).
+  void _snack(String m) => AppToast.error(context, m);
 
   @override
   Widget build(BuildContext context) {
@@ -81,58 +91,69 @@ class _CashRegistersScreenState extends ConsumerState<CashRegistersScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Text('$_error', textAlign: TextAlign.center),
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: _items.isEmpty
-                      ? ListView(children: const [
-                          SizedBox(height: 120),
-                          Icon(Icons.point_of_sale_outlined,
-                              size: 56, color: Colors.black26),
-                          SizedBox(height: 12),
-                          Center(
-                              child: Text(
-                                  'Sin cajas. Crea una y asígnala a un personal.')),
-                        ])
-                      : ListView.separated(
-                          itemCount: _items.length,
-                          separatorBuilder: (_, _) => const Divider(height: 1),
-                          itemBuilder: (context, i) {
-                            final r = _items[i];
-                            return ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor: (r.active
-                                        ? Colors.green
-                                        : Colors.grey)
-                                    .withValues(alpha: .12),
-                                child: Icon(Icons.point_of_sale,
-                                    color:
-                                        r.active ? Colors.green : Colors.grey),
-                              ),
-                              title: Text(r.name),
-                              subtitle: Text([
-                                r.branch ?? 'Sin sucursal',
-                                'Personal: ${r.personal ?? '—'}',
-                              ].join('  ·  ')),
-                              trailing: r.hasSession
-                                  ? const Chip(
-                                      label: Text('En uso'),
-                                      visualDensity: VisualDensity.compact)
-                                  : (r.active
-                                      ? null
-                                      : const Text('Inactiva',
-                                          style:
-                                              TextStyle(color: Colors.grey))),
-                              onTap: () => _openForm(editing: r),
-                            );
-                          },
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text('$_error', textAlign: TextAlign.center),
+              ),
+            )
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: _items.isEmpty
+                  ? ListView(
+                      children: const [
+                        SizedBox(height: 120),
+                        Icon(
+                          Icons.point_of_sale_outlined,
+                          size: 56,
+                          color: Colors.black26,
                         ),
-                ),
+                        SizedBox(height: 12),
+                        Center(
+                          child: Text(
+                            'Sin cajas. Crea una y asígnala a un personal.',
+                          ),
+                        ),
+                      ],
+                    )
+                  : ListView.separated(
+                      itemCount: _items.length,
+                      separatorBuilder: (_, _) => const Divider(height: 1),
+                      itemBuilder: (context, i) {
+                        final r = _items[i];
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor:
+                                (r.active ? Colors.green : Colors.grey)
+                                    .withValues(alpha: .12),
+                            child: Icon(
+                              Icons.point_of_sale,
+                              color: r.active ? Colors.green : Colors.grey,
+                            ),
+                          ),
+                          title: Text(r.name),
+                          subtitle: Text(
+                            [
+                              r.branch ?? 'Sin sucursal',
+                              'Personal: ${r.personal ?? '—'}',
+                            ].join('  ·  '),
+                          ),
+                          trailing: r.hasSession
+                              ? const Chip(
+                                  label: Text('En uso'),
+                                  visualDensity: VisualDensity.compact,
+                                )
+                              : (r.active
+                                    ? null
+                                    : const Text(
+                                        'Inactiva',
+                                        style: TextStyle(color: Colors.grey),
+                                      )),
+                          onTap: () => _openForm(editing: r),
+                        );
+                      },
+                    ),
+            ),
     );
   }
 }
@@ -164,11 +185,13 @@ class _CashRegisterFormState extends ConsumerState<_CashRegisterForm> {
     // Elegible = libre, o la que esta misma caja ya ocupa (así una caja antigua
     // en una sucursal compartida sigue siendo editable).
     _branches = widget.form.branches
-        .where((b) => !b.isTaken(exceptRegisterId: e?.id) || b.id == e?.branchId)
+        .where(
+          (b) => !b.isTaken(exceptRegisterId: e?.id) || b.id == e?.branchId,
+        )
         .toList();
     _name = TextEditingController(text: e?.name ?? '');
-    _branchId = e?.branchId ??
-        (_branches.isNotEmpty ? _branches.first.id : null);
+    _branchId =
+        e?.branchId ?? (_branches.isNotEmpty ? _branches.first.id : null);
     _personalId = e?.personalId ?? widget.form.personal.first.id;
     _active = e?.active ?? true;
   }
@@ -181,13 +204,11 @@ class _CashRegisterFormState extends ConsumerState<_CashRegisterForm> {
 
   Future<void> _save() async {
     if (_name.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('El nombre es obligatorio.')));
+      AppToast.error(context, 'El nombre es obligatorio.');
       return;
     }
     if (_branchId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Selecciona una sucursal.')));
+      AppToast.error(context, 'Selecciona una sucursal.');
       return;
     }
     setState(() => _saving = true);
@@ -214,8 +235,7 @@ class _CashRegisterFormState extends ConsumerState<_CashRegisterForm> {
     } on ApiException catch (err) {
       if (mounted) {
         setState(() => _saving = false);
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(err.message)));
+        AppToast.apiError(context, err);
       }
     }
   }
@@ -229,15 +249,18 @@ class _CashRegisterFormState extends ConsumerState<_CashRegisterForm> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(widget.editing == null ? 'Nueva caja' : 'Editar caja',
-              style:
-                  const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+          Text(
+            widget.editing == null ? 'Nueva caja' : 'Editar caja',
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          ),
           const SizedBox(height: 16),
           TextField(
             controller: _name,
             textCapitalization: TextCapitalization.words,
             decoration: const InputDecoration(
-                labelText: 'Nombre de la caja', border: OutlineInputBorder()),
+              labelText: 'Nombre de la caja',
+              border: OutlineInputBorder(),
+            ),
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<int>(
@@ -257,8 +280,9 @@ class _CashRegisterFormState extends ConsumerState<_CashRegisterForm> {
           DropdownButtonFormField<int>(
             initialValue: _personalId,
             decoration: const InputDecoration(
-                labelText: 'Asignar a personal',
-                border: OutlineInputBorder()),
+              labelText: 'Asignar a personal',
+              border: OutlineInputBorder(),
+            ),
             items: [
               for (final p in widget.form.personal)
                 DropdownMenuItem(value: p.id, child: Text(p.name)),
@@ -274,14 +298,18 @@ class _CashRegisterFormState extends ConsumerState<_CashRegisterForm> {
           ),
           const SizedBox(height: 8),
           FilledButton.icon(
-            style:
-                FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+            ),
             icon: _saving
                 ? const SizedBox(
                     width: 18,
                     height: 18,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white))
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
                 : const Icon(Icons.check),
             label: const Text('Guardar'),
             onPressed: _saving ? null : _save,

@@ -44,7 +44,7 @@ _Última actualización: 2026-08-25_
 - ✅ Estado de caja (abierta/cerrada).
 - ✅ Ocultar accesos según permisos/plan (`me.can()/planAllows()`).
 - ✅ **Resumen del día** (ventas/monto de hoy) en el inicio. Endpoint `GET /sales/summary`; respeta "solo las mías" salvo `sales.view-all-records`.
-- ✅ **OTs hoy + Citas hoy en la misma fila** (tarjetas compactas `_MiniStat`): OTs (recibidas · activas, tap → Taller) y **Citas** (total · pendientes/completadas, tap → Agenda; reutiliza `agendaDayProvider(hoy)`, sin endpoint nuevo). Gate de Citas: plan `workshop` + `appointments.view`; si solo aplica una tarjeta, ocupa todo el ancho. Pull-to-refresh recarga ambas.
+- ✅ **Ventas hoy + OTs hoy + Citas hoy en la misma fila** (tarjetas compactas `_MiniStat`, 2026-09-15): Ventas (monto · N ventas, tap → Ventas), OTs (recibidas · activas, tap → Taller) y **Citas** (total · pendientes, tap → Agenda; reutiliza `agendaDayProvider(hoy)`, sin endpoint nuevo). Gate de Citas: plan `workshop` + `appointments.view`; las que apliquen se reparten el ancho por igual (el monto se encoge con `FittedBox` si no cabe). Pull-to-refresh recarga las tres.
 
 ### POS / Ventas 🟡
 - ✅ Carrito (agregar, +/− cantidad, vaciar, total). El acceso **"Nueva venta"** ya no está en el drawer: es un **botón dentro del listado de Ventas** (y el tile del Inicio).
@@ -145,6 +145,11 @@ Una pantalla con **cuatro tabs inferiores**, cada uno gateado por su permiso (<2
 ### Agenda / Citas ✅  (plan:workshop) — módulo nuevo (web + móvil)
 - ✅ **Vistas Día / Semana / Mes** (conmutador). **Día**: tira de semana + línea de tiempo + resumen (total/programadas/confirmadas/completadas). **Semana**: 7 columnas (lun-dom) con las citas de cada día. **Mes**: calendario con conteo por día; al tocar un día abre su vista. Endpoint de rango `GET /appointments/range?from=&to=`.
 - ✅ **Agendar cita**: cliente **registrado** (con su vehículo) o **rápido** (nombre+teléfono), servicio, mecánico, fecha/hora, duración (30 min–4 h), motivo y notas.
+- ✅ **Varios servicios por cita** (2026-09-15): tarjeta "Servicios" con chips y hoja con buscador y checkboxes; el motivo se autocompleta con los nombres. Se envía `service_ids[]` (el backend conserva `service_id` = primero). **DB:** tabla pivote `appointment_services` → script `20260915_appointment_services.sql` (con backfill).
+- ✅ **Al convertir a OT se copian los servicios** como líneas (`work_order_services`, precio del catálogo, cantidad 1, mecánico de la OT) — tanto en "Crear OT" directo como en la recepción con `appointment_id`.
+- ✅ **Cliente rápido con nombre + teléfono → se registra como cliente** (el backend lo busca por teléfono o lo crea y deja la cita con `client_id`). Solo nombre → sigue como walk-in.
+- ✅ **Nuevo cliente desde la cita**: nombre **y teléfono obligatorios** (también en la API `POST /clients`); validación y confirmación con `AppToast` arriba (antes el SnackBar quedaba detrás del diálogo).
+- ✅ **Estándar de avisos**: todos los `SnackBar` de la app pasaron a `AppToast` (éxito verde / error rojo / info azul, arriba, visibles sobre hojas y diálogos), incl. "OT creada desde la cita".
 - ✅ **Editar/reprogramar**, **cambiar estado** (programada/confirmada/completada/cancelada/no asistió) y **eliminar**.
 - ✅ **Contactar al cliente** desde la cita: **WhatsApp** (abre `wa.me` con mensaje de confirmación prellenado) y **Llamar** (`tel:`). Si no hay teléfono, avisa. (`url_launcher`).
 - ✅ **Convertir a OT**: crea la Orden de Trabajo desde la cita (requiere cliente registrado + vehículo); marca la cita como completada y enlaza la OT. Gateado por `workshop.create`.

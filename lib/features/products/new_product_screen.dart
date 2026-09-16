@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/api_client.dart';
+import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
 import '../pos/pos_repository.dart';
@@ -66,7 +67,12 @@ class _NewProductScreenState extends ConsumerState<NewProductScreen> {
         });
       }
     } on ApiException catch (e) {
-      if (mounted) setState(() { _error = e.message; _loading = false; });
+      if (mounted) {
+        setState(() {
+          _error = e.message;
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -77,8 +83,9 @@ class _NewProductScreenState extends ConsumerState<NewProductScreen> {
       _snack('Nombre y precio son obligatorios.');
       return;
     }
-    final stock =
-        widget.hideInitialStock ? 0.0 : (double.tryParse(_stock.text.replaceAll(',', '.')) ?? 0);
+    final stock = widget.hideInitialStock
+        ? 0.0
+        : (double.tryParse(_stock.text.replaceAll(',', '.')) ?? 0);
     if (stock > 0 && _warehouseId == null) {
       _snack('Selecciona un almacén para el stock inicial.');
       return;
@@ -86,7 +93,9 @@ class _NewProductScreenState extends ConsumerState<NewProductScreen> {
 
     setState(() => _saving = true);
     try {
-      final product = await ref.read(posRepositoryProvider).createProduct(
+      final product = await ref
+          .read(posRepositoryProvider)
+          .createProduct(
             name: name,
             price: price,
             cost: double.tryParse(_cost.text.replaceAll(',', '.')),
@@ -102,13 +111,13 @@ class _NewProductScreenState extends ConsumerState<NewProductScreen> {
     } on ApiException catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        _snack(e.message);
+        AppToast.apiError(context, e);
       }
     }
   }
 
-  void _snack(String m) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+  // Validaciones y errores locales: toast rojo arriba (visible sobre hojas).
+  void _snack(String m) => AppToast.error(context, m);
 
   /// Elige la foto del producto: cámara o galería.
   Future<void> _pickPhoto() async {
@@ -155,62 +164,91 @@ class _NewProductScreenState extends ConsumerState<NewProductScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Text('$_error', textAlign: TextAlign.center),
-                  ),
-                )
-              : ListView(
-                  padding: const EdgeInsets.all(16),
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text('$_error', textAlign: TextAlign.center),
+              ),
+            )
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                _photoPicker(),
+                const SizedBox(height: 16),
+                _field(_name, 'Nombre *', capitalize: true),
+                Row(
                   children: [
-                    _photoPicker(),
-                    const SizedBox(height: 16),
-                    _field(_name, 'Nombre *',
-                        capitalize: true),
-                    Row(children: [
-                      Expanded(
-                          child: _field(_price, 'Precio venta *',
-                              number: true, prefix: '$currencySymbol ')),
-                      const SizedBox(width: 10),
-                      Expanded(
-                          child: _field(_cost, 'Costo',
-                              number: true, prefix: '$currencySymbol ')),
-                    ]),
-                    _field(_barcode, 'Código de barras'),
-                    _field(_unit, 'Unidad'),
-                    if (cat != null && cat.categories.isNotEmpty)
-                      _dropdown('Categoría', _categoryId, cat.categories,
-                          (v) => setState(() => _categoryId = v)),
-                    if (cat != null && cat.brands.isNotEmpty)
-                      _dropdown('Marca', _brandId, cat.brands,
-                          (v) => setState(() => _brandId = v)),
-                    if (!widget.hideInitialStock) ...[
-                      const Divider(height: 28),
-                      const Text('Stock inicial (opcional)',
-                          style: TextStyle(fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 8),
-                      _field(_stock, 'Cantidad', number: true),
-                      if (cat != null && cat.warehouses.isNotEmpty)
-                        _dropdown('Almacén', _warehouseId, cat.warehouses,
-                            (v) => setState(() => _warehouseId = v)),
-                    ],
-                    const SizedBox(height: 20),
-                    FilledButton.icon(
-                      style: FilledButton.styleFrom(
-                          minimumSize: const Size.fromHeight(50)),
-                      icon: _saving
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white))
-                          : const Icon(Icons.check),
-                      label: const Text('Crear producto'),
-                      onPressed: _saving ? null : _save,
+                    Expanded(
+                      child: _field(
+                        _price,
+                        'Precio venta *',
+                        number: true,
+                        prefix: '$currencySymbol ',
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _field(
+                        _cost,
+                        'Costo',
+                        number: true,
+                        prefix: '$currencySymbol ',
+                      ),
                     ),
                   ],
                 ),
+                _field(_barcode, 'Código de barras'),
+                _field(_unit, 'Unidad'),
+                if (cat != null && cat.categories.isNotEmpty)
+                  _dropdown(
+                    'Categoría',
+                    _categoryId,
+                    cat.categories,
+                    (v) => setState(() => _categoryId = v),
+                  ),
+                if (cat != null && cat.brands.isNotEmpty)
+                  _dropdown(
+                    'Marca',
+                    _brandId,
+                    cat.brands,
+                    (v) => setState(() => _brandId = v),
+                  ),
+                if (!widget.hideInitialStock) ...[
+                  const Divider(height: 28),
+                  const Text(
+                    'Stock inicial (opcional)',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 8),
+                  _field(_stock, 'Cantidad', number: true),
+                  if (cat != null && cat.warehouses.isNotEmpty)
+                    _dropdown(
+                      'Almacén',
+                      _warehouseId,
+                      cat.warehouses,
+                      (v) => setState(() => _warehouseId = v),
+                    ),
+                ],
+                const SizedBox(height: 20),
+                FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(50),
+                  ),
+                  icon: _saving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.check),
+                  label: const Text('Crear producto'),
+                  onPressed: _saving ? null : _save,
+                ),
+              ],
+            ),
     );
   }
 
@@ -234,12 +272,16 @@ class _NewProductScreenState extends ConsumerState<NewProductScreen> {
                   ? const Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.add_a_photo_outlined,
-                            color: Colors.black45, size: 30),
+                        Icon(
+                          Icons.add_a_photo_outlined,
+                          color: Colors.black45,
+                          size: 30,
+                        ),
                         SizedBox(height: 6),
-                        Text('Agregar foto',
-                            style:
-                                TextStyle(color: Colors.black54, fontSize: 12)),
+                        Text(
+                          'Agregar foto',
+                          style: TextStyle(color: Colors.black54, fontSize: 12),
+                        ),
                       ],
                     )
                   : Image.file(File(photo.path), fit: BoxFit.cover),
@@ -248,17 +290,28 @@ class _NewProductScreenState extends ConsumerState<NewProductScreen> {
           if (photo != null)
             TextButton.icon(
               onPressed: _removePhoto,
-              icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
-              label: const Text('Quitar foto',
-                  style: TextStyle(color: Colors.red)),
+              icon: const Icon(
+                Icons.delete_outline,
+                size: 18,
+                color: Colors.red,
+              ),
+              label: const Text(
+                'Quitar foto',
+                style: TextStyle(color: Colors.red),
+              ),
             ),
         ],
       ),
     );
   }
 
-  Widget _field(TextEditingController c, String label,
-      {bool number = false, bool capitalize = false, String? prefix}) {
+  Widget _field(
+    TextEditingController c,
+    String label, {
+    bool number = false,
+    bool capitalize = false,
+    String? prefix,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextField(
@@ -266,23 +319,33 @@ class _NewProductScreenState extends ConsumerState<NewProductScreen> {
         keyboardType: number
             ? const TextInputType.numberWithOptions(decimal: true)
             : TextInputType.text,
-        textCapitalization:
-            capitalize ? TextCapitalization.words : TextCapitalization.none,
+        textCapitalization: capitalize
+            ? TextCapitalization.words
+            : TextCapitalization.none,
         decoration: InputDecoration(
-            labelText: label, prefixText: prefix, border: const OutlineInputBorder()),
+          labelText: label,
+          prefixText: prefix,
+          border: const OutlineInputBorder(),
+        ),
       ),
     );
   }
 
-  Widget _dropdown(String label, int? value, List<IdName> items,
-      ValueChanged<int?> onChanged) {
+  Widget _dropdown(
+    String label,
+    int? value,
+    List<IdName> items,
+    ValueChanged<int?> onChanged,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: DropdownButtonFormField<int>(
         initialValue: value,
         isExpanded: true,
-        decoration:
-            InputDecoration(labelText: label, border: const OutlineInputBorder()),
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+        ),
         items: [
           if (label == 'Categoría' || label == 'Marca')
             const DropdownMenuItem(value: null, child: Text('—')),

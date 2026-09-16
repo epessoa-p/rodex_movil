@@ -104,20 +104,26 @@ class _IncomeStatementScreenState extends ConsumerState<IncomeStatementScreen> {
                   child: SegmentedButton<_Preset>(
                     segments: const [
                       ButtonSegment(
-                          value: _Preset.thisMonth, label: Text('Este mes')),
+                        value: _Preset.thisMonth,
+                        label: Text('Este mes'),
+                      ),
                       ButtonSegment(
-                          value: _Preset.lastMonth, label: Text('Mes ant.')),
+                        value: _Preset.lastMonth,
+                        label: Text('Mes ant.'),
+                      ),
+                      ButtonSegment(value: _Preset.all, label: Text('Todo')),
                       ButtonSegment(
-                          value: _Preset.all, label: Text('Todo')),
-                      ButtonSegment(
-                          value: _Preset.custom, label: Text('Rango')),
+                        value: _Preset.custom,
+                        label: Text('Rango'),
+                      ),
                     ],
                     selected: {_preset},
                     showSelectedIcon: false,
                     style: const ButtonStyle(
                       visualDensity: VisualDensity.compact,
                       padding: WidgetStatePropertyAll(
-                          EdgeInsets.symmetric(horizontal: 8)),
+                        EdgeInsets.symmetric(horizontal: 8),
+                      ),
                     ),
                     onSelectionChanged: (s) {
                       final p = s.first;
@@ -148,10 +154,12 @@ class _IncomeStatementScreenState extends ConsumerState<IncomeStatementScreen> {
                   ref.invalidate(incomeStatementProvider(key)),
               child: async.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => ListView(children: [
-                  const SizedBox(height: 80),
-                  Center(child: Text('$e', textAlign: TextAlign.center)),
-                ]),
+                error: (e, _) => ListView(
+                  children: [
+                    const SizedBox(height: 80),
+                    Center(child: Text('$e', textAlign: TextAlign.center)),
+                  ],
+                ),
                 data: (r) => ListView(
                   padding: const EdgeInsets.all(12),
                   children: [
@@ -172,21 +180,29 @@ class _IncomeStatementScreenState extends ConsumerState<IncomeStatementScreen> {
   }
 
   Widget _section(
-      String title, List<StatementLine> lines, double total, Color color) {
+    String title,
+    List<StatementLine> lines,
+    double total,
+    Color color,
+  ) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title,
-                style: TextStyle(fontWeight: FontWeight.w700, color: color)),
+            Text(
+              title,
+              style: TextStyle(fontWeight: FontWeight.w700, color: color),
+            ),
             const SizedBox(height: 4),
             if (lines.isEmpty)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 8),
-                child: Text('Sin movimientos.',
-                    style: TextStyle(color: Colors.black54)),
+                child: Text(
+                  'Sin movimientos.',
+                  style: TextStyle(color: Colors.black54),
+                ),
               )
             else
               for (final l in lines)
@@ -205,9 +221,10 @@ class _IncomeStatementScreenState extends ConsumerState<IncomeStatementScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('Total ${title.toLowerCase()}'),
-                Text(money(total),
-                    style:
-                        TextStyle(fontWeight: FontWeight.w800, color: color)),
+                Text(
+                  money(total),
+                  style: TextStyle(fontWeight: FontWeight.w800, color: color),
+                ),
               ],
             ),
           ],
@@ -229,15 +246,24 @@ class _IncomeStatementScreenState extends ConsumerState<IncomeStatementScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(all ? 'Resultado acumulado' : 'Resultado del período',
-                    style: const TextStyle(fontSize: 12, color: Colors.black54)),
-                Text(positive ? 'Utilidad' : 'Pérdida',
-                    style: const TextStyle(fontWeight: FontWeight.w700)),
+                Text(
+                  all ? 'Resultado acumulado' : 'Resultado del período',
+                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                ),
+                Text(
+                  positive ? 'Utilidad' : 'Pérdida',
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
               ],
             ),
-            Text(money(net),
-                style: TextStyle(
-                    fontSize: 22, fontWeight: FontWeight.w800, color: color)),
+            Text(
+              money(net),
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: color,
+              ),
+            ),
           ],
         ),
       ),

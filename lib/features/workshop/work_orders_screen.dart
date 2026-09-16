@@ -10,14 +10,14 @@ class WorkOrdersScreen extends ConsumerWidget {
   const WorkOrdersScreen({super.key});
 
   Color _statusColor(String status) => switch (status) {
-        'recibida' => Colors.blueGrey,
-        'diagnosticada' => Colors.indigo,
-        'en_proceso' => Colors.orange,
-        'terminada' => Colors.green,
-        'entregada' => Colors.teal,
-        'anulada' => Colors.red,
-        _ => Colors.grey,
-      };
+    'recibida' => Colors.blueGrey,
+    'diagnosticada' => Colors.indigo,
+    'en_proceso' => Colors.orange,
+    'terminada' => Colors.green,
+    'entregada' => Colors.teal,
+    'anulada' => Colors.red,
+    _ => Colors.grey,
+  };
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -39,15 +39,19 @@ class WorkOrdersScreen extends ConsumerWidget {
         onRefresh: () async => ref.invalidate(workOrdersProvider),
         child: orders.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => ListView(children: [
-            const SizedBox(height: 80),
-            Center(child: Text('$e')),
-          ]),
+          error: (e, _) => ListView(
+            children: [
+              const SizedBox(height: 80),
+              Center(child: Text('$e')),
+            ],
+          ),
           data: (list) => list.isEmpty
-              ? ListView(children: const [
-                  SizedBox(height: 120),
-                  Center(child: Text('No hay órdenes activas.')),
-                ])
+              ? ListView(
+                  children: const [
+                    SizedBox(height: 120),
+                    Center(child: Text('No hay órdenes activas.')),
+                  ],
+                )
               : ListView.separated(
                   padding: const EdgeInsets.all(12),
                   itemCount: list.length,
@@ -58,24 +62,32 @@ class WorkOrdersScreen extends ConsumerWidget {
                       child: ListTile(
                         title: Row(
                           children: [
-                            Text(o.code,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w700)),
+                            Text(
+                              o.code,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                             const SizedBox(width: 8),
                             _StatusChip(
-                                label: o.statusLabel,
-                                color: _statusColor(o.status)),
+                              label: o.statusLabel,
+                              color: _statusColor(o.status),
+                            ),
                           ],
                         ),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('${o.client ?? ''} · ${o.vehicle ?? ''}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis),
+                            Text(
+                              '${o.client ?? ''} · ${o.vehicle ?? ''}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                             if (o.total > 0)
-                              Text('Total ${money(o.total)}',
-                                  style: const TextStyle(fontSize: 12)),
+                              Text(
+                                'Total ${money(o.total)}',
+                                style: const TextStyle(fontSize: 12),
+                              ),
                           ],
                         ),
                         trailing: const Icon(Icons.chevron_right),
@@ -83,8 +95,9 @@ class WorkOrdersScreen extends ConsumerWidget {
                         onTap: () async {
                           await Navigator.of(context).push(
                             MaterialPageRoute(
-                                builder: (_) =>
-                                    WorkOrderDetailScreen(orderId: o.id)),
+                              builder: (_) =>
+                                  WorkOrderDetailScreen(orderId: o.id),
+                            ),
                           );
                           ref.invalidate(workOrdersProvider);
                         },
@@ -111,9 +124,14 @@ class _StatusChip extends StatelessWidget {
         color: color.withValues(alpha: .12),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(label,
-          style: TextStyle(
-              color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 }

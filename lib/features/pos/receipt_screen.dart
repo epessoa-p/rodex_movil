@@ -24,8 +24,9 @@ class ReceiptScreen extends ConsumerWidget {
 
   Future<void> _shareText(WidgetRef ref) async {
     final company = ref.read(authControllerProvider).me?.company?.name;
-    await SharePlus.instance
-        .share(ShareParams(text: buildReceiptText(sale, company: company)));
+    await SharePlus.instance.share(
+      ShareParams(text: buildReceiptText(sale, company: company)),
+    );
   }
 
   @override
@@ -38,20 +39,21 @@ class ReceiptScreen extends ConsumerWidget {
           PopupMenuButton<String>(
             tooltip: 'Compartir recibo',
             icon: const Icon(Icons.share),
-            onSelected: (v) =>
-                v == 'pdf' ? _sharePdf(ref) : _shareText(ref),
+            onSelected: (v) => v == 'pdf' ? _sharePdf(ref) : _shareText(ref),
             itemBuilder: (_) => const [
               PopupMenuItem(
                 value: 'pdf',
                 child: ListTile(
-                    leading: Icon(Icons.picture_as_pdf_outlined),
-                    title: Text('Compartir PDF')),
+                  leading: Icon(Icons.picture_as_pdf_outlined),
+                  title: Text('Compartir PDF'),
+                ),
               ),
               PopupMenuItem(
                 value: 'text',
                 child: ListTile(
-                    leading: Icon(Icons.text_snippet_outlined),
-                    title: Text('Compartir texto')),
+                  leading: Icon(Icons.text_snippet_outlined),
+                  title: Text('Compartir texto'),
+                ),
               ),
             ],
           ),
@@ -66,16 +68,25 @@ class ReceiptScreen extends ConsumerWidget {
                 const CircleAvatar(
                   radius: 34,
                   backgroundColor: Color(0xFFE6F4EA),
-                  child: Icon(Icons.check_circle,
-                      color: Colors.green, size: 44),
+                  child: Icon(
+                    Icons.check_circle,
+                    color: Colors.green,
+                    size: 44,
+                  ),
                 ),
                 const SizedBox(height: 12),
-                Text(sale.code,
-                    style: const TextStyle(
-                        fontSize: 20, fontWeight: FontWeight.w800)),
+                Text(
+                  sale.code,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
                 if (sale.client != null)
-                  Text('Cliente: ${sale.client}',
-                      style: const TextStyle(color: Colors.black54)),
+                  Text(
+                    'Cliente: ${sale.client}',
+                    style: const TextStyle(color: Colors.black54),
+                  ),
               ],
             ),
           ),
@@ -94,15 +105,19 @@ class ReceiptScreen extends ConsumerWidget {
                           Row(
                             children: [
                               Expanded(
-                                  child: Text(
-                                      '${qty(it.quantity)} x ${it.name}')),
+                                child: Text('${qty(it.quantity)} x ${it.name}'),
+                              ),
                               Text(money(it.subtotal)),
                             ],
                           ),
                           if (it.discount > 0)
-                            Text('   Desc. -${money(it.discount)}',
-                                style: const TextStyle(
-                                    color: Colors.red, fontSize: 11)),
+                            Text(
+                              '   Desc. -${money(it.discount)}',
+                              style: const TextStyle(
+                                color: Colors.red,
+                                fontSize: 11,
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -116,8 +131,9 @@ class ReceiptScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 20),
           FilledButton.icon(
-            style:
-                FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+            ),
             icon: const Icon(Icons.picture_as_pdf_outlined),
             label: const Text('Compartir recibo (PDF)'),
             onPressed: () => _sharePdf(ref),
@@ -130,8 +146,9 @@ class ReceiptScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 4),
           OutlinedButton(
-            style:
-                OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+            ),
             onPressed: () => Navigator.pop(context),
             child: const Text('Cerrar'),
           ),
@@ -141,19 +158,25 @@ class ReceiptScreen extends ConsumerWidget {
   }
 
   Widget _totalRow(String label, double value, {bool bold = false}) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 3),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(label,
-                style: TextStyle(
-                    fontWeight: bold ? FontWeight.w800 : FontWeight.normal)),
-            Text(money(value),
-                style: TextStyle(
-                    fontWeight: bold ? FontWeight.w800 : FontWeight.normal)),
-          ],
+    padding: const EdgeInsets.symmetric(vertical: 3),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontWeight: bold ? FontWeight.w800 : FontWeight.normal,
+          ),
         ),
-      );
+        Text(
+          money(value),
+          style: TextStyle(
+            fontWeight: bold ? FontWeight.w800 : FontWeight.normal,
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 /// Recibo en PDF (formato ticket 80 mm) para compartir/imprimir.
@@ -162,80 +185,105 @@ Future<Uint8List> buildReceiptPdf(Sale sale, {String? company}) async {
   final df = DateFormat('dd/MM/yyyy HH:mm');
 
   pw.Widget totalRow(String k, String v, {bool bold = false}) => pw.Padding(
-        padding: const pw.EdgeInsets.symmetric(vertical: 1),
-        child: pw.Row(
-          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-          children: [
-            pw.Text(k,
-                style: pw.TextStyle(
-                    fontSize: 10,
-                    fontWeight:
-                        bold ? pw.FontWeight.bold : pw.FontWeight.normal)),
-            pw.Text(v,
-                style: pw.TextStyle(
-                    fontSize: 10,
-                    fontWeight:
-                        bold ? pw.FontWeight.bold : pw.FontWeight.normal)),
-          ],
-        ),
-      );
-
-  doc.addPage(pw.Page(
-    pageFormat: PdfPageFormat.roll80,
-    margin: const pw.EdgeInsets.all(12),
-    build: (ctx) => pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+    padding: const pw.EdgeInsets.symmetric(vertical: 1),
+    child: pw.Row(
+      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
       children: [
-        if (company != null && company.isNotEmpty)
-          pw.Center(
-            child: pw.Text(company,
-                style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
+        pw.Text(
+          k,
+          style: pw.TextStyle(
+            fontSize: 10,
+            fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
           ),
-        pw.SizedBox(height: 4),
-        pw.Center(
-          child: pw.Text('Recibo ${sale.code}',
-              style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
         ),
-        if (sale.saleDate != null)
-          pw.Center(
-            child: pw.Text(df.format(sale.saleDate!.toLocal()),
-                style: const pw.TextStyle(fontSize: 9)),
+        pw.Text(
+          v,
+          style: pw.TextStyle(
+            fontSize: 10,
+            fontWeight: bold ? pw.FontWeight.bold : pw.FontWeight.normal,
           ),
-        if (sale.client != null && sale.client!.isNotEmpty)
-          pw.Padding(
-            padding: const pw.EdgeInsets.only(top: 2),
-            child: pw.Text('Cliente: ${sale.client}',
-                style: const pw.TextStyle(fontSize: 9)),
-          ),
-        pw.Divider(height: 12),
-        for (final it in sale.items) ...[
-          pw.Row(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Expanded(
-                child: pw.Text('${qty(it.quantity)} x ${it.name}',
-                    style: const pw.TextStyle(fontSize: 9)),
-              ),
-              pw.Text(money(it.subtotal),
-                  style: const pw.TextStyle(fontSize: 9)),
-            ],
-          ),
-          if (it.discount > 0)
-            pw.Text('   Desc. -${money(it.discount)}',
-                style: const pw.TextStyle(fontSize: 8, color: PdfColors.red)),
-        ],
-        pw.Divider(height: 12),
-        totalRow('Total', money(sale.total), bold: true),
-        totalRow('Pagado', money(sale.paidAmount)),
-        if (sale.balance > 0) totalRow('Saldo', money(sale.balance)),
-        pw.SizedBox(height: 10),
-        pw.Center(
-          child: pw.Text('¡Gracias por su compra!',
-              style: const pw.TextStyle(fontSize: 9)),
         ),
       ],
     ),
-  ));
+  );
+
+  doc.addPage(
+    pw.Page(
+      pageFormat: PdfPageFormat.roll80,
+      margin: const pw.EdgeInsets.all(12),
+      build: (ctx) => pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+        children: [
+          if (company != null && company.isNotEmpty)
+            pw.Center(
+              child: pw.Text(
+                company,
+                style: pw.TextStyle(
+                  fontSize: 13,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+            ),
+          pw.SizedBox(height: 4),
+          pw.Center(
+            child: pw.Text(
+              'Recibo ${sale.code}',
+              style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+            ),
+          ),
+          if (sale.saleDate != null)
+            pw.Center(
+              child: pw.Text(
+                df.format(sale.saleDate!.toLocal()),
+                style: const pw.TextStyle(fontSize: 9),
+              ),
+            ),
+          if (sale.client != null && sale.client!.isNotEmpty)
+            pw.Padding(
+              padding: const pw.EdgeInsets.only(top: 2),
+              child: pw.Text(
+                'Cliente: ${sale.client}',
+                style: const pw.TextStyle(fontSize: 9),
+              ),
+            ),
+          pw.Divider(height: 12),
+          for (final it in sale.items) ...[
+            pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Expanded(
+                  child: pw.Text(
+                    '${qty(it.quantity)} x ${it.name}',
+                    style: const pw.TextStyle(fontSize: 9),
+                  ),
+                ),
+                pw.Text(
+                  money(it.subtotal),
+                  style: const pw.TextStyle(fontSize: 9),
+                ),
+              ],
+            ),
+            if (it.discount > 0)
+              pw.Text(
+                '   Desc. -${money(it.discount)}',
+                style: const pw.TextStyle(fontSize: 8, color: PdfColors.red),
+              ),
+          ],
+          pw.Divider(height: 12),
+          totalRow('Total', money(sale.total), bold: true),
+          totalRow('Pagado', money(sale.paidAmount)),
+          if (sale.balance > 0) totalRow('Saldo', money(sale.balance)),
+          pw.SizedBox(height: 10),
+          pw.Center(
+            child: pw.Text(
+              '¡Gracias por su compra!',
+              style: const pw.TextStyle(fontSize: 9),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 
   return doc.save();
 }

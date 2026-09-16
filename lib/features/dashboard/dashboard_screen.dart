@@ -23,14 +23,17 @@ class DashboardScreen extends ConsumerWidget {
         onRefresh: () => ref.refresh(dashboardOverviewProvider.future),
         child: async.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => ListView(children: [
-            const SizedBox(height: 80),
-            Center(
+          error: (e, _) => ListView(
+            children: [
+              const SizedBox(height: 80),
+              Center(
                 child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text('$e', textAlign: TextAlign.center),
-            )),
-          ]),
+                  padding: const EdgeInsets.all(24),
+                  child: Text('$e', textAlign: TextAlign.center),
+                ),
+              ),
+            ],
+          ),
           data: (o) => _Body(overview: o),
         ),
       ),
@@ -65,7 +68,8 @@ class _Body extends StatelessWidget {
                 color: Colors.green,
                 label: 'Ventas hoy',
                 value: money(o.sales!.total),
-                detail: '${o.sales!.count} ${o.sales!.count == 1 ? 'venta' : 'ventas'}',
+                detail:
+                    '${o.sales!.count} ${o.sales!.count == 1 ? 'venta' : 'ventas'}',
               ),
             if (w != null) ...[
               _Kpi(
@@ -118,9 +122,10 @@ class _Body extends StatelessWidget {
             items: [
               for (final s in w.topServices)
                 RankingItem(
-                    label: s.label,
-                    amount: s.amount,
-                    qty: s.count.toDouble()),
+                  label: s.label,
+                  amount: s.amount,
+                  qty: s.count.toDouble(),
+                ),
             ],
           ),
           const SizedBox(height: 12),
@@ -131,7 +136,8 @@ class _Body extends StatelessWidget {
           const Padding(
             padding: EdgeInsets.only(top: 80),
             child: Center(
-                child: Text('No hay indicadores disponibles para tu usuario.')),
+              child: Text('No hay indicadores disponibles para tu usuario.'),
+            ),
           ),
         const SizedBox(height: 24),
       ],
@@ -178,27 +184,36 @@ class _Kpi extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(label,
-                      style: const TextStyle(fontSize: 12, color: Colors.black54),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
+                  child: Text(
+                    label,
+                    style: const TextStyle(fontSize: 12, color: Colors.black54),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
             FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
-              child: Text(value,
-                  style: const TextStyle(
-                      fontSize: 22, fontWeight: FontWeight.w800)),
+              child: Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
-            Text(detail,
-                style: TextStyle(
-                    fontSize: 11,
-                    color: detailColor ?? Colors.black45,
-                    fontWeight: detailColor != null ? FontWeight.w600 : null),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis),
+            Text(
+              detail,
+              style: TextStyle(
+                fontSize: 11,
+                color: detailColor ?? Colors.black45,
+                fontWeight: detailColor != null ? FontWeight.w600 : null,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ],
         ),
       ),
@@ -226,8 +241,10 @@ class _StatusStrip extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('OTs en taller por estado',
-                style: TextStyle(fontWeight: FontWeight.w700)),
+            const Text(
+              'OTs en taller por estado',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
             const SizedBox(height: 10),
             Row(
               children: [
@@ -235,15 +252,22 @@ class _StatusStrip extends StatelessWidget {
                   Expanded(
                     child: Column(
                       children: [
-                        Text('${byStatus[key] ?? 0}',
-                            style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                                color: color)),
-                        Text(label,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                                fontSize: 10, color: Colors.black54)),
+                        Text(
+                          '${byStatus[key] ?? 0}',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: color,
+                          ),
+                        ),
+                        Text(
+                          label,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.black54,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -269,19 +293,27 @@ class _NextAppointmentCard extends StatelessWidget {
           backgroundColor: Colors.pink.withValues(alpha: .12),
           child: const Icon(Icons.event_available, color: Colors.pink),
         ),
-        title: Text(a == null ? 'Sin citas pendientes hoy' : 'Próxima cita',
-            style: const TextStyle(fontWeight: FontWeight.w700)),
+        title: Text(
+          a == null ? 'Sin citas pendientes hoy' : 'Próxima cita',
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
         subtitle: a == null
             ? null
-            : Text([
-                if (a.client != null && a.client!.isNotEmpty) a.client!,
-                if (a.title != null && a.title!.isNotEmpty) a.title!,
-              ].join('  ·  ')),
+            : Text(
+                [
+                  if (a.client != null && a.client!.isNotEmpty) a.client!,
+                  if (a.title != null && a.title!.isNotEmpty) a.title!,
+                ].join('  ·  '),
+              ),
         trailing: a?.time == null
             ? null
-            : Text(a!.time!,
+            : Text(
+                a!.time!,
                 style: const TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.w800)),
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
       ),
     );
   }
@@ -293,13 +325,13 @@ class _RecentOrdersCard extends StatelessWidget {
   const _RecentOrdersCard({required this.orders});
 
   static Color _statusColor(String status) => switch (status) {
-        'recibida' => Colors.blueGrey,
-        'diagnosticada' => Colors.indigo,
-        'en_proceso' => Colors.orange,
-        'terminada' => Colors.green,
-        'entregada' => Colors.grey,
-        _ => Colors.black45,
-      };
+    'recibida' => Colors.blueGrey,
+    'diagnosticada' => Colors.indigo,
+    'en_proceso' => Colors.orange,
+    'terminada' => Colors.green,
+    'entregada' => Colors.grey,
+    _ => Colors.black45,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -309,21 +341,27 @@ class _RecentOrdersCard extends StatelessWidget {
         children: [
           const Padding(
             padding: EdgeInsets.fromLTRB(14, 12, 14, 4),
-            child: Text('OTs recientes',
-                style: TextStyle(fontWeight: FontWeight.w700)),
+            child: Text(
+              'OTs recientes',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
           ),
           if (orders.isEmpty)
             const Padding(
               padding: EdgeInsets.fromLTRB(14, 8, 14, 16),
-              child: Text('Sin órdenes registradas.',
-                  style: TextStyle(color: Colors.black54)),
+              child: Text(
+                'Sin órdenes registradas.',
+                style: TextStyle(color: Colors.black54),
+              ),
             )
           else
             for (final o in orders)
               ListTile(
                 dense: true,
-                title: Text(o.code,
-                    style: const TextStyle(fontWeight: FontWeight.w700)),
+                title: Text(
+                  o.code,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
                 subtitle: Text(
                   [o.client ?? 'Sin cliente', ?o.vehicle].join('  ·  '),
                   maxLines: 1,
@@ -333,18 +371,22 @@ class _RecentOrdersCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(o.statusLabel,
-                        style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: _statusColor(o.status))),
-                    Text(money(o.total),
-                        style: const TextStyle(fontSize: 12)),
+                    Text(
+                      o.statusLabel,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: _statusColor(o.status),
+                      ),
+                    ),
+                    Text(money(o.total), style: const TextStyle(fontSize: 12)),
                   ],
                 ),
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => WorkOrderDetailScreen(orderId: o.id),
-                )),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => WorkOrderDetailScreen(orderId: o.id),
+                  ),
+                ),
               ),
           const SizedBox(height: 4),
         ],

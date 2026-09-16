@@ -8,11 +8,12 @@ final apiClientProvider = Provider<ApiClient>((ref) => ApiClient());
 
 final secureStoreProvider = Provider<SecureStore>((ref) => SecureStore());
 
-final authControllerProvider =
-    StateNotifierProvider<AuthController, AuthState>((ref) {
-  return AuthController(
-    ref.read(apiClientProvider),
-    ref.read(secureStoreProvider),
-    ref,
-  )..bootstrap();
-});
+final authControllerProvider = StateNotifierProvider<AuthController, AuthState>(
+  (ref) {
+    return AuthController(
+      ref.read(apiClientProvider),
+      ref.read(secureStoreProvider),
+      ref,
+    )..bootstrap();
+  },
+);

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api_client.dart';
+import '../../core/app_toast.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
 import '../workshop/reception_screen.dart';
@@ -11,17 +12,34 @@ import 'appointment_form_screen.dart';
 
 const _dow = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 const _dowFull = [
-  'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'
+  'lunes',
+  'martes',
+  'miércoles',
+  'jueves',
+  'viernes',
+  'sábado',
+  'domingo',
 ];
 const _months = [
-  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio',
-  'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
 ];
 
 String _ymd(DateTime d) =>
     '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-String _cap(String s) => s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+String _cap(String s) =>
+    s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
 
 enum _View { day, week, month }
 
@@ -41,7 +59,8 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
       DateTime(_selected.year, _selected.month, _selected.day);
   String get _dateStr => _ymd(_dateOnly);
 
-  DateTime get _weekStart => _dateOnly.subtract(Duration(days: _dateOnly.weekday - 1));
+  DateTime get _weekStart =>
+      _dateOnly.subtract(Duration(days: _dateOnly.weekday - 1));
   DateTime get _weekEnd => _weekStart.add(const Duration(days: 6));
   String get _weekKey => '${_ymd(_weekStart)}|${_ymd(_weekEnd)}';
 
@@ -66,9 +85,11 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
   }
 
   Future<void> _openForm({Appointment? edit}) async {
-    final saved = await Navigator.of(context).push<bool>(MaterialPageRoute(
-      builder: (_) => AppointmentFormScreen(date: _dateOnly, edit: edit),
-    ));
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => AppointmentFormScreen(date: _dateOnly, edit: edit),
+      ),
+    );
     if (saved == true) _refreshAfterAction();
   }
 
@@ -126,7 +147,9 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
       children: [
         _WeekStrip(weekStart: _weekStart, selected: _dateOnly, onPick: _go),
         _RangeHeader(
-          label: _cap('${_dowFull[_dateOnly.weekday - 1]} ${_dateOnly.day} de ${_months[_dateOnly.month - 1]}'),
+          label: _cap(
+            '${_dowFull[_dateOnly.weekday - 1]} ${_dateOnly.day} de ${_months[_dateOnly.month - 1]}',
+          ),
           onPrev: () => _go(_dateOnly.subtract(const Duration(days: 1))),
           onNext: () => _go(_dateOnly.add(const Duration(days: 1))),
         ),
@@ -162,7 +185,8 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
         ),
         Expanded(
           child: RefreshIndicator(
-            onRefresh: () async => ref.invalidate(agendaRangeProvider(_weekKey)),
+            onRefresh: () async =>
+                ref.invalidate(agendaRangeProvider(_weekKey)),
             child: async.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => _errList(e),
@@ -202,23 +226,29 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
                   '${_dow[d.weekday - 1]} ${d.day}',
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
-                    color: isToday ? Theme.of(context).colorScheme.primary : null,
+                    color: isToday
+                        ? Theme.of(context).colorScheme.primary
+                        : null,
                   ),
                 ),
               ),
               const SizedBox(width: 8),
               if (items.isNotEmpty)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 1,
+                  ),
                   decoration: BoxDecoration(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .primary
-                        .withValues(alpha: .12),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: .12),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text('${items.length}',
-                      style: const TextStyle(fontSize: 11)),
+                  child: Text(
+                    '${items.length}',
+                    style: const TextStyle(fontSize: 11),
+                  ),
                 ),
               const Expanded(child: Divider(indent: 10)),
             ],
@@ -230,7 +260,8 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
             child: Text('—', style: TextStyle(color: Colors.black38)),
           )
         else
-          for (final a in items) _ApptCard(appt: a, onTap: () => _showActions(a)),
+          for (final a in items)
+            _ApptCard(appt: a, onTap: () => _showActions(a)),
       ],
     );
   }
@@ -243,10 +274,8 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
       children: [
         _RangeHeader(
           label: label,
-          onPrev: () =>
-              _go(DateTime(_dateOnly.year, _dateOnly.month - 1, 1)),
-          onNext: () =>
-              _go(DateTime(_dateOnly.year, _dateOnly.month + 1, 1)),
+          onPrev: () => _go(DateTime(_dateOnly.year, _dateOnly.month - 1, 1)),
+          onNext: () => _go(DateTime(_dateOnly.year, _dateOnly.month + 1, 1)),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -255,9 +284,13 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
               for (final d in _dow)
                 Expanded(
                   child: Center(
-                    child: Text(d,
-                        style: const TextStyle(
-                            fontSize: 11, color: Colors.black54)),
+                    child: Text(
+                      d,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.black54,
+                      ),
+                    ),
                   ),
                 ),
             ],
@@ -265,7 +298,8 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
         ),
         Expanded(
           child: RefreshIndicator(
-            onRefresh: () async => ref.invalidate(agendaRangeProvider(_monthKey)),
+            onRefresh: () async =>
+                ref.invalidate(agendaRangeProvider(_monthKey)),
             child: async.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => _errList(e),
@@ -281,11 +315,11 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
                     physics: const NeverScrollableScrollPhysics(),
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 7,
-                      childAspectRatio: .74,
-                      mainAxisSpacing: 4,
-                      crossAxisSpacing: 4,
-                    ),
+                          crossAxisCount: 7,
+                          childAspectRatio: .74,
+                          mainAxisSpacing: 4,
+                          crossAxisSpacing: 4,
+                        ),
                     itemCount: totalDays,
                     itemBuilder: (_, i) {
                       final d = start.add(Duration(days: i));
@@ -331,10 +365,12 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
-  Widget _errList(Object e) => ListView(children: [
-        const SizedBox(height: 80),
-        Center(child: Text('$e', textAlign: TextAlign.center)),
-      ]);
+  Widget _errList(Object e) => ListView(
+    children: [
+      const SizedBox(height: 80),
+      Center(child: Text('$e', textAlign: TextAlign.center)),
+    ],
+  );
 
   // ── Acciones sobre una cita ────────────────────────────────
   void _showActions(Appointment a) {
@@ -351,14 +387,18 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              title: Text('${a.time} · ${a.displayName}',
-                  style: const TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: Text([
-                if (a.title != null && a.title!.isNotEmpty) a.title,
-                if (a.vehicleLabel != null) a.vehicleLabel,
-                if (a.mechanicName != null) a.mechanicName,
-                a.statusLabel,
-              ].whereType<String>().join(' · ')),
+              title: Text(
+                '${a.time} · ${a.displayName}',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              subtitle: Text(
+                [
+                  if (a.title != null && a.title!.isNotEmpty) a.title,
+                  if (a.vehicleLabel != null) a.vehicleLabel,
+                  if (a.mechanicName != null) a.mechanicName,
+                  a.statusLabel,
+                ].whereType<String>().join(' · '),
+              ),
             ),
             const Divider(height: 1),
             ListTile(
@@ -401,14 +441,18 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
               ),
             if (canConvert && a.workOrderId == null)
               ListTile(
-                leading: const Icon(Icons.build_circle_outlined,
-                    color: Colors.deepPurple),
+                leading: const Icon(
+                  Icons.build_circle_outlined,
+                  color: Colors.deepPurple,
+                ),
                 title: const Text('Crear Orden de Trabajo'),
                 subtitle: a.clientId == null
                     ? const Text('Requiere un cliente registrado')
                     : (a.vehicleId == null
-                        ? const Text('Registrarás el vehículo en la recepción')
-                        : null),
+                          ? const Text(
+                              'Registrarás el vehículo en la recepción',
+                            )
+                          : null),
                 enabled: a.clientId != null,
                 onTap: () {
                   Navigator.pop(ctx);
@@ -423,8 +467,10 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
             if (canDelete)
               ListTile(
                 leading: const Icon(Icons.delete_outline, color: Colors.red),
-                title: const Text('Eliminar',
-                    style: TextStyle(color: Colors.red)),
+                title: const Text(
+                  'Eliminar',
+                  style: TextStyle(color: Colors.red),
+                ),
                 onTap: () {
                   Navigator.pop(ctx);
                   _delete(a);
@@ -446,8 +492,11 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
           children: [
             for (final e in kAppointmentStatuses.entries)
               ListTile(
-                leading:
-                    Icon(Icons.circle, size: 14, color: _statusColor(e.key)),
+                leading: Icon(
+                  Icons.circle,
+                  size: 14,
+                  color: _statusColor(e.key),
+                ),
                 title: Text(e.value),
                 trailing: a.status == e.key ? const Icon(Icons.check) : null,
                 onTap: () => Navigator.pop(ctx, e.key),
@@ -461,7 +510,7 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
       await ref.read(agendaRepositoryProvider).changeStatus(a.id, status);
       _refreshAfterAction();
     } on ApiException catch (e) {
-      _snack(e.message);
+      if (mounted) AppToast.apiError(context, e);
     }
   }
 
@@ -472,24 +521,36 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
       try {
         final res = await ref.read(agendaRepositoryProvider).convert(a.id);
         _refreshAfterAction();
-        _snack('Orden de trabajo ${res['code'] ?? ''} creada.');
+        if (!mounted) return;
+        AppToast.success(
+          context,
+          'Orden de trabajo ${res['code'] ?? ''} creada.',
+          title: 'OT creada',
+        );
       } on ApiException catch (e) {
-        _snack(e.message);
+        if (mounted) AppToast.apiError(context, e);
       }
       return;
     }
 
     if (a.clientId == null) return;
-    final created = await Navigator.of(context).push<bool>(MaterialPageRoute(
-      builder: (_) => ReceptionScreen(
-        prefillClient: Client(id: a.clientId!, fullName: a.displayName),
-        appointmentId: a.id,
-        prefillIssue: a.title,
+    final created = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => ReceptionScreen(
+          prefillClient: Client(id: a.clientId!, fullName: a.displayName),
+          appointmentId: a.id,
+          prefillIssue: a.title,
+        ),
       ),
-    ));
+    );
     if (created == true) {
       _refreshAfterAction();
-      _snack('Orden de trabajo creada desde la cita.');
+      if (!mounted) return;
+      AppToast.success(
+        context,
+        'Orden de trabajo creada desde la cita.',
+        title: 'OT creada',
+      );
     }
   }
 
@@ -501,8 +562,9 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
         content: Text('¿Eliminar la cita de ${a.displayName} a las ${a.time}?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancelar')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(ctx, true),
@@ -516,7 +578,7 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
       await ref.read(agendaRepositoryProvider).delete(a.id);
       _refreshAfterAction();
     } on ApiException catch (e) {
-      _snack(e.message);
+      if (mounted) AppToast.apiError(context, e);
     }
   }
 
@@ -541,14 +603,16 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
       return;
     }
     final company = ref.read(authControllerProvider).me?.company?.name ?? '';
-    final servicio =
-        (a.title != null && a.title!.isNotEmpty) ? ' (${a.title})' : '';
+    final servicio = (a.title != null && a.title!.isNotEmpty)
+        ? ' (${a.title})'
+        : '';
     final msg =
         'Hola ${a.displayName}, le escribimos${company.isNotEmpty ? ' de $company' : ''} '
         'para confirmar su cita del ${_dateText(a.date)} a las ${a.time}$servicio. '
         '¿Podría confirmarnos, por favor?';
     final url = Uri.parse(
-        'https://wa.me/${_waNumber(phone)}?text=${Uri.encodeComponent(msg)}');
+      'https://wa.me/${_waNumber(phone)}?text=${Uri.encodeComponent(msg)}',
+    );
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
       _snack('No se pudo abrir WhatsApp.');
     }
@@ -566,25 +630,28 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
     }
   }
 
-  void _snack(String m) => ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text(m)));
+  // Validaciones y errores locales: toast rojo arriba (visible sobre hojas).
+  void _snack(String m) => AppToast.error(context, m);
 }
 
 Color _statusColor(String status) => switch (status) {
-      'programada' => Colors.blue,
-      'confirmada' => Colors.indigo,
-      'completada' => Colors.green,
-      'cancelada' => Colors.red,
-      'no_asistio' => Colors.grey,
-      _ => Colors.grey,
-    };
+  'programada' => Colors.blue,
+  'confirmada' => Colors.indigo,
+  'completada' => Colors.green,
+  'cancelada' => Colors.red,
+  'no_asistio' => Colors.grey,
+  _ => Colors.grey,
+};
 
 class _RangeHeader extends StatelessWidget {
   final String label;
   final VoidCallback onPrev;
   final VoidCallback onNext;
-  const _RangeHeader(
-      {required this.label, required this.onPrev, required this.onNext});
+  const _RangeHeader({
+    required this.label,
+    required this.onPrev,
+    required this.onNext,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -594,10 +661,11 @@ class _RangeHeader extends StatelessWidget {
         children: [
           IconButton(onPressed: onPrev, icon: const Icon(Icons.chevron_left)),
           Expanded(
-            child: Text(label,
-                textAlign: TextAlign.center,
-                style:
-                    const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+            ),
           ),
           IconButton(onPressed: onNext, icon: const Icon(Icons.chevron_right)),
         ],
@@ -610,8 +678,11 @@ class _WeekStrip extends StatelessWidget {
   final DateTime weekStart;
   final DateTime selected;
   final void Function(DateTime) onPick;
-  const _WeekStrip(
-      {required this.weekStart, required this.selected, required this.onPick});
+  const _WeekStrip({
+    required this.weekStart,
+    required this.selected,
+    required this.onPick,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -621,57 +692,67 @@ class _WeekStrip extends StatelessWidget {
       child: Row(
         children: [
           for (int i = 0; i < 7; i++)
-            Builder(builder: (context) {
-              final d = weekStart.add(Duration(days: i));
-              final isSel = d.year == selected.year &&
-                  d.month == selected.month &&
-                  d.day == selected.day;
-              final isToday = d.year == today.year &&
-                  d.month == today.month &&
-                  d.day == today.day;
-              return Expanded(
-                child: GestureDetector(
-                  onTap: () => onPick(d),
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    decoration: BoxDecoration(
-                      color: isSel
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context)
-                              .colorScheme
-                              .surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(_dow[i],
+            Builder(
+              builder: (context) {
+                final d = weekStart.add(Duration(days: i));
+                final isSel =
+                    d.year == selected.year &&
+                    d.month == selected.month &&
+                    d.day == selected.day;
+                final isToday =
+                    d.year == today.year &&
+                    d.month == today.month &&
+                    d.day == today.day;
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () => onPick(d),
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isSel
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            _dow[i],
                             style: TextStyle(
-                                fontSize: 11,
-                                color: isSel ? Colors.white70 : null)),
-                        const SizedBox(height: 2),
-                        Text('${d.day}',
-                            style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: isSel ? Colors.white : null)),
-                        const SizedBox(height: 2),
-                        Container(
-                          width: 5,
-                          height: 5,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isToday
-                                ? (isSel ? Colors.white : Colors.red)
-                                : Colors.transparent,
+                              fontSize: 11,
+                              color: isSel ? Colors.white70 : null,
+                            ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 2),
+                          Text(
+                            '${d.day}',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: isSel ? Colors.white : null,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Container(
+                            width: 5,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: isToday
+                                  ? (isSel ? Colors.white : Colors.red)
+                                  : Colors.transparent,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              );
-            }),
+                );
+              },
+            ),
         ],
       ),
     );
@@ -690,8 +771,11 @@ class _DayBody extends StatelessWidget {
       return ListView(
         children: [
           const SizedBox(height: 60),
-          Icon(Icons.event_available_outlined,
-              size: 64, color: Colors.grey.withValues(alpha: .5)),
+          Icon(
+            Icons.event_available_outlined,
+            size: 64,
+            color: Colors.grey.withValues(alpha: .5),
+          ),
           const SizedBox(height: 12),
           const Center(child: Text('No hay citas para este día.')),
           const SizedBox(height: 12),
@@ -725,24 +809,31 @@ class _DayBody extends StatelessWidget {
   }
 
   Widget _stat(String label, int value, Color color) => Expanded(
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 3),
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: .10),
-            borderRadius: BorderRadius.circular(10),
+    child: Container(
+      margin: const EdgeInsets.symmetric(horizontal: 3),
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .10),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        children: [
+          Text(
+            '$value',
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 18,
+              color: color,
+            ),
           ),
-          child: Column(
-            children: [
-              Text('$value',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w800, fontSize: 18, color: color)),
-              Text(label,
-                  style: const TextStyle(fontSize: 11, color: Colors.black54)),
-            ],
+          Text(
+            label,
+            style: const TextStyle(fontSize: 11, color: Colors.black54),
           ),
-        ),
-      );
+        ],
+      ),
+    ),
+  );
 }
 
 class _MonthCell extends StatelessWidget {
@@ -780,14 +871,14 @@ class _MonthCell extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${day.day}',
-                style: TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: isToday ? FontWeight.w800 : FontWeight.w500,
-                  color: inMonth
-                      ? (isToday ? primary : null)
-                      : Colors.black38,
-                )),
+            Text(
+              '${day.day}',
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: isToday ? FontWeight.w800 : FontWeight.w500,
+                color: inMonth ? (isToday ? primary : null) : Colors.black38,
+              ),
+            ),
             const Spacer(),
             if (count > 0)
               Container(
@@ -798,11 +889,14 @@ class _MonthCell extends StatelessWidget {
                   borderRadius: BorderRadius.circular(6),
                 ),
                 width: double.infinity,
-                child: Text('$count',
-                    style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w700,
-                        color: primary)),
+                child: Text(
+                  '$count',
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    color: primary,
+                  ),
+                ),
               ),
           ],
         ),
@@ -831,13 +925,21 @@ class _ApptCard extends StatelessWidget {
             children: [
               Column(
                 children: [
-                  Text(appt.time,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w800, fontSize: 15)),
+                  Text(
+                    appt.time,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                    ),
+                  ),
                   if (appt.endTime != null)
-                    Text(appt.endTime!,
-                        style: const TextStyle(
-                            fontSize: 11, color: Colors.black45)),
+                    Text(
+                      appt.endTime!,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.black45,
+                      ),
+                    ),
                 ],
               ),
               const SizedBox(width: 10),
@@ -850,45 +952,58 @@ class _ApptCard extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(
-                          child: Text(appt.displayName,
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.w700),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis),
+                          child: Text(
+                            appt.displayName,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: color.withValues(alpha: .12),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Text(appt.statusLabel,
-                              style: TextStyle(
-                                  fontSize: 11,
-                                  color: color,
-                                  fontWeight: FontWeight.w600)),
+                          child: Text(
+                            appt.statusLabel,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: color,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 2),
-                    Text([
-                      if (appt.title != null && appt.title!.isNotEmpty)
-                        appt.title,
-                      if (appt.vehicleLabel != null) appt.vehicleLabel,
-                      if (appt.mechanicName != null) appt.mechanicName,
-                      '${appt.durationMinutes} min',
-                    ].whereType<String>().join(' · '),
-                        style: const TextStyle(
-                            fontSize: 12.5, color: Colors.black54)),
+                    Text(
+                      [
+                        if (appt.title != null && appt.title!.isNotEmpty)
+                          appt.title,
+                        if (appt.vehicleLabel != null) appt.vehicleLabel,
+                        if (appt.mechanicName != null) appt.mechanicName,
+                        '${appt.durationMinutes} min',
+                      ].whereType<String>().join(' · '),
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        color: Colors.black54,
+                      ),
+                    ),
                     if (appt.workOrderId != null)
                       const Padding(
                         padding: EdgeInsets.only(top: 4),
-                        child: Text('OT creada',
-                            style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.green,
-                                fontWeight: FontWeight.w600)),
+                        child: Text(
+                          'OT creada',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.green,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                   ],
                 ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
+import '../../core/app_toast.dart';
 import '../../core/config.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
@@ -32,8 +33,10 @@ class ProfileScreen extends ConsumerWidget {
                       leading: const Icon(Icons.storefront_outlined),
                       title: Text(c.name),
                       trailing: c.id == me.company?.id
-                          ? Icon(Icons.check_circle,
-                              color: Theme.of(context).colorScheme.primary)
+                          ? Icon(
+                              Icons.check_circle,
+                              color: Theme.of(context).colorScheme.primary,
+                            )
                           : null,
                       onTap: () => _switchCompany(context, ref, c),
                     ),
@@ -60,8 +63,10 @@ class ProfileScreen extends ConsumerWidget {
                 // ── Cerrar sesión ──
                 ListTile(
                   leading: const Icon(Icons.logout, color: Colors.red),
-                  title: const Text('Cerrar sesión',
-                      style: TextStyle(color: Colors.red)),
+                  title: const Text(
+                    'Cerrar sesión',
+                    style: TextStyle(color: Colors.red),
+                  ),
                   onTap: () => _confirmLogout(context, ref),
                 ),
                 const Divider(height: 1),
@@ -80,15 +85,16 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   Future<void> _switchCompany(
-      BuildContext context, WidgetRef ref, Company c) async {
+    BuildContext context,
+    WidgetRef ref,
+    Company c,
+  ) async {
     if (ref.read(authControllerProvider).me?.company?.id == c.id) return;
     // Cambia de empresa (recarga /me: moneda, tema, permisos) y vuelve al inicio.
     await ref.read(authControllerProvider.notifier).selectCompany(c.id);
     if (context.mounted) {
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Empresa activa: ${c.name}')),
-      );
+      AppToast.info(context, 'Empresa activa: ${c.name}');
     }
   }
 
@@ -98,9 +104,7 @@ class ProfileScreen extends ConsumerWidget {
       builder: (_) => const _ChangePasswordDialog(),
     );
     if (ok == true && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Contraseña actualizada.')),
-      );
+      AppToast.success(context, 'Contraseña actualizada.');
     }
   }
 
@@ -164,11 +168,15 @@ class _ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
       return;
     }
     if (nueva.length < 8) {
-      setState(() => _error = 'La nueva contraseña debe tener al menos 8 caracteres.');
+      setState(
+        () => _error = 'La nueva contraseña debe tener al menos 8 caracteres.',
+      );
       return;
     }
     if (nueva != _confirma.text) {
-      setState(() => _error = 'La confirmación no coincide con la nueva contraseña.');
+      setState(
+        () => _error = 'La confirmación no coincide con la nueva contraseña.',
+      );
       return;
     }
 
@@ -202,8 +210,7 @@ class _ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
           children: [
             _field(_current, 'Contraseña actual'),
             const SizedBox(height: 12),
-            _field(_nueva, 'Nueva contraseña',
-                helper: 'Mínimo 8 caracteres'),
+            _field(_nueva, 'Nueva contraseña', helper: 'Mínimo 8 caracteres'),
             const SizedBox(height: 12),
             _field(_confirma, 'Confirmar nueva contraseña'),
             if (_error != null) ...[
@@ -214,7 +221,9 @@ class _ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
             Text(
               'Al cambiarla se cerrarán tus otras sesiones.',
               style: TextStyle(
-                  color: Theme.of(context).colorScheme.outline, fontSize: 12),
+                color: Theme.of(context).colorScheme.outline,
+                fontSize: 12,
+              ),
             ),
           ],
         ),
@@ -230,8 +239,11 @@ class _ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
               ? const SizedBox(
                   width: 18,
                   height: 18,
-                  child:
-                      CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
               : const Text('Guardar'),
         ),
       ],
@@ -248,8 +260,10 @@ class _ChangePasswordDialogState extends ConsumerState<_ChangePasswordDialog> {
         border: const OutlineInputBorder(),
         isDense: true,
         suffixIcon: IconButton(
-          icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility,
-              size: 20),
+          icon: Icon(
+            _obscure ? Icons.visibility_off : Icons.visibility,
+            size: 20,
+          ),
           onPressed: () => setState(() => _obscure = !_obscure),
         ),
       ),
@@ -278,28 +292,43 @@ class _UserHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(user.name,
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.w700)),
+                Text(
+                  user.name,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 if (user.email != null && user.email!.isNotEmpty)
-                  Text(user.email!,
-                      style: const TextStyle(color: Colors.black54)),
+                  Text(
+                    user.email!,
+                    style: const TextStyle(color: Colors.black54),
+                  ),
                 if (user.phone != null && user.phone!.isNotEmpty)
                   Row(
                     children: [
-                      const Icon(Icons.phone_outlined,
-                          size: 14, color: Colors.black45),
+                      const Icon(
+                        Icons.phone_outlined,
+                        size: 14,
+                        color: Colors.black45,
+                      ),
                       const SizedBox(width: 4),
-                      Text(user.phone!,
-                          style: const TextStyle(color: Colors.black54)),
+                      Text(
+                        user.phone!,
+                        style: const TextStyle(color: Colors.black54),
+                      ),
                     ],
                   ),
                 if (company != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
-                    child: Text(company!.name,
-                        style: const TextStyle(
-                            color: Colors.black45, fontSize: 13)),
+                    child: Text(
+                      company!.name,
+                      style: const TextStyle(
+                        color: Colors.black45,
+                        fontSize: 13,
+                      ),
+                    ),
                   ),
               ],
             ),
@@ -318,11 +347,14 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-      child: Text(text,
-          style: TextStyle(
-              color: Theme.of(context).colorScheme.primary,
-              fontWeight: FontWeight.w700,
-              fontSize: 13)),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.primary,
+          fontWeight: FontWeight.w700,
+          fontSize: 13,
+        ),
+      ),
     );
   }
 }

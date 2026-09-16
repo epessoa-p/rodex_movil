@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
+import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
 import '../clients/clients_screen.dart';
@@ -39,20 +40,22 @@ class _PosScreenState extends ConsumerState<PosScreen> {
   }
 
   Future<void> _addProduct() async {
-    await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => ProductsScreen(
-        onPick: (p) {
-          ref.read(cartProvider.notifier).add(p);
-          Navigator.pop(context);
-        },
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ProductsScreen(
+          onPick: (p) {
+            ref.read(cartProvider.notifier).add(p);
+            Navigator.pop(context);
+          },
+        ),
       ),
-    ));
+    );
   }
 
   Future<void> _scan() async {
-    await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => const ScanScreen(),
-    ));
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const ScanScreen()));
     // El carrito es un provider compartido: al volver ya refleja lo escaneado.
   }
 
@@ -60,24 +63,31 @@ class _PosScreenState extends ConsumerState<PosScreen> {
   Future<void> _editLineDiscount(CartLine l) async {
     final cart = ref.read(cartProvider.notifier);
     final ctrl = TextEditingController(
-        text: l.discount > 0 ? _trimNum(l.discount) : '');
+      text: l.discount > 0 ? _trimNum(l.discount) : '',
+    );
     final value = await showDialog<double>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(l.product.name,
-            maxLines: 2, overflow: TextOverflow.ellipsis),
+        title: Text(
+          l.product.name,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${qty(l.quantity)} × ${money(l.product.price)} = ${money(l.gross)}',
-                style: const TextStyle(color: Colors.black54)),
+            Text(
+              '${qty(l.quantity)} × ${money(l.product.price)} = ${money(l.gross)}',
+              style: const TextStyle(color: Colors.black54),
+            ),
             const SizedBox(height: 12),
             TextField(
               controller: ctrl,
               autofocus: true,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: InputDecoration(
                 labelText: 'Descuento del producto',
                 prefixText: '$currencySymbol ',
@@ -94,11 +104,14 @@ class _PosScreenState extends ConsumerState<PosScreen> {
               child: const Text('Quitar'),
             ),
           TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancelar')),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(
-                ctx, double.tryParse(ctrl.text.replaceAll(',', '.')) ?? 0),
+              ctx,
+              double.tryParse(ctrl.text.replaceAll(',', '.')) ?? 0,
+            ),
             child: const Text('Aplicar'),
           ),
         ],
@@ -111,14 +124,16 @@ class _PosScreenState extends ConsumerState<PosScreen> {
       v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toString();
 
   Future<void> _pickClient() async {
-    await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => ClientsScreen(
-        onPick: (c) {
-          setState(() => _client = c);
-          Navigator.pop(context);
-        },
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ClientsScreen(
+          onPick: (c) {
+            setState(() => _client = c);
+            Navigator.pop(context);
+          },
+        ),
       ),
-    ));
+    );
   }
 
   Future<void> _checkout() async {
@@ -127,7 +142,9 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     final discount = _effectiveDiscount(cart.total);
     setState(() => _submitting = true);
     try {
-      final sale = await ref.read(posRepositoryProvider).createSale(
+      final sale = await ref
+          .read(posRepositoryProvider)
+          .createSale(
             clientId: _client?.id,
             items: cart.toItems(),
             discount: discount,
@@ -137,15 +154,14 @@ class _PosScreenState extends ConsumerState<PosScreen> {
       _discountCtrl.clear();
       ref.invalidate(cashSessionProvider);
       if (mounted) {
-        Navigator.of(context).pushReplacement(MaterialPageRoute(
-          builder: (_) => ReceiptScreen(sale: sale),
-        ));
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => ReceiptScreen(sale: sale)),
+        );
       }
     } on ApiException catch (e) {
       if (mounted) {
         setState(() => _submitting = false);
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.message)));
+        AppToast.apiError(context, e);
       }
     }
   }
@@ -180,13 +196,16 @@ class _PosScreenState extends ConsumerState<PosScreen> {
           if (s == null) return const _NoCashSession();
           return Column(
             children: [
-              _ClientBar(client: _client, onTap: _pickClient, onClear: () {
-                setState(() => _client = null);
-              }),
+              _ClientBar(
+                client: _client,
+                onTap: _pickClient,
+                onClear: () {
+                  setState(() => _client = null);
+                },
+              ),
               Expanded(
                 child: lines.isEmpty
-                    ? const Center(
-                        child: Text('Agrega productos para vender.'))
+                    ? const Center(child: Text('Agrega productos para vender.'))
                     : ListView.separated(
                         itemCount: lines.length,
                         separatorBuilder: (_, _) => const Divider(height: 1),
@@ -198,11 +217,16 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                    '${money(l.product.price)} c/u  ·  ${money(l.subtotal)}'),
+                                  '${money(l.product.price)} c/u  ·  ${money(l.subtotal)}',
+                                ),
                                 if (l.discount > 0)
-                                  Text('Desc. ${money(l.discount)}',
-                                      style: const TextStyle(
-                                          color: Colors.red, fontSize: 12)),
+                                  Text(
+                                    'Desc. ${money(l.discount)}',
+                                    style: const TextStyle(
+                                      color: Colors.red,
+                                      fontSize: 12,
+                                    ),
+                                  ),
                               ],
                             ),
                             onTap: () => _editLineDiscount(l),
@@ -223,19 +247,25 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                                 ),
                                 IconButton(
                                   visualDensity: VisualDensity.compact,
-                                  icon:
-                                      const Icon(Icons.remove_circle_outline),
+                                  icon: const Icon(Icons.remove_circle_outline),
                                   onPressed: () => cart.setQuantity(
-                                      l.product.id, l.quantity - 1),
+                                    l.product.id,
+                                    l.quantity - 1,
+                                  ),
                                 ),
-                                Text(qty(l.quantity),
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.w700)),
+                                Text(
+                                  qty(l.quantity),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
                                 IconButton(
                                   visualDensity: VisualDensity.compact,
                                   icon: const Icon(Icons.add_circle_outline),
                                   onPressed: () => cart.setQuantity(
-                                      l.product.id, l.quantity + 1),
+                                    l.product.id,
+                                    l.quantity + 1,
+                                  ),
                                 ),
                               ],
                             ),
@@ -267,8 +297,11 @@ class _ClientBar extends StatelessWidget {
   final Client? client;
   final VoidCallback onTap;
   final VoidCallback onClear;
-  const _ClientBar(
-      {required this.client, required this.onTap, required this.onClear});
+  const _ClientBar({
+    required this.client,
+    required this.onTap,
+    required this.onClear,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -324,7 +357,8 @@ class _CheckoutBar extends StatelessWidget {
                 Expanded(
                   child: FilledButton.tonalIcon(
                     style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(48)),
+                      minimumSize: const Size.fromHeight(48),
+                    ),
                     icon: const Icon(Icons.qr_code_scanner),
                     label: const Text('Escanear'),
                     onPressed: onScan,
@@ -334,7 +368,8 @@ class _CheckoutBar extends StatelessWidget {
                 Expanded(
                   child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(48)),
+                      minimumSize: const Size.fromHeight(48),
+                    ),
                     icon: const Icon(Icons.add),
                     label: const Text('Agregar'),
                     onPressed: onAdd,
@@ -352,7 +387,8 @@ class _CheckoutBar extends StatelessWidget {
                     controller: discountCtrl,
                     onChanged: onDiscountChanged,
                     keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true),
+                      decimal: true,
+                    ),
                     decoration: InputDecoration(
                       labelText: 'Descuento general',
                       prefixText: '$currencySymbol ',
@@ -365,14 +401,19 @@ class _CheckoutBar extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    const Text('Subtotal',
-                        style: TextStyle(color: Colors.black54, fontSize: 12)),
-                    Text(money(subtotal),
-                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                    const Text(
+                      'Subtotal',
+                      style: TextStyle(color: Colors.black54, fontSize: 12),
+                    ),
+                    Text(
+                      money(subtotal),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
                     if (lineDiscount > 0)
-                      Text('Desc. productos ${money(lineDiscount)}',
-                          style:
-                              const TextStyle(color: Colors.red, fontSize: 11)),
+                      Text(
+                        'Desc. productos ${money(lineDiscount)}',
+                        style: const TextStyle(color: Colors.red, fontSize: 11),
+                      ),
                   ],
                 ),
               ],
@@ -384,11 +425,17 @@ class _CheckoutBar extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Total',
-                          style: TextStyle(color: Colors.black54)),
-                      Text(money(total),
-                          style: const TextStyle(
-                              fontSize: 22, fontWeight: FontWeight.w800)),
+                      const Text(
+                        'Total',
+                        style: TextStyle(color: Colors.black54),
+                      ),
+                      Text(
+                        money(total),
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -399,7 +446,10 @@ class _CheckoutBar extends StatelessWidget {
                             height: 18,
                             width: 18,
                             child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white))
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
                         : const Icon(Icons.check),
                     label: const Text('Cobrar'),
                     onPressed: canCheckout ? onCheckout : null,
@@ -427,8 +477,10 @@ class _NoCashSession extends StatelessWidget {
           children: [
             const Icon(Icons.savings_outlined, size: 56, color: Colors.orange),
             const SizedBox(height: 12),
-            const Text('Necesitas abrir tu caja para vender.',
-                textAlign: TextAlign.center),
+            const Text(
+              'Necesitas abrir tu caja para vender.',
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 16),
             FilledButton(
               onPressed: () => Navigator.pop(context),

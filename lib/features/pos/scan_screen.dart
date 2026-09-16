@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../core/api_client.dart';
+import '../../core/app_toast.dart';
 import 'cart.dart';
 import 'pos_repository.dart';
 
@@ -71,14 +72,11 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
   }
 
   void _feedback(String msg, {required bool ok}) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
-        content: Text(msg),
-        duration: const Duration(milliseconds: 1200),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: ok ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
-      ));
+    if (ok) {
+      AppToast.success(context, msg, title: 'Agregado');
+    } else {
+      AppToast.error(context, msg);
+    }
   }
 
   @override
@@ -98,7 +96,10 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
               width: 260,
               height: 160,
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.white.withValues(alpha: 0.9), width: 3),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  width: 3,
+                ),
                 borderRadius: BorderRadius.circular(16),
               ),
             ),
@@ -114,12 +115,19 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                   const Expanded(
-                    child: Text('Escanear código',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                    child: Text(
+                      'Escanear código',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                   IconButton(
-                    icon: Icon(_torchOn ? Icons.flash_on : Icons.flash_off,
-                        color: Colors.white),
+                    icon: Icon(
+                      _torchOn ? Icons.flash_on : Icons.flash_off,
+                      color: Colors.white,
+                    ),
                     onPressed: () async {
                       await _controller.toggleTorch();
                       if (mounted) setState(() => _torchOn = !_torchOn);
@@ -144,7 +152,10 @@ class _ScanScreenState extends ConsumerState<ScanScreen> {
                         _added == 0
                             ? 'Apunta al código de barras'
                             : '$_added ${_added == 1 ? "producto agregado" : "productos agregados"}',
-                        style: const TextStyle(color: Colors.white, fontSize: 15),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                        ),
                       ),
                     ),
                     FilledButton.icon(
@@ -176,7 +187,11 @@ class _CameraError extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.no_photography_outlined, color: Colors.white70, size: 56),
+            const Icon(
+              Icons.no_photography_outlined,
+              color: Colors.white70,
+              size: 56,
+            ),
             const SizedBox(height: 12),
             Text(
               denied

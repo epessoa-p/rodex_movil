@@ -17,8 +17,7 @@ class SelectCompanyScreen extends ConsumerWidget {
         actions: [
           TextButton(
             onPressed: () => ref.read(authControllerProvider.notifier).logout(),
-            child: const Text('Salir',
-                style: TextStyle(color: Colors.white)),
+            child: const Text('Salir', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -31,8 +30,10 @@ class SelectCompanyScreen extends ConsumerWidget {
           return Card(
             child: ListTile(
               leading: const CircleAvatar(child: Icon(Icons.store_outlined)),
-              title: Text(c.name,
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              title: Text(
+                c.name,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () =>
                   ref.read(authControllerProvider.notifier).selectCompany(c.id),

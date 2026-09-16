@@ -28,50 +28,54 @@ class _FakeAuth extends AuthController {
 /// Payload tal como lo devuelve GET /dashboard/top. El servidor ya ordena por
 /// `by`; aquí simulamos ambos órdenes.
 Map<String, dynamic> _payload(String by) => {
-      'period': {
-        'key': 'month',
-        'label': 'Este mes',
-        'from': '2026-09-01',
-        'to': '2026-09-15'
-      },
-      'by': by,
-      'revenue': [
-        {'key': 'sales', 'label': 'Ventas', 'amount': 7500.0, 'count': 30},
-        {'key': 'workshop', 'label': 'Taller', 'amount': 2500.0, 'count': 10},
-      ],
-      'top_products': by == 'amount'
-          ? [
-              {'label': 'Llanta 90/90', 'amount': 3000.0, 'qty': 5},
-              {'label': 'Aceite 20W50', 'amount': 1200.0, 'qty': 40},
-            ]
-          : [
-              {'label': 'Aceite 20W50', 'amount': 1200.0, 'qty': 40},
-              {'label': 'Llanta 90/90', 'amount': 3000.0, 'qty': 5},
-            ],
-      'top_services': [
-        {'label': 'Cambio de aceite', 'amount': 900.0, 'qty': 18},
-      ],
-      'top_purchases': null, // sin plan/permiso de compras
-      'top_clients': [
-        {'label': 'Juan Pérez', 'amount': 640.0, 'qty': 3},
-      ],
-    };
+  'period': {
+    'key': 'month',
+    'label': 'Este mes',
+    'from': '2026-09-01',
+    'to': '2026-09-15',
+  },
+  'by': by,
+  'revenue': [
+    {'key': 'sales', 'label': 'Ventas', 'amount': 7500.0, 'count': 30},
+    {'key': 'workshop', 'label': 'Taller', 'amount': 2500.0, 'count': 10},
+  ],
+  'top_products': by == 'amount'
+      ? [
+          {'label': 'Llanta 90/90', 'amount': 3000.0, 'qty': 5},
+          {'label': 'Aceite 20W50', 'amount': 1200.0, 'qty': 40},
+        ]
+      : [
+          {'label': 'Aceite 20W50', 'amount': 1200.0, 'qty': 40},
+          {'label': 'Llanta 90/90', 'amount': 3000.0, 'qty': 5},
+        ],
+  'top_services': [
+    {'label': 'Cambio de aceite', 'amount': 900.0, 'qty': 18},
+  ],
+  'top_purchases': null, // sin plan/permiso de compras
+  'top_clients': [
+    {'label': 'Juan Pérez', 'amount': 640.0, 'qty': 3},
+  ],
+};
 
 Widget _app() => ProviderScope(
-      overrides: [
-        authControllerProvider.overrideWith((ref) => _FakeAuth(ref)),
-        // Series de los tabs de módulo (no se abren en este test).
-        dashboardSeriesProvider.overrideWith((ref, m) async =>
-            DashboardSeries(weekly: [], monthly: [], weekCompare: [])),
-        dashboardTopProvider.overrideWith((ref, key) async =>
-            DashboardTop.fromJson(_payload(key.split('|')[1]))),
-      ],
-      child: const MaterialApp(home: AnalyticsScreen()),
-    );
+  overrides: [
+    authControllerProvider.overrideWith((ref) => _FakeAuth(ref)),
+    // Series de los tabs de módulo (no se abren en este test).
+    dashboardSeriesProvider.overrideWith(
+      (ref, m) async =>
+          DashboardSeries(weekly: [], monthly: [], weekCompare: []),
+    ),
+    dashboardTopProvider.overrideWith(
+      (ref, key) async => DashboardTop.fromJson(_payload(key.split('|')[1])),
+    ),
+  ],
+  child: const MaterialApp(home: AnalyticsScreen()),
+);
 
 void main() {
-  testWidgets('Tab Top: donut con %, rankings y toggle Monto/Cantidad',
-      (tester) async {
+  testWidgets('Tab Top: donut con %, rankings y toggle Monto/Cantidad', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(1080, 3200);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -111,8 +115,10 @@ void main() {
     expect(tester.takeException(), isNull);
 
     expect(find.text('40 u.'), findsOneWidget);
-    expect(tester.getTopLeft(find.text('Aceite 20W50')).dy,
-        lessThan(tester.getTopLeft(find.text('Llanta 90/90')).dy));
+    expect(
+      tester.getTopLeft(find.text('Aceite 20W50')).dy,
+      lessThan(tester.getTopLeft(find.text('Llanta 90/90')).dy),
+    );
     // 30 / 40 ops = 75 % (mismo reparto en este payload), sigue habiendo %.
     expect(find.text('75%'), findsOneWidget);
 

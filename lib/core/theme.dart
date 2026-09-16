@@ -25,7 +25,9 @@ class AppTheme {
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           minimumSize: const Size.fromHeight(48),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       ),
       cardTheme: CardThemeData(
@@ -40,7 +42,9 @@ class AppTheme {
 
   /// Convierte un hex "#RRGGBB" (de la empresa) en Color, o null.
   static Color? colorFromHex(String? hex) {
-    if (hex == null || !RegExp(r'^#?[0-9a-fA-F]{6}$').hasMatch(hex)) return null;
+    if (hex == null || !RegExp(r'^#?[0-9a-fA-F]{6}$').hasMatch(hex)) {
+      return null;
+    }
     final h = hex.replaceFirst('#', '');
     return Color(int.parse('FF$h', radix: 16));
   }

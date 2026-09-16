@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
+import '../../core/app_toast.dart';
 import '../../core/models.dart';
 import '../clients/clients_screen.dart';
 import 'workshop_repository.dart';
@@ -76,8 +77,16 @@ class _ReceptionScreenState extends ConsumerState<ReceptionScreen> {
   @override
   void dispose() {
     for (final c in [
-      _brand, _model, _plate, _year, _color,
-      _issue, _mileage, _fuel, _received, _notes,
+      _brand,
+      _model,
+      _plate,
+      _year,
+      _color,
+      _issue,
+      _mileage,
+      _fuel,
+      _received,
+      _notes,
     ]) {
       c.dispose();
     }
@@ -94,26 +103,30 @@ class _ReceptionScreenState extends ConsumerState<ReceptionScreen> {
   }
 
   Future<void> _pickClient() async {
-    await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => ClientsScreen(
-        onPick: (c) async {
-          Navigator.pop(context);
-          setState(() {
-            _client = c;
-            _vehicleId = null;
-            _vehicles = [];
-          });
-          // Cargar vehículos del cliente
-          final vs = await ref.read(workshopRepositoryProvider).vehicles(c.id);
-          if (mounted) {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ClientsScreen(
+          onPick: (c) async {
+            Navigator.pop(context);
             setState(() {
-              _vehicles = vs;
-              _newVehicle = vs.isEmpty; // si no tiene, arranca en "nuevo"
+              _client = c;
+              _vehicleId = null;
+              _vehicles = [];
             });
-          }
-        },
+            // Cargar vehículos del cliente
+            final vs = await ref
+                .read(workshopRepositoryProvider)
+                .vehicles(c.id);
+            if (mounted) {
+              setState(() {
+                _vehicles = vs;
+                _newVehicle = vs.isEmpty; // si no tiene, arranca en "nuevo"
+              });
+            }
+          },
+        ),
       ),
-    ));
+    );
   }
 
   Future<void> _submit() async {
@@ -132,7 +145,9 @@ class _ReceptionScreenState extends ConsumerState<ReceptionScreen> {
 
     setState(() => _submitting = true);
     try {
-      await ref.read(workshopRepositoryProvider).createReception(
+      await ref
+          .read(workshopRepositoryProvider)
+          .createReception(
             clientId: _client!.id,
             mechanicId: _mechanicId,
             vehicleId: _newVehicle ? null : _vehicleId,
@@ -148,12 +163,14 @@ class _ReceptionScreenState extends ConsumerState<ReceptionScreen> {
                       'color': _color.text.trim(),
                   }
                 : null,
-            reportedIssue:
-                _issue.text.trim().isEmpty ? null : _issue.text.trim(),
+            reportedIssue: _issue.text.trim().isEmpty
+                ? null
+                : _issue.text.trim(),
             mileage: int.tryParse(_mileage.text),
             fuelLevel: _fuel.text.trim().isEmpty ? null : _fuel.text.trim(),
-            receivedItems:
-                _received.text.trim().isEmpty ? null : _received.text.trim(),
+            receivedItems: _received.text.trim().isEmpty
+                ? null
+                : _received.text.trim(),
             notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
             appointmentId: widget.appointmentId,
           );
@@ -161,13 +178,13 @@ class _ReceptionScreenState extends ConsumerState<ReceptionScreen> {
     } on ApiException catch (e) {
       if (mounted) {
         setState(() => _submitting = false);
-        _snack(e.message);
+        AppToast.apiError(context, e);
       }
     }
   }
 
-  void _snack(String m) => ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text(m)));
+  // Validaciones y errores locales: toast rojo arriba (visible sobre hojas).
+  void _snack(String m) => AppToast.error(context, m);
 
   /// Formato para el API (YYYY-MM-DD).
   String _fmtDate(DateTime d) =>
@@ -241,9 +258,11 @@ class _ReceptionScreenState extends ConsumerState<ReceptionScreen> {
                   for (final v in _vehicles)
                     Card(
                       child: ListTile(
-                        leading: Icon(_vehicleId == v.id
-                            ? Icons.radio_button_checked
-                            : Icons.radio_button_unchecked),
+                        leading: Icon(
+                          _vehicleId == v.id
+                              ? Icons.radio_button_checked
+                              : Icons.radio_button_unchecked,
+                        ),
                         title: Text(v.label),
                         subtitle: v.plate != null ? Text(v.plate!) : null,
                         onTap: () => setState(() => _vehicleId = v.id),
@@ -331,8 +350,7 @@ class _ReceptionScreenState extends ConsumerState<ReceptionScreen> {
               Expanded(
                 child: TextField(
                   controller: _fuel,
-                  decoration:
-                      const InputDecoration(labelText: 'Combustible'),
+                  decoration: const InputDecoration(labelText: 'Combustible'),
                 ),
               ),
             ],
@@ -362,7 +380,10 @@ class _ReceptionScreenState extends ConsumerState<ReceptionScreen> {
                     height: 18,
                     width: 18,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white))
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
                 : const Icon(Icons.save),
             label: const Text('Registrar recepción'),
             onPressed: _submitting ? null : _submit,

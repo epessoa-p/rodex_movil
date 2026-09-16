@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/api_client.dart';
+import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
@@ -99,13 +100,12 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
     try {
       final full = await ref.read(posRepositoryProvider).saleById(s.id);
       if (!mounted) return;
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => ReceiptScreen(sale: full)),
-      );
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => ReceiptScreen(sale: full)));
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.message)));
+        AppToast.apiError(context, e);
       }
     } finally {
       if (mounted) setState(() => _openingDetail = false);
@@ -115,7 +115,8 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final me = ref.watch(authControllerProvider).me;
-    final canSell = (me?.planAllows('sales') ?? false) &&
+    final canSell =
+        (me?.planAllows('sales') ?? false) &&
         (me?.canAny(['pos.access', 'sales.create']) ?? false);
 
     return Scaffold(
@@ -149,7 +150,8 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
                       ),
                 isDense: true,
                 border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10)),
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             ),
           ),
@@ -172,8 +174,7 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
         child: ListView(
           children: const [
             SizedBox(height: 120),
-            Icon(Icons.receipt_long_outlined,
-                size: 56, color: Colors.black26),
+            Icon(Icons.receipt_long_outlined, size: 56, color: Colors.black26),
             SizedBox(height: 12),
             Center(child: Text('Aún no hay ventas registradas.')),
           ],
@@ -193,9 +194,10 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
               padding: EdgeInsets.all(16),
               child: Center(
                 child: SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2)),
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
               ),
             );
           }
@@ -216,8 +218,11 @@ class _SaleTile extends StatelessWidget {
   final Sale sale;
   final String dateLabel;
   final VoidCallback onTap;
-  const _SaleTile(
-      {required this.sale, required this.dateLabel, required this.onTap});
+  const _SaleTile({
+    required this.sale,
+    required this.dateLabel,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -226,22 +231,31 @@ class _SaleTile extends StatelessWidget {
       title: Row(
         children: [
           Expanded(
-            child: Text(sale.code,
-                style: const TextStyle(fontWeight: FontWeight.w700)),
+            child: Text(
+              sale.code,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
           ),
-          Text(money(sale.total),
-              style: const TextStyle(fontWeight: FontWeight.w700)),
+          Text(
+            money(sale.total),
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
         ],
       ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 2),
-          Text(sale.client ?? 'Cliente ocasional',
-              maxLines: 1, overflow: TextOverflow.ellipsis),
+          Text(
+            sale.client ?? 'Cliente ocasional',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
           if (dateLabel.isNotEmpty)
-            Text(dateLabel,
-                style: const TextStyle(color: Colors.black54, fontSize: 12)),
+            Text(
+              dateLabel,
+              style: const TextStyle(color: Colors.black54, fontSize: 12),
+            ),
         ],
       ),
       trailing: _PaymentBadge(status: sale.paymentStatus),
@@ -267,9 +281,14 @@ class _PaymentBadge extends StatelessWidget {
         color: color.withValues(alpha: .12),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(label,
-          style: TextStyle(
-              color: color, fontSize: 11, fontWeight: FontWeight.w700)),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
     );
   }
 }

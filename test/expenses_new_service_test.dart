@@ -26,23 +26,31 @@ class _FakeAuth extends AuthController {
 }
 
 void main() {
-  testWidgets('Gastos → "Nuevo servicio" abre la hoja sin colgarse',
-      (tester) async {
+  testWidgets('Gastos → "Nuevo servicio" abre la hoja sin colgarse', (
+    tester,
+  ) async {
     // Tamaño de teléfono real, para que el overflow del teclado se note.
     tester.view.physicalSize = const Size(1080, 2340);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(ProviderScope(
-      overrides: [
-        authControllerProvider.overrideWith((ref) => _FakeAuth(ref)),
-        expensesOverviewProvider.overrideWith((ref) async => ExpensesOverview(
-              monthTotal: 0, payrollMonthTotal: 0,
-              services: [], personal: [], recent: [],
-            )),
-      ],
-      child: const MaterialApp(home: Scaffold(body: ExpensesTab())),
-    ));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWith((ref) => _FakeAuth(ref)),
+          expensesOverviewProvider.overrideWith(
+            (ref) async => ExpensesOverview(
+              monthTotal: 0,
+              payrollMonthTotal: 0,
+              services: [],
+              personal: [],
+              recent: [],
+            ),
+          ),
+        ],
+        child: const MaterialApp(home: Scaffold(body: ExpensesTab())),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Nuevo servicio'), findsOneWidget);
@@ -60,4 +68,3 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 }
-

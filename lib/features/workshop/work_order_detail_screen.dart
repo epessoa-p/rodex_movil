@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api_client.dart';
+import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
@@ -22,8 +23,7 @@ class WorkOrderDetailScreen extends ConsumerStatefulWidget {
       _WorkOrderDetailScreenState();
 }
 
-class _WorkOrderDetailScreenState
-    extends ConsumerState<WorkOrderDetailScreen> {
+class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
   WorkOrder? _order;
   bool _loading = true;
   bool _busy = false;
@@ -40,9 +40,19 @@ class _WorkOrderDetailScreenState
   Future<void> _load() async {
     try {
       final o = await _repo.order(widget.orderId);
-      if (mounted) setState(() { _order = o; _loading = false; });
+      if (mounted) {
+        setState(() {
+          _order = o;
+          _loading = false;
+        });
+      }
     } catch (e) {
-      if (mounted) setState(() { _error = '$e'; _loading = false; });
+      if (mounted) {
+        setState(() {
+          _error = '$e';
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -50,12 +60,16 @@ class _WorkOrderDetailScreenState
     setState(() => _busy = true);
     try {
       final o = await action();
-      if (mounted) setState(() { _order = o; _busy = false; });
+      if (mounted) {
+        setState(() {
+          _order = o;
+          _busy = false;
+        });
+      }
     } on ApiException catch (e) {
       if (mounted) {
         setState(() => _busy = false);
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.message)));
+        AppToast.apiError(context, e);
       }
     }
   }
@@ -71,89 +85,119 @@ class _WorkOrderDetailScreenState
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Agregar servicio'),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
               controller: desc,
-              decoration: const InputDecoration(labelText: 'Descripción *')),
-          const SizedBox(height: 8),
-          TextField(
+              decoration: const InputDecoration(labelText: 'Descripción *'),
+            ),
+            const SizedBox(height: 8),
+            TextField(
               controller: price,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              decoration:
-                  const InputDecoration(labelText: 'Precio *', prefixText: 'Bs ')),
-          const SizedBox(height: 8),
-          TextField(
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(
+                labelText: 'Precio *',
+                prefixText: 'Bs ',
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
               controller: qty,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Cantidad')),
-        ]),
+              decoration: const InputDecoration(labelText: 'Cantidad'),
+            ),
+          ],
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancelar')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Agregar')),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Agregar'),
+          ),
         ],
       ),
     );
     if (ok != true || desc.text.trim().isEmpty) return;
-    await _run(() => _repo.addService(
-          widget.orderId,
-          description: desc.text.trim(),
-          price: double.tryParse(price.text) ?? 0,
-          quantity: int.tryParse(qty.text) ?? 1,
-        ));
+    await _run(
+      () => _repo.addService(
+        widget.orderId,
+        description: desc.text.trim(),
+        price: double.tryParse(price.text) ?? 0,
+        quantity: int.tryParse(qty.text) ?? 1,
+      ),
+    );
   }
 
   Future<void> _addPart() async {
     Product? product;
-    await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => ProductsScreen(onPick: (p) {
-        product = p;
-        Navigator.pop(context);
-      }),
-    ));
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ProductsScreen(
+          onPick: (p) {
+            product = p;
+            Navigator.pop(context);
+          },
+        ),
+      ),
+    );
     if (product == null || !mounted) return;
 
     final qty = TextEditingController(text: '1');
-    final price =
-        TextEditingController(text: product!.price.toStringAsFixed(2));
+    final price = TextEditingController(
+      text: product!.price.toStringAsFixed(2),
+    );
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(product!.name),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
               controller: qty,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Cantidad')),
-          const SizedBox(height: 8),
-          TextField(
+              decoration: const InputDecoration(labelText: 'Cantidad'),
+            ),
+            const SizedBox(height: 8),
+            TextField(
               controller: price,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: const InputDecoration(
-                  labelText: 'Precio unitario', prefixText: 'Bs ')),
-        ]),
+                labelText: 'Precio unitario',
+                prefixText: 'Bs ',
+              ),
+            ),
+          ],
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancelar')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Agregar')),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Agregar'),
+          ),
         ],
       ),
     );
     if (ok != true) return;
-    await _run(() => _repo.addPart(
-          widget.orderId,
-          productId: product!.id,
-          quantity: int.tryParse(qty.text) ?? 1,
-          unitPrice: double.tryParse(price.text) ?? product!.price,
-        ));
+    await _run(
+      () => _repo.addPart(
+        widget.orderId,
+        productId: product!.id,
+        quantity: int.tryParse(qty.text) ?? 1,
+        unitPrice: double.tryParse(price.text) ?? product!.price,
+      ),
+    );
   }
 
   Future<void> _deliver() async {
@@ -162,27 +206,38 @@ class _WorkOrderDetailScreenState
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Entregar y cobrar'),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text('Total a cobrar: ${money(_order!.total)}'),
-          const SizedBox(height: 8),
-          TextField(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Total a cobrar: ${money(_order!.total)}'),
+            const SizedBox(height: 8),
+            TextField(
               controller: to,
-              decoration:
-                  const InputDecoration(labelText: 'Entregado a (opcional)')),
-        ]),
+              decoration: const InputDecoration(
+                labelText: 'Entregado a (opcional)',
+              ),
+            ),
+          ],
+        ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancelar')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Cobrar y entregar')),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Cobrar y entregar'),
+          ),
         ],
       ),
     );
     if (ok != true) return;
-    await _run(() => _repo.deliver(widget.orderId,
-        deliveredTo: to.text.trim().isEmpty ? null : to.text.trim()));
+    await _run(
+      () => _repo.deliver(
+        widget.orderId,
+        deliveredTo: to.text.trim().isEmpty ? null : to.text.trim(),
+      ),
+    );
   }
 
   @override
@@ -212,14 +267,16 @@ class _WorkOrderDetailScreenState
               PopupMenuItem(
                 value: 'receipt',
                 child: ListTile(
-                    leading: Icon(Icons.picture_as_pdf_outlined),
-                    title: Text('Compartir recibo (PDF)')),
+                  leading: Icon(Icons.picture_as_pdf_outlined),
+                  title: Text('Compartir recibo (PDF)'),
+                ),
               ),
               PopupMenuItem(
                 value: 'tracking',
                 child: ListTile(
-                    leading: Icon(Icons.link),
-                    title: Text('Compartir seguimiento (link)')),
+                  leading: Icon(Icons.link),
+                  title: Text('Compartir seguimiento (link)'),
+                ),
               ),
             ],
           ),
@@ -239,42 +296,62 @@ class _WorkOrderDetailScreenState
               _diagnosisSection(o),
               const SizedBox(height: 8),
 
-              _section('Servicios', o.services.isEmpty
-                  ? [const ListTile(dense: true, title: Text('Sin servicios'))]
-                  : [
-                      for (final s in o.services)
-                        ListTile(
+              _section(
+                'Servicios',
+                o.services.isEmpty
+                    ? [
+                        const ListTile(
                           dense: true,
-                          title: Text(s.description),
-                          subtitle: Text(
-                              '${s.quantity} x ${money(s.price)}${s.mechanic != null ? ' · ${s.mechanic}' : ''}'),
-                          trailing: Text(money(s.subtotal)),
+                          title: Text('Sin servicios'),
                         ),
-                    ]),
+                      ]
+                    : [
+                        for (final s in o.services)
+                          ListTile(
+                            dense: true,
+                            title: Text(s.description),
+                            subtitle: Text(
+                              '${s.quantity} x ${money(s.price)}${s.mechanic != null ? ' · ${s.mechanic}' : ''}',
+                            ),
+                            trailing: Text(money(s.subtotal)),
+                          ),
+                      ],
+              ),
               if (!_closed)
                 TextButton.icon(
-                    onPressed: _busy ? null : _addService,
-                    icon: const Icon(Icons.add),
-                    label: const Text('Agregar servicio')),
+                  onPressed: _busy ? null : _addService,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Agregar servicio'),
+                ),
 
               const SizedBox(height: 8),
-              _section('Repuestos', o.parts.isEmpty
-                  ? [const ListTile(dense: true, title: Text('Sin repuestos'))]
-                  : [
-                      for (final p in o.parts)
-                        ListTile(
+              _section(
+                'Repuestos',
+                o.parts.isEmpty
+                    ? [
+                        const ListTile(
                           dense: true,
-                          title: Text(p.name),
-                          subtitle:
-                              Text('${p.quantity} x ${money(p.unitPrice)}'),
-                          trailing: Text(money(p.subtotal)),
+                          title: Text('Sin repuestos'),
                         ),
-                    ]),
+                      ]
+                    : [
+                        for (final p in o.parts)
+                          ListTile(
+                            dense: true,
+                            title: Text(p.name),
+                            subtitle: Text(
+                              '${p.quantity} x ${money(p.unitPrice)}',
+                            ),
+                            trailing: Text(money(p.subtotal)),
+                          ),
+                      ],
+              ),
               if (!_closed)
                 TextButton.icon(
-                    onPressed: _busy ? null : _addPart,
-                    icon: const Icon(Icons.add),
-                    label: const Text('Agregar repuesto')),
+                  onPressed: _busy ? null : _addPart,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Agregar repuesto'),
+                ),
 
               const SizedBox(height: 16),
               _totals(o),
@@ -305,13 +382,15 @@ class _WorkOrderDetailScreenState
       if (!mounted) return;
       setState(() => _busy = false);
       final veh = o.vehicle != null ? ' (${o.vehicle})' : '';
-      await SharePlus.instance.share(ShareParams(
-        text: 'Sigue el estado de tu orden ${o.code}$veh aquí:\n$url',
-      ));
+      await SharePlus.instance.share(
+        ShareParams(
+          text: 'Sigue el estado de tu orden ${o.code}$veh aquí:\n$url',
+        ),
+      );
     } on ApiException catch (e) {
       if (mounted) {
         setState(() => _busy = false);
-        _snack(e.message);
+        AppToast.apiError(context, e);
       }
     }
   }
@@ -336,7 +415,12 @@ class _WorkOrderDetailScreenState
 
   Future<void> _reloadOrder() async {
     final o = await _repo.order(widget.orderId);
-    if (mounted) setState(() { _order = o; _busy = false; });
+    if (mounted) {
+      setState(() {
+        _order = o;
+        _busy = false;
+      });
+    }
   }
 
   Future<void> _assignMechanic() async {
@@ -344,7 +428,7 @@ class _WorkOrderDetailScreenState
     try {
       mechs = await _repo.mechanics();
     } on ApiException catch (e) {
-      _snack(e.message);
+      if (mounted) AppToast.apiError(context, e);
       return;
     }
     if (!mounted) return;
@@ -378,7 +462,9 @@ class _WorkOrderDetailScreenState
       ),
     );
     if (picked == null) return;
-    await _run(() => _repo.assignMechanic(widget.orderId, picked == -1 ? null : picked));
+    await _run(
+      () => _repo.assignMechanic(widget.orderId, picked == -1 ? null : picked),
+    );
   }
 
   Future<void> _addPhotos() async {
@@ -409,11 +495,13 @@ class _WorkOrderDetailScreenState
     try {
       if (source == ImageSource.camera) {
         final f = await _picker.pickImage(
-            source: ImageSource.camera, imageQuality: 70, maxWidth: 1600);
+          source: ImageSource.camera,
+          imageQuality: 70,
+          maxWidth: 1600,
+        );
         if (f != null) files = [f];
       } else {
-        files =
-            await _picker.pickMultiImage(imageQuality: 70, maxWidth: 1600);
+        files = await _picker.pickMultiImage(imageQuality: 70, maxWidth: 1600);
       }
     } catch (e) {
       _snack('No se pudo acceder a las fotos: $e');
@@ -423,12 +511,15 @@ class _WorkOrderDetailScreenState
 
     setState(() => _busy = true);
     try {
-      await _repo.uploadPhotos(widget.orderId, files.map((f) => f.path).toList());
+      await _repo.uploadPhotos(
+        widget.orderId,
+        files.map((f) => f.path).toList(),
+      );
       await _reloadOrder();
     } on ApiException catch (e) {
       if (mounted) {
         setState(() => _busy = false);
-        _snack(e.message);
+        AppToast.apiError(context, e);
       }
     }
   }
@@ -441,8 +532,9 @@ class _WorkOrderDetailScreenState
         content: const Text('¿Eliminar esta foto de la orden?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancelar')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(ctx, true),
@@ -459,7 +551,7 @@ class _WorkOrderDetailScreenState
     } on ApiException catch (e) {
       if (mounted) {
         setState(() => _busy = false);
-        _snack(e.message);
+        AppToast.apiError(context, e);
       }
     }
   }
@@ -487,17 +579,20 @@ class _WorkOrderDetailScreenState
                     icon: const Icon(Icons.comment_outlined),
                   ),
                 IconButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    icon: const Icon(Icons.close)),
+                  onPressed: () => Navigator.pop(ctx),
+                  icon: const Icon(Icons.close),
+                ),
               ],
             ),
             Flexible(
               child: InteractiveViewer(
-                child: Image.network(p.url,
-                    errorBuilder: (_, _, _) => const Padding(
-                          padding: EdgeInsets.all(40),
-                          child: Icon(Icons.broken_image_outlined, size: 48),
-                        )),
+                child: Image.network(
+                  p.url,
+                  errorBuilder: (_, _, _) => const Padding(
+                    padding: EdgeInsets.all(40),
+                    child: Icon(Icons.broken_image_outlined, size: 48),
+                  ),
+                ),
               ),
             ),
             if (hasCaption)
@@ -530,11 +625,13 @@ class _WorkOrderDetailScreenState
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancelar')),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
-              child: const Text('Guardar')),
+            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+            child: const Text('Guardar'),
+          ),
         ],
       ),
     );
@@ -542,12 +639,15 @@ class _WorkOrderDetailScreenState
     setState(() => _busy = true);
     try {
       await _repo.updatePhotoCaption(
-          widget.orderId, p.id, saved.isEmpty ? null : saved);
+        widget.orderId,
+        p.id,
+        saved.isEmpty ? null : saved,
+      );
       await _reloadOrder();
     } on ApiException catch (e) {
       if (mounted) {
         setState(() => _busy = false);
-        _snack(e.message);
+        AppToast.apiError(context, e);
       }
     }
   }
@@ -571,7 +671,8 @@ class _WorkOrderDetailScreenState
         'Hola ${o.client ?? ''}, le escribimos${company.isNotEmpty ? ' de $company' : ''} '
         'sobre su orden de trabajo ${o.code}$veh.';
     final url = Uri.parse(
-        'https://wa.me/${_waNumber(phone)}?text=${Uri.encodeComponent(msg)}');
+      'https://wa.me/${_waNumber(phone)}?text=${Uri.encodeComponent(msg)}',
+    );
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
       _snack('No se pudo abrir WhatsApp.');
     }
@@ -589,200 +690,219 @@ class _WorkOrderDetailScreenState
     }
   }
 
-  void _snack(String m) => ScaffoldMessenger.of(context)
-      .showSnackBar(SnackBar(content: Text(m)));
+  // Validaciones y errores locales: toast rojo arriba (visible sobre hojas).
+  void _snack(String m) => AppToast.error(context, m);
 
   Widget _photosSection(WorkOrder o) => Card(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Fotos',
-                      style: TextStyle(fontWeight: FontWeight.w700)),
-                  if (!_closed)
-                    TextButton.icon(
-                      onPressed: _busy ? null : _addPhotos,
-                      icon: const Icon(Icons.add_a_photo_outlined, size: 18),
-                      label: const Text('Agregar'),
-                    ),
-                ],
+              const Text(
+                'Fotos',
+                style: TextStyle(fontWeight: FontWeight.w700),
               ),
-              if (o.photos.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8),
-                  child: Text('Sin fotos.',
-                      style: TextStyle(color: Colors.black54)),
-                )
-              else
-                SizedBox(
-                  height: 132,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: o.photos.length,
-                    separatorBuilder: (_, _) => const SizedBox(width: 10),
-                    itemBuilder: (_, i) {
-                      final p = o.photos[i];
-                      final hasCaption =
-                          p.caption != null && p.caption!.trim().isNotEmpty;
-                      return SizedBox(
-                        width: 96,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+              if (!_closed)
+                TextButton.icon(
+                  onPressed: _busy ? null : _addPhotos,
+                  icon: const Icon(Icons.add_a_photo_outlined, size: 18),
+                  label: const Text('Agregar'),
+                ),
+            ],
+          ),
+          if (o.photos.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Text(
+                'Sin fotos.',
+                style: TextStyle(color: Colors.black54),
+              ),
+            )
+          else
+            SizedBox(
+              height: 132,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: o.photos.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 10),
+                itemBuilder: (_, i) {
+                  final p = o.photos[i];
+                  final hasCaption =
+                      p.caption != null && p.caption!.trim().isNotEmpty;
+                  return SizedBox(
+                    width: 96,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Stack(
                           children: [
-                            Stack(
-                              children: [
-                                GestureDetector(
-                                  onTap: () => _viewPhoto(p),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(10),
-                                    child: Image.network(
-                                      p.url,
-                                      width: 96,
-                                      height: 96,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, _, _) => Container(
-                                        width: 96,
-                                        height: 96,
-                                        color: Colors.black12,
-                                        child: const Icon(
-                                            Icons.broken_image_outlined),
-                                      ),
+                            GestureDetector(
+                              onTap: () => _viewPhoto(p),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: Image.network(
+                                  p.url,
+                                  width: 96,
+                                  height: 96,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, _, _) => Container(
+                                    width: 96,
+                                    height: 96,
+                                    color: Colors.black12,
+                                    child: const Icon(
+                                      Icons.broken_image_outlined,
                                     ),
-                                  ),
-                                ),
-                                if (!_closed)
-                                  Positioned(
-                                    top: -6,
-                                    right: -6,
-                                    child: IconButton(
-                                      iconSize: 18,
-                                      icon: const CircleAvatar(
-                                        radius: 11,
-                                        backgroundColor: Colors.black54,
-                                        child: Icon(Icons.close,
-                                            size: 13, color: Colors.white),
-                                      ),
-                                      onPressed:
-                                          _busy ? null : () => _deletePhoto(p),
-                                    ),
-                                  ),
-                                if (hasCaption)
-                                  const Positioned(
-                                    left: 4,
-                                    bottom: 4,
-                                    child: CircleAvatar(
-                                      radius: 9,
-                                      backgroundColor: Colors.black54,
-                                      child: Icon(Icons.comment,
-                                          size: 10, color: Colors.white),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 3),
-                            Expanded(
-                              child: InkWell(
-                                onTap: _closed ? null : () => _editCaption(p),
-                                child: Text(
-                                  hasCaption
-                                      ? p.caption!
-                                      : (_closed ? '' : 'Comentar…'),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: hasCaption
-                                        ? Colors.black87
-                                        : Colors.blue,
-                                    fontStyle: hasCaption
-                                        ? FontStyle.normal
-                                        : FontStyle.italic,
                                   ),
                                 ),
                               ),
                             ),
+                            if (!_closed)
+                              Positioned(
+                                top: -6,
+                                right: -6,
+                                child: IconButton(
+                                  iconSize: 18,
+                                  icon: const CircleAvatar(
+                                    radius: 11,
+                                    backgroundColor: Colors.black54,
+                                    child: Icon(
+                                      Icons.close,
+                                      size: 13,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  onPressed: _busy
+                                      ? null
+                                      : () => _deletePhoto(p),
+                                ),
+                              ),
+                            if (hasCaption)
+                              const Positioned(
+                                left: 4,
+                                bottom: 4,
+                                child: CircleAvatar(
+                                  radius: 9,
+                                  backgroundColor: Colors.black54,
+                                  child: Icon(
+                                    Icons.comment,
+                                    size: 10,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
-                      );
-                    },
+                        const SizedBox(height: 3),
+                        Expanded(
+                          child: InkWell(
+                            onTap: _closed ? null : () => _editCaption(p),
+                            child: Text(
+                              hasCaption
+                                  ? p.caption!
+                                  : (_closed ? '' : 'Comentar…'),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: hasCaption
+                                    ? Colors.black87
+                                    : Colors.blue,
+                                fontStyle: hasCaption
+                                    ? FontStyle.normal
+                                    : FontStyle.italic,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
+    ),
+  );
+
+  Widget _header(WorkOrder o) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            o.statusLabel,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.primary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(child: Text('Cliente: ${o.client ?? '-'}')),
+              IconButton(
+                tooltip: 'WhatsApp',
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.chat, color: Color(0xFF25D366)),
+                onPressed: () => _whatsapp(o),
+              ),
+              IconButton(
+                tooltip: 'Llamar',
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.call_outlined),
+                onPressed: () => _call(o),
+              ),
+            ],
+          ),
+          Text('Vehículo: ${o.vehicle ?? '-'}'),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Mecánico: ${(o.mechanic != null && o.mechanic!.isNotEmpty) ? o.mechanic : 'Sin asignar'}',
+                ),
+              ),
+              if (!_closed)
+                TextButton.icon(
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
                   ),
+                  icon: const Icon(Icons.engineering_outlined, size: 18),
+                  label: Text(
+                    (o.mechanic != null && o.mechanic!.isNotEmpty)
+                        ? 'Cambiar'
+                        : 'Asignar',
+                  ),
+                  onPressed: _busy ? null : _assignMechanic,
                 ),
             ],
           ),
-        ),
-      );
-
-  Widget _header(WorkOrder o) => Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(o.statusLabel,
-                  style: TextStyle(
-                      color: Theme.of(context).colorScheme.primary,
-                      fontWeight: FontWeight.w700)),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  Expanded(child: Text('Cliente: ${o.client ?? '-'}')),
-                  IconButton(
-                    tooltip: 'WhatsApp',
-                    visualDensity: VisualDensity.compact,
-                    icon: const Icon(Icons.chat, color: Color(0xFF25D366)),
-                    onPressed: () => _whatsapp(o),
-                  ),
-                  IconButton(
-                    tooltip: 'Llamar',
-                    visualDensity: VisualDensity.compact,
-                    icon: const Icon(Icons.call_outlined),
-                    onPressed: () => _call(o),
-                  ),
-                ],
-              ),
-              Text('Vehículo: ${o.vehicle ?? '-'}'),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                        'Mecánico: ${(o.mechanic != null && o.mechanic!.isNotEmpty) ? o.mechanic : 'Sin asignar'}'),
-                  ),
-                  if (!_closed)
-                    TextButton.icon(
-                      style: TextButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
-                          padding: const EdgeInsets.symmetric(horizontal: 8)),
-                      icon: const Icon(Icons.engineering_outlined, size: 18),
-                      label: Text(
-                          (o.mechanic != null && o.mechanic!.isNotEmpty)
-                              ? 'Cambiar'
-                              : 'Asignar'),
-                      onPressed: _busy ? null : _assignMechanic,
-                    ),
-                ],
-              ),
-              _recepLine('Kilometraje',
-                  o.mileage != null ? '${o.mileage}' : null),
-              _recepLine('Combustible', o.fuelLevel),
-              _recepLine('Falla reportada', o.reportedIssue),
-              _recepLine('Objetos / accesorios', o.receivedItems),
-              _recepLine('Notas', o.notes),
-            ],
-          ),
-        ),
-      );
+          _recepLine('Kilometraje', o.mileage != null ? '${o.mileage}' : null),
+          _recepLine('Combustible', o.fuelLevel),
+          _recepLine('Falla reportada', o.reportedIssue),
+          _recepLine('Objetos / accesorios', o.receivedItems),
+          _recepLine('Notas', o.notes),
+        ],
+      ),
+    ),
+  );
 
   /// Línea de recepción: solo se muestra si hay valor.
   Widget _recepLine(String label, String? value) {
     if (value == null || value.trim().isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(top: 4),
-      child: Text('$label: $value',
-          style: const TextStyle(color: Colors.black54)),
+      child: Text(
+        '$label: $value',
+        style: const TextStyle(color: Colors.black54),
+      ),
     );
   }
 
@@ -794,8 +914,10 @@ class _WorkOrderDetailScreenState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(has ? o.diagnosis! : 'Sin diagnóstico registrado.',
-                style: TextStyle(color: has ? null : Colors.black54)),
+            Text(
+              has ? o.diagnosis! : 'Sin diagnóstico registrado.',
+              style: TextStyle(color: has ? null : Colors.black54),
+            ),
             if (!_closed) ...[
               const SizedBox(height: 8),
               OutlinedButton.icon(
@@ -822,72 +944,85 @@ class _WorkOrderDetailScreenState
           minLines: 3,
           maxLines: 6,
           decoration: const InputDecoration(
-              hintText: 'Diagnóstico técnico…', border: OutlineInputBorder()),
+            hintText: 'Diagnóstico técnico…',
+            border: OutlineInputBorder(),
+          ),
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancelar')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Guardar')),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Guardar'),
+          ),
         ],
       ),
     );
     if (ok != true || !mounted) return;
     final text = ctrl.text.trim();
     if (text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Escribe el diagnóstico.')));
+      AppToast.error(context, 'Escribe el diagnóstico.');
       return;
     }
     await _run(() => _repo.saveDiagnosis(o.id, text));
   }
 
   Widget _section(String title, List<Widget> children) => Card(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: Text(title,
-                  style: const TextStyle(fontWeight: FontWeight.w700)),
-            ),
-            ...children,
-            const SizedBox(height: 6),
-          ],
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
         ),
-      );
+        ...children,
+        const SizedBox(height: 6),
+      ],
+    ),
+  );
 
   Widget _totals(WorkOrder o) => Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(children: [
-            _row('Servicios', o.subtotalServices),
-            _row('Repuestos', o.subtotalParts),
-            if (o.discount > 0) _row('Descuento', -o.discount),
-            const Divider(),
-            _row('Total', o.total, bold: true),
-            if (o.paidAmount > 0) _row('Pagado', o.paidAmount),
-            if (o.balance > 0) _row('Saldo', o.balance),
-          ]),
-        ),
-      );
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          _row('Servicios', o.subtotalServices),
+          _row('Repuestos', o.subtotalParts),
+          if (o.discount > 0) _row('Descuento', -o.discount),
+          const Divider(),
+          _row('Total', o.total, bold: true),
+          if (o.paidAmount > 0) _row('Pagado', o.paidAmount),
+          if (o.balance > 0) _row('Saldo', o.balance),
+        ],
+      ),
+    ),
+  );
 
   Widget _row(String k, double v, {bool bold = false}) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(k,
-                style: TextStyle(
-                    fontWeight: bold ? FontWeight.w800 : FontWeight.normal)),
-            Text(money(v),
-                style: TextStyle(
-                    fontWeight: bold ? FontWeight.w800 : FontWeight.normal)),
-          ],
+    padding: const EdgeInsets.symmetric(vertical: 2),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          k,
+          style: TextStyle(
+            fontWeight: bold ? FontWeight.w800 : FontWeight.normal,
+          ),
         ),
-      );
+        Text(
+          money(v),
+          style: TextStyle(
+            fontWeight: bold ? FontWeight.w800 : FontWeight.normal,
+          ),
+        ),
+      ],
+    ),
+  );
 
   Widget _actions(WorkOrder o) {
     // Siguiente estado según el actual.
@@ -909,10 +1044,13 @@ class _WorkOrderDetailScreenState
         if (next != null && label != null)
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
-                minimumSize: const Size.fromHeight(48)),
+              minimumSize: const Size.fromHeight(48),
+            ),
             icon: const Icon(Icons.arrow_forward),
             label: Text(label),
-            onPressed: _busy ? null : () => _run(() => _repo.changeStatus(o.id, next)),
+            onPressed: _busy
+                ? null
+                : () => _run(() => _repo.changeStatus(o.id, next)),
           ),
         const SizedBox(height: 8),
         FilledButton.icon(
@@ -923,8 +1061,10 @@ class _WorkOrderDetailScreenState
         if (o.total <= 0)
           const Padding(
             padding: EdgeInsets.only(top: 6),
-            child: Text('Agrega servicios o repuestos para poder cobrar.',
-                style: TextStyle(fontSize: 12, color: Colors.black54)),
+            child: Text(
+              'Agrega servicios o repuestos para poder cobrar.',
+              style: TextStyle(fontSize: 12, color: Colors.black54),
+            ),
           ),
       ],
     );

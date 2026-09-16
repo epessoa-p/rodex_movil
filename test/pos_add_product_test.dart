@@ -14,26 +14,31 @@ class _FakePosRepository extends PosRepository {
 
   @override
   Future<List<Product>> products({String q = ''}) async => [
-        Product(
-            id: 1,
-            name: 'Filtro de aceite',
-            sku: 'PRD-00001',
-            unit: 'unidad',
-            price: 48.5,
-            currentStock: 3),
-      ];
+    Product(
+      id: 1,
+      name: 'Filtro de aceite',
+      sku: 'PRD-00001',
+      unit: 'unidad',
+      price: 48.5,
+      currentStock: 3,
+    ),
+  ];
 }
 
 void main() {
-  testWidgets('POS: "Agregar" abre el selector y agregar no rompe la vista',
-      (tester) async {
-    await tester.pumpWidget(ProviderScope(
-      overrides: [
-        posRepositoryProvider.overrideWithValue(_FakePosRepository()),
-        authControllerProvider.overrideWith(
-            (ref) => AuthController(ApiClient(), SecureStore(), ref)),
-        // Caja abierta, para que el POS muestre el carrito y no el aviso.
-        cashSessionProvider.overrideWith((ref) async => CashSession(
+  testWidgets('POS: "Agregar" abre el selector y agregar no rompe la vista', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          posRepositoryProvider.overrideWithValue(_FakePosRepository()),
+          authControllerProvider.overrideWith(
+            (ref) => AuthController(ApiClient(), SecureStore(), ref),
+          ),
+          // Caja abierta, para que el POS muestre el carrito y no el aviso.
+          cashSessionProvider.overrideWith(
+            (ref) async => CashSession(
               id: 1,
               cashRegister: 'Caja 1',
               branch: 'AMERICAS',
@@ -41,10 +46,12 @@ void main() {
               totalIncome: 0,
               totalExpense: 0,
               expectedAmount: 0,
-            )),
-      ],
-      child: const MaterialApp(home: PosScreen()),
-    ));
+            ),
+          ),
+        ],
+        child: const MaterialApp(home: PosScreen()),
+      ),
+    );
     await tester.pumpAndSettle();
 
     // Abrir el selector de productos.

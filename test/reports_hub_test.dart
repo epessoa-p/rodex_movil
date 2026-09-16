@@ -10,7 +10,7 @@ import 'package:rodex_movil/features/reports/reports_screen.dart';
 
 class _FakeAuth extends AuthController {
   _FakeAuth(Ref ref, List<String> permissions, List<String> features)
-      : super(ApiClient(), SecureStore(), ref) {
+    : super(ApiClient(), SecureStore(), ref) {
     state = AuthState(
       status: AuthStatus.authenticated,
       me: MeContext(
@@ -28,17 +28,20 @@ class _FakeAuth extends AuthController {
 Widget _app(List<String> perms, {List<String> features = const ['sales']}) =>
     ProviderScope(
       overrides: [
-        authControllerProvider
-            .overrideWith((ref) => _FakeAuth(ref, perms, features)),
+        authControllerProvider.overrideWith(
+          (ref) => _FakeAuth(ref, perms, features),
+        ),
       ],
       child: const MaterialApp(home: ReportsScreen()),
     );
 
 void main() {
-  testWidgets('Con dashboard y estado de resultados: 2 recuadros',
-      (tester) async {
+  testWidgets('Con dashboard y estado de resultados: 2 recuadros', (
+    tester,
+  ) async {
     await tester.pumpWidget(
-        _app(const ['sales-dashboard.view', 'income-statement.view']));
+      _app(const ['sales-dashboard.view', 'income-statement.view']),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Análisis'), findsOneWidget);
@@ -53,14 +56,17 @@ void main() {
     expect(find.text('Estado de resultados'), findsOneWidget);
   });
 
-  testWidgets('Permiso de dashboard sin el módulo en el plan: no hay Análisis',
-      (tester) async {
-    // Tiene sales-dashboard.view pero el plan NO incluye 'sales'.
-    await tester.pumpWidget(
-        _app(const ['sales-dashboard.view'], features: const ['workshop']));
-    await tester.pumpAndSettle();
+  testWidgets(
+    'Permiso de dashboard sin el módulo en el plan: no hay Análisis',
+    (tester) async {
+      // Tiene sales-dashboard.view pero el plan NO incluye 'sales'.
+      await tester.pumpWidget(
+        _app(const ['sales-dashboard.view'], features: const ['workshop']),
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.text('Análisis'), findsNothing);
-    expect(find.textContaining('No hay reportes'), findsOneWidget);
-  });
+      expect(find.text('Análisis'), findsNothing);
+      expect(find.textContaining('No hay reportes'), findsOneWidget);
+    },
+  );
 }

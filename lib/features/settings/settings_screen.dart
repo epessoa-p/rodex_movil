@@ -14,9 +14,7 @@ class SettingsScreen extends ConsumerWidget {
     final me = ref.watch(authControllerProvider).me;
 
     if (me == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final tiles = <Widget>[

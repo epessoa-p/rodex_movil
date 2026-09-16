@@ -19,10 +19,11 @@ class AppDrawer extends ConsumerWidget {
         me.planAllows('sales') && me.canAny(['pos.access', 'sales.create']);
     final canDashboard =
         (me.planAllows('sales') && me.can('sales-dashboard.view')) ||
-            (me.planAllows('workshop') && me.can('workshop-dashboard.view')) ||
-            (me.planAllows('purchases') && me.can('purchases-dashboard.view'));
-    final initial =
-        me.user.name.isNotEmpty ? me.user.name[0].toUpperCase() : '?';
+        (me.planAllows('workshop') && me.can('workshop-dashboard.view')) ||
+        (me.planAllows('purchases') && me.can('purchases-dashboard.view'));
+    final initial = me.user.name.isNotEmpty
+        ? me.user.name[0].toUpperCase()
+        : '?';
 
     return Drawer(
       child: SafeArea(
@@ -44,17 +45,25 @@ class AppDrawer extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(me.user.name,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w700, fontSize: 15),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis),
+                        Text(
+                          me.user.name,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                         if (me.company != null)
-                          Text(me.company!.name,
-                              style: const TextStyle(
-                                  color: Colors.black54, fontSize: 12),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis),
+                          Text(
+                            me.company!.name,
+                            style: const TextStyle(
+                              color: Colors.black54,
+                              fontSize: 12,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                       ],
                     ),
                   ),
@@ -65,59 +74,101 @@ class AppDrawer extends ConsumerWidget {
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: [
-                  _item(context, Icons.insights_outlined, 'Dashboard',
-                      '/dashboard',
-                      show: canDashboard),
-                  _item(context, Icons.receipt_long_outlined, 'Ventas',
-                      '/sales',
-                      show: me.planAllows('sales') &&
-                          me.canAny(['sales.view', 'pos.access'])),
-                  _item(context, Icons.inventory_2_outlined, 'Productos',
-                      '/products',
-                      show:
-                          me.planAllows('inventory') || me.can('products.view')),
-                  _item(context, Icons.people_alt_outlined, 'Clientes',
-                      '/clients',
-                      show: me.can('clients.view') || canSell),
-                  _item(context, Icons.engineering_outlined, 'Mecánicos',
-                      '/mechanics',
-                      show: me.planAllows('workshop') &&
-                          me.can('mechanics.view')),
+                  _item(
+                    context,
+                    Icons.insights_outlined,
+                    'Dashboard',
+                    '/dashboard',
+                    show: canDashboard,
+                  ),
+                  _item(
+                    context,
+                    Icons.receipt_long_outlined,
+                    'Ventas',
+                    '/sales',
+                    show:
+                        me.planAllows('sales') &&
+                        me.canAny(['sales.view', 'pos.access']),
+                  ),
+                  _item(
+                    context,
+                    Icons.inventory_2_outlined,
+                    'Productos',
+                    '/products',
+                    show: me.planAllows('inventory') || me.can('products.view'),
+                  ),
+                  _item(
+                    context,
+                    Icons.people_alt_outlined,
+                    'Clientes',
+                    '/clients',
+                    show: me.can('clients.view') || canSell,
+                  ),
+                  _item(
+                    context,
+                    Icons.engineering_outlined,
+                    'Mecánicos',
+                    '/mechanics',
+                    show: me.planAllows('workshop') && me.can('mechanics.view'),
+                  ),
                   // Pagos agrupa Mecánicos / Proveedores / Personal / Gastos.
-                  _item(context, Icons.payments_outlined, 'Pagos', '/payments',
-                      show: canSeePayments(me)),
+                  _item(
+                    context,
+                    Icons.payments_outlined,
+                    'Pagos',
+                    '/payments',
+                    show: canSeePayments(me),
+                  ),
                   // Compras agrupa los tabs Compras / OCs / Proveedores.
-                  _item(context, Icons.shopping_bag_outlined, 'Compras',
-                      '/purchases/receptions',
-                      show: me.planAllows('purchases') &&
-                          me.canAny([
-                            'goods-receipts.create',
-                            'goods-receipts.view',
-                            'purchase-orders.view',
-                            'purchases.view',
-                            'purchases.create',
-                            'suppliers.view',
-                          ])),
-                  _item(context, Icons.account_balance, 'Tesorería',
-                      '/treasury',
-                      show: me.planAllows('purchases') &&
-                          me.can('treasury.view')),
+                  _item(
+                    context,
+                    Icons.shopping_bag_outlined,
+                    'Compras',
+                    '/purchases/receptions',
+                    show:
+                        me.planAllows('purchases') &&
+                        me.canAny([
+                          'goods-receipts.create',
+                          'goods-receipts.view',
+                          'purchase-orders.view',
+                          'purchases.view',
+                          'purchases.create',
+                          'suppliers.view',
+                        ]),
+                  ),
+                  _item(
+                    context,
+                    Icons.account_balance,
+                    'Tesorería',
+                    '/treasury',
+                    show: me.planAllows('purchases') && me.can('treasury.view'),
+                  ),
                   const Divider(),
                   // Reportes agrupa Análisis (gráficas) y Estado de resultados.
-                  _item(context, Icons.bar_chart_outlined, 'Reportes',
-                      '/reports',
-                      show: canDashboard || me.can('income-statement.view')),
+                  _item(
+                    context,
+                    Icons.bar_chart_outlined,
+                    'Reportes',
+                    '/reports',
+                    show: canDashboard || me.can('income-statement.view'),
+                  ),
                   // "Mi empresa" y "Cajas" viven ahora dentro de Ajustes.
-                  _item(context, Icons.settings_outlined, 'Ajustes',
-                      '/settings'),
+                  _item(
+                    context,
+                    Icons.settings_outlined,
+                    'Ajustes',
+                    '/settings',
+                  ),
                 ],
               ),
             ),
             const Divider(height: 1),
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Cerrar sesión',
-                  style: TextStyle(color: Colors.red)),
+              title: const Text(
+                'Cerrar sesión',
+                style: TextStyle(color: Colors.red),
+              ),
               onTap: () => _logout(context, ref),
             ),
           ],
@@ -126,8 +177,13 @@ class AppDrawer extends ConsumerWidget {
     );
   }
 
-  Widget _item(BuildContext context, IconData icon, String label, String route,
-      {bool show = true}) {
+  Widget _item(
+    BuildContext context,
+    IconData icon,
+    String label,
+    String route, {
+    bool show = true,
+  }) {
     if (!show) return const SizedBox.shrink();
     return ListTile(
       leading: Icon(icon),
@@ -147,8 +203,9 @@ class AppDrawer extends ConsumerWidget {
         content: const Text('¿Seguro que quieres salir de tu cuenta?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancelar')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(ctx, true),

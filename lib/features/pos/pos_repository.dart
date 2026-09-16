@@ -58,11 +58,15 @@ class PosRepository {
     Object body = fields;
     if (photoPath != null) {
       final form = FormData.fromMap(fields);
-      form.files.add(MapEntry(
-        'photo',
-        await MultipartFile.fromFile(photoPath,
-            filename: photoPath.split(RegExp(r'[\\/]')).last),
-      ));
+      form.files.add(
+        MapEntry(
+          'photo',
+          await MultipartFile.fromFile(
+            photoPath,
+            filename: photoPath.split(RegExp(r'[\\/]')).last,
+          ),
+        ),
+      );
       body = form;
     }
 
@@ -84,12 +88,15 @@ class PosRepository {
     required double quantity,
     String? reason,
   }) async {
-    await _api.post('/products/$productId/stock-adjust', body: {
-      'warehouse_id': warehouseId,
-      'type': type,
-      'quantity': quantity,
-      'reason': ?reason,
-    });
+    await _api.post(
+      '/products/$productId/stock-adjust',
+      body: {
+        'warehouse_id': warehouseId,
+        'type': type,
+        'quantity': quantity,
+        'reason': ?reason,
+      },
+    );
   }
 
   /// Busca un producto por código escaneado (barcode/sku). Devuelve el match
@@ -119,11 +126,14 @@ class PosRepository {
     String? idNumber,
     String? phone,
   }) async {
-    final data = await _api.post('/clients', body: {
-      'full_name': fullName,
-      if (idNumber != null && idNumber.isNotEmpty) 'id_number': idNumber,
-      if (phone != null && phone.isNotEmpty) 'phone': phone,
-    });
+    final data = await _api.post(
+      '/clients',
+      body: {
+        'full_name': fullName,
+        if (idNumber != null && idNumber.isNotEmpty) 'id_number': idNumber,
+        if (phone != null && phone.isNotEmpty) 'phone': phone,
+      },
+    );
     return Client.fromJson((data as Map<String, dynamic>)['data']);
   }
 
@@ -142,10 +152,13 @@ class PosRepository {
     required int cashRegisterId,
     required double openingAmount,
   }) async {
-    final data = await _api.post('/cash/open', body: {
-      'cash_register_id': cashRegisterId,
-      'opening_amount': openingAmount,
-    });
+    final data = await _api.post(
+      '/cash/open',
+      body: {
+        'cash_register_id': cashRegisterId,
+        'opening_amount': openingAmount,
+      },
+    );
     return CashSession.fromJson((data as Map<String, dynamic>)['data']);
   }
 
@@ -163,16 +176,20 @@ class PosRepository {
   /// actualizada (con el nuevo esperado).
   Future<CashSession> registerExpense({
     required double amount,
-    required String category, // expense_operational | expense_service | expense_transport
+    required String
+    category, // expense_operational | expense_service | expense_transport
     String? concept,
     String method = 'efectivo',
   }) async {
-    final data = await _api.post('/cash/expense', body: {
-      'amount': amount,
-      'category': category,
-      'concept': ?concept,
-      'method': method,
-    });
+    final data = await _api.post(
+      '/cash/expense',
+      body: {
+        'amount': amount,
+        'category': category,
+        'concept': ?concept,
+        'method': method,
+      },
+    );
     return CashSession.fromJson((data as Map<String, dynamic>)['data']);
   }
 
@@ -181,12 +198,15 @@ class PosRepository {
     required List<Map<String, dynamic>> items,
     double discount = 0,
   }) async {
-    final data = await _api.post('/sales', body: {
-      'sale_type': 'cash',
-      'client_id': ?clientId,
-      'discount': discount,
-      'items': items,
-    });
+    final data = await _api.post(
+      '/sales',
+      body: {
+        'sale_type': 'cash',
+        'client_id': ?clientId,
+        'discount': discount,
+        'items': items,
+      },
+    );
     return Sale.fromJson((data as Map<String, dynamic>)['data']);
   }
 
@@ -198,12 +218,17 @@ class PosRepository {
     String? dateFrom,
     String? dateTo,
   }) async {
-    final data = await _api.get('/sales', query: {
-      'page': page,
-      if (q.isNotEmpty) 'q': q,
-      'date_from': ?dateFrom,
-      'date_to': ?dateTo,
-    }) as Map<String, dynamic>;
+    final data =
+        await _api.get(
+              '/sales',
+              query: {
+                'page': page,
+                if (q.isNotEmpty) 'q': q,
+                'date_from': ?dateFrom,
+                'date_to': ?dateTo,
+              },
+            )
+            as Map<String, dynamic>;
 
     final items = _list(data).map((e) => Sale.fromJson(e)).toList();
     final meta = (data['meta'] as Map<String, dynamic>?) ?? const {};
@@ -247,7 +272,11 @@ class SalesPage {
   final List<Sale> items;
   final int page;
   final bool hasMore;
-  const SalesPage({required this.items, required this.page, required this.hasMore});
+  const SalesPage({
+    required this.items,
+    required this.page,
+    required this.hasMore,
+  });
 }
 
 final posRepositoryProvider = Provider<PosRepository>(

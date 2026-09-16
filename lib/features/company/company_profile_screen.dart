@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/api_client.dart';
+import '../../core/app_toast.dart';
 import '../../core/providers.dart';
 import 'company_profile_repository.dart';
 
@@ -41,10 +42,12 @@ class _Form extends ConsumerStatefulWidget {
 
 class _FormState extends ConsumerState<_Form> {
   late final _phone = TextEditingController(text: widget.profile.phone ?? '');
-  late final _address =
-      TextEditingController(text: widget.profile.address ?? '');
+  late final _address = TextEditingController(
+    text: widget.profile.address ?? '',
+  );
   late final _days = TextEditingController(
-      text: widget.profile.trackingLinkDays.toString());
+    text: widget.profile.trackingLinkDays.toString(),
+  );
   late final List<String> _order = _initOrder(widget.profile.dashboardOrder);
   String? _newLogoPath;
   bool _saving = false;
@@ -81,7 +84,10 @@ class _FormState extends ConsumerState<_Form> {
   Future<void> _pickLogo() async {
     try {
       final f = await _picker.pickImage(
-          source: ImageSource.gallery, imageQuality: 85, maxWidth: 800);
+        source: ImageSource.gallery,
+        imageQuality: 85,
+        maxWidth: 800,
+      );
       if (f != null) setState(() => _newLogoPath = f.path);
     } catch (e) {
       _snack('No se pudo elegir la imagen: $e');
@@ -96,7 +102,9 @@ class _FormState extends ConsumerState<_Form> {
     }
     setState(() => _saving = true);
     try {
-      await ref.read(companyProfileRepositoryProvider).update(
+      await ref
+          .read(companyProfileRepositoryProvider)
+          .update(
             phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
             address: _address.text.trim().isEmpty ? null : _address.text.trim(),
             trackingLinkDays: days,
@@ -108,18 +116,18 @@ class _FormState extends ConsumerState<_Form> {
       await ref.read(authControllerProvider.notifier).refreshMe();
       if (mounted) {
         setState(() => _saving = false);
-        _snack('Datos de tu empresa actualizados.');
+        AppToast.success(context, 'Datos de tu empresa actualizados.');
       }
     } on ApiException catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        _snack(e.message);
+        AppToast.apiError(context, e);
       }
     }
   }
 
-  void _snack(String m) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+  // Validaciones y errores locales: toast rojo arriba (visible sobre hojas).
+  void _snack(String m) => AppToast.error(context, m);
 
   @override
   Widget build(BuildContext context) {
@@ -130,9 +138,13 @@ class _FormState extends ConsumerState<_Form> {
         Center(
           child: Column(
             children: [
-              Text(c.name,
-                  style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.w700)),
+              Text(
+                c.name,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
               const SizedBox(height: 12),
               CircleAvatar(
                 radius: 54,
@@ -140,10 +152,11 @@ class _FormState extends ConsumerState<_Form> {
                 backgroundImage: _newLogoPath != null
                     ? FileImage(File(_newLogoPath!))
                     : (c.logoUrl != null && c.logoUrl!.isNotEmpty
-                            ? NetworkImage(c.logoUrl!)
-                            : null)
-                        as ImageProvider?,
-                child: (_newLogoPath == null &&
+                              ? NetworkImage(c.logoUrl!)
+                              : null)
+                          as ImageProvider?,
+                child:
+                    (_newLogoPath == null &&
                         (c.logoUrl == null || c.logoUrl!.isEmpty))
                     ? const Icon(Icons.storefront_outlined, size: 40)
                     : null,
@@ -163,7 +176,9 @@ class _FormState extends ConsumerState<_Form> {
           enabled: widget.canEdit,
           keyboardType: TextInputType.phone,
           decoration: const InputDecoration(
-              labelText: 'Teléfono', border: OutlineInputBorder()),
+            labelText: 'Teléfono',
+            border: OutlineInputBorder(),
+          ),
         ),
         const SizedBox(height: 12),
         TextField(
@@ -172,7 +187,9 @@ class _FormState extends ConsumerState<_Form> {
           minLines: 2,
           maxLines: 3,
           decoration: const InputDecoration(
-              labelText: 'Dirección', border: OutlineInputBorder()),
+            labelText: 'Dirección',
+            border: OutlineInputBorder(),
+          ),
         ),
         const SizedBox(height: 12),
         TextField(
@@ -187,10 +204,14 @@ class _FormState extends ConsumerState<_Form> {
           ),
         ),
         const SizedBox(height: 20),
-        const Text('Orden de los tabs del dashboard',
-            style: TextStyle(fontWeight: FontWeight.w700)),
-        const Text('Arrastra para ordenar. El primero se muestra primero.',
-            style: TextStyle(fontSize: 12, color: Colors.black54)),
+        const Text(
+          'Orden de los tabs del dashboard',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        const Text(
+          'Arrastra para ordenar. El primero se muestra primero.',
+          style: TextStyle(fontSize: 12, color: Colors.black54),
+        ),
         const SizedBox(height: 6),
         ReorderableListView(
           shrinkWrap: true,
@@ -219,14 +240,18 @@ class _FormState extends ConsumerState<_Form> {
         const SizedBox(height: 20),
         if (widget.canEdit)
           FilledButton.icon(
-            style:
-                FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(50),
+            ),
             icon: _saving
                 ? const SizedBox(
                     width: 18,
                     height: 18,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white))
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
                 : const Icon(Icons.check),
             label: const Text('Guardar cambios'),
             onPressed: _saving ? null : _save,

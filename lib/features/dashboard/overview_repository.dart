@@ -6,7 +6,8 @@ import '../../core/providers.dart';
 
 double _d(dynamic v) =>
     v == null ? 0 : (v is num ? v.toDouble() : double.tryParse('$v') ?? 0);
-int _i(dynamic v) => v == null ? 0 : (v is num ? v.toInt() : int.tryParse('$v') ?? 0);
+int _i(dynamic v) =>
+    v == null ? 0 : (v is num ? v.toInt() : int.tryParse('$v') ?? 0);
 
 /// Ventas completadas de hoy.
 class SalesToday {
@@ -25,11 +26,11 @@ class NextAppointment {
   final String? title;
   NextAppointment({required this.id, this.time, this.client, this.title});
   factory NextAppointment.fromJson(Map<String, dynamic> j) => NextAppointment(
-        id: _i(j['id']),
-        time: j['time'] as String?,
-        client: j['client'] as String?,
-        title: j['title'] as String?,
-      );
+    id: _i(j['id']),
+    time: j['time'] as String?,
+    client: j['client'] as String?,
+    title: j['title'] as String?,
+  );
 }
 
 class AppointmentsToday {
@@ -37,7 +38,8 @@ class AppointmentsToday {
   final int pending;
   final NextAppointment? next;
   AppointmentsToday({required this.total, required this.pending, this.next});
-  factory AppointmentsToday.fromJson(Map<String, dynamic> j) => AppointmentsToday(
+  factory AppointmentsToday.fromJson(Map<String, dynamic> j) =>
+      AppointmentsToday(
         total: _i(j['total']),
         pending: _i(j['pending']),
         next: j['next'] == null
@@ -53,17 +55,18 @@ class ServiceSale {
   final int count;
   ServiceSale({required this.label, required this.amount, required this.count});
   factory ServiceSale.fromJson(Map<String, dynamic> j) => ServiceSale(
-        label: (j['label'] ?? '') as String,
-        amount: _d(j['amount']),
-        count: _i(j['count']),
-      );
+    label: (j['label'] ?? '') as String,
+    amount: _d(j['amount']),
+    count: _i(j['count']),
+  );
 }
 
 class WorkshopOverview {
   final int receivedToday;
   final int active;
   final int vehiclesInShop;
-  final Map<String, int> byStatus; // recibida, diagnosticada, en_proceso, terminada
+  final Map<String, int>
+  byStatus; // recibida, diagnosticada, en_proceso, terminada
   final AppointmentsToday appointments;
   final List<ServiceSale> topServices;
   final List<WorkOrder> recent;
@@ -79,20 +82,22 @@ class WorkshopOverview {
   });
 
   factory WorkshopOverview.fromJson(Map<String, dynamic> j) => WorkshopOverview(
-        receivedToday: _i(j['received_today']),
-        active: _i(j['active']),
-        vehiclesInShop: _i(j['vehicles_in_shop']),
-        byStatus: ((j['by_status'] as Map?) ?? {})
-            .map((k, v) => MapEntry(k.toString(), _i(v))),
-        appointments: AppointmentsToday.fromJson(
-            (j['appointments'] as Map<String, dynamic>?) ?? const {}),
-        topServices: ((j['top_services'] as List?) ?? [])
-            .map((e) => ServiceSale.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        recent: ((j['recent'] as List?) ?? [])
-            .map((e) => WorkOrder.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
+    receivedToday: _i(j['received_today']),
+    active: _i(j['active']),
+    vehiclesInShop: _i(j['vehicles_in_shop']),
+    byStatus: ((j['by_status'] as Map?) ?? {}).map(
+      (k, v) => MapEntry(k.toString(), _i(v)),
+    ),
+    appointments: AppointmentsToday.fromJson(
+      (j['appointments'] as Map<String, dynamic>?) ?? const {},
+    ),
+    topServices: ((j['top_services'] as List?) ?? [])
+        .map((e) => ServiceSale.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    recent: ((j['recent'] as List?) ?? [])
+        .map((e) => WorkOrder.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
 }
 
 class StockOverview {
@@ -111,9 +116,15 @@ class DashboardOverview {
   final WorkshopOverview? workshop;
   final StockOverview? stock;
 
-  DashboardOverview({required this.date, this.sales, this.workshop, this.stock});
+  DashboardOverview({
+    required this.date,
+    this.sales,
+    this.workshop,
+    this.stock,
+  });
 
-  factory DashboardOverview.fromJson(Map<String, dynamic> j) => DashboardOverview(
+  factory DashboardOverview.fromJson(Map<String, dynamic> j) =>
+      DashboardOverview(
         date: (j['date'] ?? '') as String,
         sales: j['sales'] == null
             ? null

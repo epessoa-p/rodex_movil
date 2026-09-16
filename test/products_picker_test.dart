@@ -14,35 +14,39 @@ class _FakePosRepository extends PosRepository {
 
   @override
   Future<List<Product>> products({String q = ''}) async => [
-        Product(
-            id: 1,
-            name: 'Filtro de aceite Honda CG 150',
-            sku: 'PRD-00001',
-            unit: 'unidad',
-            price: 48.5,
-            currentStock: 3),
-        Product(
-            id: 2,
-            name: 'Bujía NGK',
-            sku: 'PRD-00002',
-            unit: 'unidad',
-            price: 25,
-            currentStock: 0),
-      ];
+    Product(
+      id: 1,
+      name: 'Filtro de aceite Honda CG 150',
+      sku: 'PRD-00001',
+      unit: 'unidad',
+      price: 48.5,
+      currentStock: 3,
+    ),
+    Product(
+      id: 2,
+      name: 'Bujía NGK',
+      sku: 'PRD-00002',
+      unit: 'unidad',
+      price: 25,
+      currentStock: 0,
+    ),
+  ];
 }
 
 Widget _wrap(Widget child) => ProviderScope(
-      overrides: [
-        posRepositoryProvider.overrideWithValue(_FakePosRepository()),
-        authControllerProvider
-            .overrideWith((ref) => AuthController(ApiClient(), SecureStore(), ref)),
-      ],
-      child: MaterialApp(home: child),
-    );
+  overrides: [
+    posRepositoryProvider.overrideWithValue(_FakePosRepository()),
+    authControllerProvider.overrideWith(
+      (ref) => AuthController(ApiClient(), SecureStore(), ref),
+    ),
+  ],
+  child: MaterialApp(home: child),
+);
 
 void main() {
-  testWidgets('La lista en modo selección (POS) renderiza los productos',
-      (tester) async {
+  testWidgets('La lista en modo selección (POS) renderiza los productos', (
+    tester,
+  ) async {
     await tester.pumpWidget(_wrap(ProductsScreen(onPick: (_) {})));
     await tester.pumpAndSettle();
 
@@ -51,8 +55,9 @@ void main() {
     expect(find.text('Bujía NGK'), findsOneWidget);
   });
 
-  testWidgets('Tocar un producto lo entrega vía onPick (sin abrir la ficha)',
-      (tester) async {
+  testWidgets('Tocar un producto lo entrega vía onPick (sin abrir la ficha)', (
+    tester,
+  ) async {
     final picked = <Product>[];
     await tester.pumpWidget(_wrap(ProductsScreen(onPick: picked.add)));
     await tester.pumpAndSettle();
@@ -73,6 +78,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(picked, isEmpty);
+    // Aviso como toast arriba (AppToast); se drena su temporizador.
     expect(find.textContaining('sin stock disponible'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
   });
 }

@@ -16,22 +16,47 @@ class _ModuleDef {
   final String permission;
   final Color color;
   const _ModuleDef(
-      this.key, this.api, this.label, this.plan, this.permission, this.color);
+    this.key,
+    this.api,
+    this.label,
+    this.plan,
+    this.permission,
+    this.color,
+  );
 }
 
 const _defs = <_ModuleDef>[
-  _ModuleDef('ventas', 'sales', 'Ventas', 'sales', 'sales-dashboard.view',
-      Colors.green),
-  _ModuleDef('taller', 'workshop', 'Taller', 'workshop',
-      'workshop-dashboard.view', Colors.deepPurple),
-  _ModuleDef('compras', 'purchases', 'Compras', 'purchases',
-      'purchases-dashboard.view', Colors.brown),
+  _ModuleDef(
+    'ventas',
+    'sales',
+    'Ventas',
+    'sales',
+    'sales-dashboard.view',
+    Colors.green,
+  ),
+  _ModuleDef(
+    'taller',
+    'workshop',
+    'Taller',
+    'workshop',
+    'workshop-dashboard.view',
+    Colors.deepPurple,
+  ),
+  _ModuleDef(
+    'compras',
+    'purchases',
+    'Compras',
+    'purchases',
+    'purchases-dashboard.view',
+    Colors.brown,
+  ),
 ];
 
 /// ¿Qué módulos de dashboard puede ver el usuario, en el orden de su empresa?
 List<_ModuleDef> _enabledDashboards(dynamic me) {
   if (me == null) return const [];
-  final order = (me.company?.dashboardModules as List<String>?) ??
+  final order =
+      (me.company?.dashboardModules as List<String>?) ??
       ['ventas', 'taller', 'compras'];
   final result = <_ModuleDef>[];
   for (final key in order) {
@@ -55,11 +80,14 @@ class AnalyticsScreen extends ConsumerWidget {
       return Scaffold(
         appBar: AppBar(title: const Text('Análisis')),
         body: const Center(
-            child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text('No tienes dashboards habilitados.',
-              textAlign: TextAlign.center),
-        )),
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'No tienes dashboards habilitados.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
       );
     }
 
@@ -73,8 +101,9 @@ class AnalyticsScreen extends ConsumerWidget {
           bottom: TabBar(
             isScrollable: tabs.length + 1 > 2,
             labelColor: Theme.of(context).colorScheme.onPrimary,
-            unselectedLabelColor:
-                Theme.of(context).colorScheme.onPrimary.withValues(alpha: .65),
+            unselectedLabelColor: Theme.of(
+              context,
+            ).colorScheme.onPrimary.withValues(alpha: .65),
             indicatorColor: Theme.of(context).colorScheme.onPrimary,
             labelStyle: const TextStyle(fontWeight: FontWeight.w700),
             tabs: [
@@ -119,16 +148,21 @@ class _ModuleTabState extends ConsumerState<_ModuleTab>
           ref.invalidate(dashboardSeriesProvider(widget.def.api)),
       child: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => ListView(children: [
-          const SizedBox(height: 80),
-          Center(child: Text('$e', textAlign: TextAlign.center)),
-        ]),
+        error: (e, _) => ListView(
+          children: [
+            const SizedBox(height: 80),
+            Center(child: Text('$e', textAlign: TextAlign.center)),
+          ],
+        ),
         data: (s) => ListView(
           padding: const EdgeInsets.all(16),
           children: [
             SegmentedButton<bool>(
               segments: [
-                ButtonSegment(value: true, label: Text('Monto ($currencySymbol)')),
+                ButtonSegment(
+                  value: true,
+                  label: Text('Monto ($currencySymbol)'),
+                ),
                 const ButtonSegment(value: false, label: Text('Cantidad')),
               ],
               selected: {_amount},
@@ -137,8 +171,7 @@ class _ModuleTabState extends ConsumerState<_ModuleTab>
             const SizedBox(height: 16),
             Row(
               children: [
-                Expanded(
-                    child: _kpi('Semana', s.weekly, widget.def.color)),
+                Expanded(child: _kpi('Semana', s.weekly, widget.def.color)),
                 const SizedBox(width: 10),
                 Expanded(child: _kpi('Mes', s.monthly, widget.def.color)),
               ],
@@ -172,7 +205,9 @@ class _ModuleTabState extends ConsumerState<_ModuleTab>
   Widget _kpi(String label, List<SeriesPoint> pts, Color color) {
     final cur = pts.isNotEmpty ? _val(pts.last) : 0.0;
     final prev = pts.length >= 2 ? _val(pts[pts.length - 2]) : 0.0;
-    final delta = prev != 0 ? (cur - prev) / prev * 100 : (cur > 0 ? 100.0 : 0.0);
+    final delta = prev != 0
+        ? (cur - prev) / prev * 100
+        : (cur > 0 ? 100.0 : 0.0);
     final up = cur >= prev;
     return Card(
       child: Padding(
@@ -180,22 +215,35 @@ class _ModuleTabState extends ConsumerState<_ModuleTab>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label,
-                style: const TextStyle(fontSize: 12, color: Colors.black54)),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 12, color: Colors.black54),
+            ),
             const SizedBox(height: 2),
-            Text(_amount ? money(cur) : cur.toInt().toString(),
-                style: TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.w800, color: color)),
+            Text(
+              _amount ? money(cur) : cur.toInt().toString(),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: color,
+              ),
+            ),
             const SizedBox(height: 2),
             Row(
               children: [
-                Icon(up ? Icons.trending_up : Icons.trending_down,
-                    size: 15, color: up ? Colors.green : Colors.red),
+                Icon(
+                  up ? Icons.trending_up : Icons.trending_down,
+                  size: 15,
+                  color: up ? Colors.green : Colors.red,
+                ),
                 const SizedBox(width: 3),
-                Text('${delta >= 0 ? '+' : ''}${delta.toStringAsFixed(0)}% vs anterior',
-                    style: TextStyle(
-                        fontSize: 11,
-                        color: up ? Colors.green : Colors.red)),
+                Text(
+                  '${delta >= 0 ? '+' : ''}${delta.toStringAsFixed(0)}% vs anterior',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: up ? Colors.green : Colors.red,
+                  ),
+                ),
               ],
             ),
           ],
@@ -212,11 +260,12 @@ class _ChartCard extends StatelessWidget {
   final List<SeriesPoint> points;
   final bool amount;
   final Color color;
-  const _ChartCard(
-      {required this.title,
-      required this.points,
-      required this.amount,
-      required this.color});
+  const _ChartCard({
+    required this.title,
+    required this.points,
+    required this.amount,
+    required this.color,
+  });
 
   double _val(SeriesPoint p) => amount ? p.amount : p.count.toDouble();
 
@@ -232,8 +281,7 @@ class _ChartCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title,
-                style: const TextStyle(fontWeight: FontWeight.w700)),
+            Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 16),
             SizedBox(
               height: 190,
@@ -246,9 +294,11 @@ class _ChartCard extends StatelessWidget {
                   titlesData: FlTitlesData(
                     leftTitles: _yAxisTitles(maxY),
                     rightTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
                     topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
@@ -260,8 +310,10 @@ class _ChartCard extends StatelessWidget {
                           }
                           return Padding(
                             padding: const EdgeInsets.only(top: 4),
-                            child: Text(points[i].label,
-                                style: const TextStyle(fontSize: 9)),
+                            child: Text(
+                              points[i].label,
+                              style: const TextStyle(fontSize: 9),
+                            ),
                           );
                         },
                       ),
@@ -273,21 +325,27 @@ class _ChartCard extends StatelessWidget {
                         final p = points[group.x];
                         final txt = amount ? money(p.amount) : '${p.count}';
                         return BarTooltipItem(
-                            txt, const TextStyle(color: Colors.white, fontSize: 11));
+                          txt,
+                          const TextStyle(color: Colors.white, fontSize: 11),
+                        );
                       },
                     ),
                   ),
                   barGroups: [
                     for (int i = 0; i < points.length; i++)
-                      BarChartGroupData(x: i, barRods: [
-                        BarChartRodData(
-                          toY: values[i],
-                          color: color,
-                          width: 14,
-                          borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(4)),
-                        ),
-                      ]),
+                      BarChartGroupData(
+                        x: i,
+                        barRods: [
+                          BarChartRodData(
+                            toY: values[i],
+                            color: color,
+                            width: 14,
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(4),
+                            ),
+                          ),
+                        ],
+                      ),
                   ],
                 ),
               ),
@@ -304,8 +362,11 @@ class _WeekCompareCard extends StatelessWidget {
   final List<WeekComparePoint> points;
   final bool amount;
   final Color color;
-  const _WeekCompareCard(
-      {required this.points, required this.amount, required this.color});
+  const _WeekCompareCard({
+    required this.points,
+    required this.amount,
+    required this.color,
+  });
 
   double _cur(WeekComparePoint p) =>
       amount ? p.currentAmount : p.currentCount.toDouble();
@@ -327,8 +388,10 @@ class _WeekCompareCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Semana anterior vs. actual (por día)',
-                style: TextStyle(fontWeight: FontWeight.w700)),
+            const Text(
+              'Semana anterior vs. actual (por día)',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
             const SizedBox(height: 8),
             Row(
               children: [
@@ -349,9 +412,11 @@ class _WeekCompareCard extends StatelessWidget {
                   titlesData: FlTitlesData(
                     leftTitles: _yAxisTitles(maxY),
                     rightTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
                     topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false)),
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
@@ -363,8 +428,10 @@ class _WeekCompareCard extends StatelessWidget {
                           }
                           return Padding(
                             padding: const EdgeInsets.only(top: 4),
-                            child: Text(points[i].label,
-                                style: const TextStyle(fontSize: 9)),
+                            child: Text(
+                              points[i].label,
+                              style: const TextStyle(fontSize: 9),
+                            ),
                           );
                         },
                       ),
@@ -373,10 +440,14 @@ class _WeekCompareCard extends StatelessWidget {
                   barTouchData: BarTouchData(
                     touchTooltipData: BarTouchTooltipData(
                       getTooltipItem: (group, gi, rod, ri) {
-                        final v = amount ? money(rod.toY) : rod.toY.toInt().toString();
+                        final v = amount
+                            ? money(rod.toY)
+                            : rod.toY.toInt().toString();
                         final serie = ri == 0 ? 'Anterior' : 'Actual';
-                        return BarTooltipItem('$serie: $v',
-                            const TextStyle(color: Colors.white, fontSize: 11));
+                        return BarTooltipItem(
+                          '$serie: $v',
+                          const TextStyle(color: Colors.white, fontSize: 11),
+                        );
                       },
                     ),
                   ),
@@ -387,17 +458,21 @@ class _WeekCompareCard extends StatelessWidget {
                         barsSpace: 2,
                         barRods: [
                           BarChartRodData(
-                              toY: _prev(points[i]),
-                              color: prevColor,
-                              width: 8,
-                              borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(3))),
+                            toY: _prev(points[i]),
+                            color: prevColor,
+                            width: 8,
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(3),
+                            ),
+                          ),
                           BarChartRodData(
-                              toY: _cur(points[i]),
-                              color: color,
-                              width: 8,
-                              borderRadius: const BorderRadius.vertical(
-                                  top: Radius.circular(3))),
+                            toY: _cur(points[i]),
+                            color: color,
+                            width: 8,
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(3),
+                            ),
+                          ),
                         ],
                       ),
                   ],
@@ -411,17 +486,20 @@ class _WeekCompareCard extends StatelessWidget {
   }
 
   Widget _legend(Color c, String label) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-              width: 12,
-              height: 12,
-              decoration:
-                  BoxDecoration(color: c, borderRadius: BorderRadius.circular(3))),
-          const SizedBox(width: 5),
-          Text(label, style: const TextStyle(fontSize: 12)),
-        ],
-      );
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        width: 12,
+        height: 12,
+        decoration: BoxDecoration(
+          color: c,
+          borderRadius: BorderRadius.circular(3),
+        ),
+      ),
+      const SizedBox(width: 5),
+      Text(label, style: const TextStyle(fontSize: 12)),
+    ],
+  );
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -437,11 +515,11 @@ const _periods = <(String, String)>[
 
 /// Color por origen de ingreso (mismos que los tabs de módulo).
 Color _revenueColor(String key) => switch (key) {
-      'sales' => Colors.green,
-      'workshop' => Colors.deepPurple,
-      'rentals' => Colors.orange,
-      _ => Colors.blueGrey,
-    };
+  'sales' => Colors.green,
+  'workshop' => Colors.deepPurple,
+  'rentals' => Colors.orange,
+  _ => Colors.blueGrey,
+};
 
 class _TopTab extends ConsumerStatefulWidget {
   const _TopTab();
@@ -477,14 +555,16 @@ class _TopTabState extends ConsumerState<_TopTab>
               style: const ButtonStyle(
                 visualDensity: VisualDensity.compact,
                 padding: WidgetStatePropertyAll(
-                    EdgeInsets.symmetric(horizontal: 6)),
+                  EdgeInsets.symmetric(horizontal: 6),
+                ),
               ),
               showSelectedIcon: false,
               segments: [
                 for (final p in _periods)
                   ButtonSegment(
-                      value: p.$1,
-                      label: Text(p.$2, style: const TextStyle(fontSize: 12))),
+                    value: p.$1,
+                    label: Text(p.$2, style: const TextStyle(fontSize: 12)),
+                  ),
               ],
               selected: {_period},
               onSelectionChanged: (v) => setState(() => _period = v.first),
@@ -493,7 +573,10 @@ class _TopTabState extends ConsumerState<_TopTab>
           const SizedBox(height: 10),
           SegmentedButton<bool>(
             segments: [
-              ButtonSegment(value: true, label: Text('Monto ($currencySymbol)')),
+              ButtonSegment(
+                value: true,
+                label: Text('Monto ($currencySymbol)'),
+              ),
               const ButtonSegment(value: false, label: Text('Cantidad')),
             ],
             selected: {_amount},
@@ -513,28 +596,49 @@ class _TopTabState extends ConsumerState<_TopTab>
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _RevenueDonutCard(
-                    slices: t.revenue,
-                    amount: _amount,
-                    periodLabel: t.periodLabel),
+                  slices: t.revenue,
+                  amount: _amount,
+                  periodLabel: t.periodLabel,
+                ),
                 if (t.topProducts != null) ...[
                   const SizedBox(height: 16),
-                  _rank('Top repuestos', Icons.inventory_2_outlined,
-                      t.topProducts!, 'POS + taller', 'u.'),
+                  _rank(
+                    'Top repuestos',
+                    Icons.inventory_2_outlined,
+                    t.topProducts!,
+                    'POS + taller',
+                    'u.',
+                  ),
                 ],
                 if (t.topServices != null) ...[
                   const SizedBox(height: 16),
-                  _rank('Top servicios', Icons.handyman_outlined,
-                      t.topServices!, 'OTs entregadas', 'u.'),
+                  _rank(
+                    'Top servicios',
+                    Icons.handyman_outlined,
+                    t.topServices!,
+                    'OTs entregadas',
+                    'u.',
+                  ),
                 ],
                 if (t.topPurchases != null) ...[
                   const SizedBox(height: 16),
-                  _rank('Top compras', Icons.shopping_cart_outlined,
-                      t.topPurchases!, 'por producto', 'u.'),
+                  _rank(
+                    'Top compras',
+                    Icons.shopping_cart_outlined,
+                    t.topPurchases!,
+                    'por producto',
+                    'u.',
+                  ),
                 ],
                 if (t.topClients != null) ...[
                   const SizedBox(height: 16),
-                  _rank('Top clientes', Icons.people_outline, t.topClients!,
-                      'ventas + OTs', 'ops'),
+                  _rank(
+                    'Top clientes',
+                    Icons.people_outline,
+                    t.topClients!,
+                    'ventas + OTs',
+                    'ops',
+                  ),
                 ],
                 const SizedBox(height: 8),
                 Text(
@@ -550,19 +654,23 @@ class _TopTabState extends ConsumerState<_TopTab>
     );
   }
 
-  Widget _rank(String title, IconData icon, List<RankRow> rows, String hint,
-          String unit) =>
-      RankingCard(
-        title: title,
-        icon: icon,
-        hint: hint,
-        byAmount: _amount,
-        qtyUnit: unit,
-        items: [
-          for (final r in rows)
-            RankingItem(label: r.label, amount: r.amount, qty: r.qty),
-        ],
-      );
+  Widget _rank(
+    String title,
+    IconData icon,
+    List<RankRow> rows,
+    String hint,
+    String unit,
+  ) => RankingCard(
+    title: title,
+    icon: icon,
+    hint: hint,
+    byAmount: _amount,
+    qtyUnit: unit,
+    items: [
+      for (final r in rows)
+        RankingItem(label: r.label, amount: r.amount, qty: r.qty),
+    ],
+  );
 }
 
 /// "yyyy-mm-dd" → "dd/mm/yyyy" (sin depender del locale de intl).
@@ -576,8 +684,11 @@ class _RevenueDonutCard extends StatelessWidget {
   final List<RevenueSlice> slices;
   final bool amount;
   final String periodLabel;
-  const _RevenueDonutCard(
-      {required this.slices, required this.amount, required this.periodLabel});
+  const _RevenueDonutCard({
+    required this.slices,
+    required this.amount,
+    required this.periodLabel,
+  });
 
   double _val(RevenueSlice s) => amount ? s.amount : s.count.toDouble();
 
@@ -593,24 +704,32 @@ class _RevenueDonutCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.donut_large_outlined,
-                    size: 18, color: Colors.black54),
+                const Icon(
+                  Icons.donut_large_outlined,
+                  size: 18,
+                  color: Colors.black54,
+                ),
                 const SizedBox(width: 6),
                 const Expanded(
-                  child: Text('Ingresos por origen',
-                      style: TextStyle(fontWeight: FontWeight.w700)),
+                  child: Text(
+                    'Ingresos por origen',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
                 ),
-                Text(periodLabel,
-                    style:
-                        const TextStyle(fontSize: 11, color: Colors.black45)),
+                Text(
+                  periodLabel,
+                  style: const TextStyle(fontSize: 11, color: Colors.black45),
+                ),
               ],
             ),
             const SizedBox(height: 12),
             if (slices.isEmpty || total <= 0)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 12),
-                child: Text('Sin ingresos en el período.',
-                    style: TextStyle(color: Colors.black54)),
+                child: Text(
+                  'Sin ingresos en el período.',
+                  style: TextStyle(color: Colors.black54),
+                ),
               )
             else
               Row(
@@ -645,11 +764,17 @@ class _RevenueDonutCard extends StatelessWidget {
                                   ? _axisLabel(total)
                                   : total.toInt().toString(),
                               style: const TextStyle(
-                                  fontSize: 15, fontWeight: FontWeight.w800),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
-                            Text(amount ? currencySymbol : 'ops',
-                                style: const TextStyle(
-                                    fontSize: 10, color: Colors.black45)),
+                            Text(
+                              amount ? currencySymbol : 'ops',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.black45,
+                              ),
+                            ),
                           ],
                         ),
                       ],
@@ -664,21 +789,27 @@ class _RevenueDonutCard extends StatelessWidget {
                           Row(
                             children: [
                               Container(
-                                  width: 10,
-                                  height: 10,
-                                  decoration: BoxDecoration(
-                                      color: _revenueColor(s.key),
-                                      shape: BoxShape.circle)),
+                                width: 10,
+                                height: 10,
+                                decoration: BoxDecoration(
+                                  color: _revenueColor(s.key),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
                               const SizedBox(width: 6),
                               Expanded(
-                                child: Text(s.label,
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.w600)),
+                                child: Text(
+                                  s.label,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                               ),
                               Text(
                                 '${(_val(s) / total * 100).toStringAsFixed(0)}%',
                                 style: const TextStyle(
-                                    fontWeight: FontWeight.w800),
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
                             ],
                           ),
@@ -689,7 +820,9 @@ class _RevenueDonutCard extends StatelessWidget {
                                   ? '${money(s.amount)} · ${s.count} ops'
                                   : '${s.count} ops · ${money(s.amount)}',
                               style: const TextStyle(
-                                  fontSize: 11, color: Colors.black54),
+                                fontSize: 11,
+                                color: Colors.black54,
+                              ),
                             ),
                           ),
                         ],
@@ -731,8 +864,10 @@ AxisTitles _yAxisTitles(double maxY) {
         if (v <= 0) return const SizedBox.shrink();
         return Padding(
           padding: const EdgeInsets.only(right: 4),
-          child: Text(_axisLabel(v),
-              style: const TextStyle(fontSize: 9, color: Colors.black54)),
+          child: Text(
+            _axisLabel(v),
+            style: const TextStyle(fontSize: 9, color: Colors.black54),
+          ),
         );
       },
     ),

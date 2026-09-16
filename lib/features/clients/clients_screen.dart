@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
+import '../../core/app_toast.dart';
 import '../../core/models.dart';
 import '../pos/pos_repository.dart';
 
@@ -64,39 +65,61 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
-                controller: name,
-                decoration: const InputDecoration(
-                    labelText: 'Nombre completo *')),
+              controller: name,
+              decoration: const InputDecoration(labelText: 'Nombre completo *'),
+            ),
             const SizedBox(height: 8),
             TextField(
-                controller: phone,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(labelText: 'Teléfono')),
+              controller: phone,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(labelText: 'Teléfono *'),
+            ),
             const SizedBox(height: 8),
             TextField(
-                controller: idNum,
-                decoration: const InputDecoration(labelText: 'Documento')),
+              controller: idNum,
+              decoration: const InputDecoration(labelText: 'Documento'),
+            ),
           ],
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancelar')),
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
           FilledButton(
             onPressed: () async {
-              if (name.text.trim().isEmpty) return;
+              // Validación visible por encima del diálogo (toast arriba);
+              // el SnackBar quedaba tapado y parecía que no hacía nada.
+              if (name.text.trim().isEmpty) {
+                AppToast.error(
+                  ctx,
+                  'Escribe el nombre completo del cliente.',
+                  title: 'Falta el nombre',
+                );
+                return;
+              }
+              if (phone.text.trim().isEmpty) {
+                AppToast.error(
+                  ctx,
+                  'El teléfono es obligatorio.',
+                  title: 'Falta el teléfono',
+                );
+                return;
+              }
               try {
-                final c = await ref.read(posRepositoryProvider).createClient(
+                final c = await ref
+                    .read(posRepositoryProvider)
+                    .createClient(
                       fullName: name.text.trim(),
                       phone: phone.text.trim(),
                       idNumber: idNum.text.trim(),
                     );
-                if (ctx.mounted) Navigator.pop(ctx, c);
-              } on ApiException catch (e) {
                 if (ctx.mounted) {
-                  ScaffoldMessenger.of(ctx)
-                      .showSnackBar(SnackBar(content: Text(e.message)));
+                  AppToast.success(ctx, 'Cliente ${c.fullName} creado.');
+                  Navigator.pop(ctx, c);
                 }
+              } on ApiException catch (e) {
+                if (ctx.mounted) AppToast.apiError(ctx, e);
               }
             },
             child: const Text('Guardar'),
@@ -142,33 +165,33 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
                 : _error != null
-                    ? Center(child: Text(_error!))
-                    : _items.isEmpty
-                        ? const Center(child: Text('Sin clientes.'))
-                        : ListView.separated(
-                            itemCount: _items.length,
-                            separatorBuilder: (_, _) =>
-                                const Divider(height: 1),
-                            itemBuilder: (context, i) {
-                              final c = _items[i];
-                              return ListTile(
-                                leading: CircleAvatar(
-                                    child: Text(c.fullName.isNotEmpty
-                                        ? c.fullName[0].toUpperCase()
-                                        : '?')),
-                                title: Text(c.fullName),
-                                subtitle: Text(
-                                    [c.phone, c.idNumber]
-                                        .where((e) =>
-                                            e != null && e.isNotEmpty)
-                                        .join('  ·  '),
-                                    maxLines: 1),
-                                onTap: picking
-                                    ? () => widget.onPick!(c)
-                                    : null,
-                              );
-                            },
+                ? Center(child: Text(_error!))
+                : _items.isEmpty
+                ? const Center(child: Text('Sin clientes.'))
+                : ListView.separated(
+                    itemCount: _items.length,
+                    separatorBuilder: (_, _) => const Divider(height: 1),
+                    itemBuilder: (context, i) {
+                      final c = _items[i];
+                      return ListTile(
+                        leading: CircleAvatar(
+                          child: Text(
+                            c.fullName.isNotEmpty
+                                ? c.fullName[0].toUpperCase()
+                                : '?',
                           ),
+                        ),
+                        title: Text(c.fullName),
+                        subtitle: Text(
+                          [c.phone, c.idNumber]
+                              .where((e) => e != null && e.isNotEmpty)
+                              .join('  ·  '),
+                          maxLines: 1,
+                        ),
+                        onTap: picking ? () => widget.onPick!(c) : null,
+                      );
+                    },
+                  ),
           ),
         ],
       ),

@@ -15,35 +15,39 @@ class _BigPosRepository extends PosRepository {
 
   @override
   Future<List<Product>> products({String q = ''}) async => List.generate(
-        50,
-        (i) => Product(
-          id: i + 1,
-          name: 'Producto de nombre bastante largo para probar el ancho $i',
-          sku: 'PRD-${i.toString().padLeft(5, '0')}',
-          unit: 'unidad',
-          price: 123456.78,
-          currentStock: i.isEven ? 5 : 0,
-          imageUrl: 'https://rodex.sczsoft.net/storage/company/1/products/$i/f.jpg',
-        ),
-      );
+    50,
+    (i) => Product(
+      id: i + 1,
+      name: 'Producto de nombre bastante largo para probar el ancho $i',
+      sku: 'PRD-${i.toString().padLeft(5, '0')}',
+      unit: 'unidad',
+      price: 123456.78,
+      currentStock: i.isEven ? 5 : 0,
+      imageUrl: 'https://rodex.sczsoft.net/storage/company/1/products/$i/f.jpg',
+    ),
+  );
 }
 
 void main() {
-  testWidgets('50 productos con foto y textos largos no rompen el layout',
-      (tester) async {
+  testWidgets('50 productos con foto y textos largos no rompen el layout', (
+    tester,
+  ) async {
     // Pantalla de teléfono típica (360x640 lógicos).
     tester.view.physicalSize = const Size(1080, 1920);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(ProviderScope(
-      overrides: [
-        posRepositoryProvider.overrideWithValue(_BigPosRepository()),
-        authControllerProvider.overrideWith(
-            (ref) => AuthController(ApiClient(), SecureStore(), ref)),
-      ],
-      child: MaterialApp(home: ProductsScreen(onPick: (_) {})),
-    ));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          posRepositoryProvider.overrideWithValue(_BigPosRepository()),
+          authControllerProvider.overrideWith(
+            (ref) => AuthController(ApiClient(), SecureStore(), ref),
+          ),
+        ],
+        child: MaterialApp(home: ProductsScreen(onPick: (_) {})),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Agregar producto'), findsOneWidget);

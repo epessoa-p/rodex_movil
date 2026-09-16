@@ -31,13 +31,12 @@ class AuthState {
     MeContext? me,
     List<Company>? companies,
     String? error,
-  }) =>
-      AuthState(
-        status: status ?? this.status,
-        me: me ?? this.me,
-        companies: companies ?? this.companies,
-        error: error,
-      );
+  }) => AuthState(
+    status: status ?? this.status,
+    me: me ?? this.me,
+    companies: companies ?? this.companies,
+    error: error,
+  );
 }
 
 /// Maneja el ciclo de sesión: bootstrap (token guardado), login, selección de
@@ -48,7 +47,7 @@ class AuthController extends StateNotifier<AuthState> {
   final Ref _ref;
 
   AuthController(this._api, this._store, this._ref)
-      : super(const AuthState.loading());
+    : super(const AuthState.loading());
 
   /// Limpia los datos cacheados de la sesión anterior (caja, resumen del día,
   /// carrito) para que al cambiar de usuario/empresa no se muestren stale.
@@ -77,11 +76,16 @@ class AuthController extends StateNotifier<AuthState> {
   Future<void> login(String email, String password) async {
     state = const AuthState.loading();
     try {
-      final data = await _api.post('/login', body: {
-        'email': email,
-        'password': password,
-        'device': 'app-android',
-      }) as Map<String, dynamic>;
+      final data =
+          await _api.post(
+                '/login',
+                body: {
+                  'email': email,
+                  'password': password,
+                  'device': 'app-android',
+                },
+              )
+              as Map<String, dynamic>;
 
       final token = data['token'] as String;
       await _store.saveToken(token);
@@ -94,7 +98,10 @@ class AuthController extends StateNotifier<AuthState> {
       if (companies.length == 1) {
         await selectCompany(companies.first.id);
       } else {
-        state = AuthState(status: AuthStatus.needsCompany, companies: companies);
+        state = AuthState(
+          status: AuthStatus.needsCompany,
+          companies: companies,
+        );
       }
     } on ApiException catch (e) {
       state = AuthState(status: AuthStatus.unauthenticated, error: e.message);
@@ -115,10 +122,7 @@ class AuthController extends StateNotifier<AuthState> {
       setCurrencySymbol(me.company?.currency);
       // Nueva sesión/empresa: descarta los datos cacheados del usuario anterior.
       _resetSessionData();
-      state = AuthState(
-        status: AuthStatus.authenticated,
-        me: me,
-      );
+      state = AuthState(status: AuthStatus.authenticated, me: me);
     } on ApiException catch (e) {
       if (e.isUnauthorized) {
         await _clear();
@@ -127,7 +131,10 @@ class AuthController extends StateNotifier<AuthState> {
         final companies = ((e.data?['companies'] as List?) ?? [])
             .map((c) => Company.fromJson(c as Map<String, dynamic>))
             .toList();
-        state = AuthState(status: AuthStatus.needsCompany, companies: companies);
+        state = AuthState(
+          status: AuthStatus.needsCompany,
+          companies: companies,
+        );
       } else {
         state = AuthState(status: AuthStatus.unauthenticated, error: e.message);
       }
@@ -150,7 +157,9 @@ class AuthController extends StateNotifier<AuthState> {
   Future<void> logout() async {
     try {
       await _api.post('/logout');
-    } catch (_) {/* best-effort */}
+    } catch (_) {
+      /* best-effort */
+    }
     await _clear();
     state = const AuthState(status: AuthStatus.unauthenticated);
     _resetSessionData();
@@ -159,11 +168,14 @@ class AuthController extends StateNotifier<AuthState> {
   /// Cambia la contraseña del usuario. Lanza [ApiException] si el backend la
   /// rechaza (p. ej. la contraseña actual no coincide).
   Future<void> changePassword(String current, String nueva) async {
-    await _api.post('/change-password', body: {
-      'current_password': current,
-      'password': nueva,
-      'password_confirmation': nueva,
-    });
+    await _api.post(
+      '/change-password',
+      body: {
+        'current_password': current,
+        'password': nueva,
+        'password_confirmation': nueva,
+      },
+    );
   }
 
   Future<void> _clear() async {

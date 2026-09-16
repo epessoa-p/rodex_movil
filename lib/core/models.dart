@@ -32,18 +32,18 @@ class Company {
       .toList();
 
   factory Company.fromJson(Map<String, dynamic> j) => Company(
-        id: j['id'] as int,
-        name: j['name'] as String,
-        currency: (j['currency'] as String?)?.trim().isNotEmpty == true
-            ? (j['currency'] as String).trim()
-            : 'Bs',
-        logoUrl: j['logo_url'] as String?,
-        themePrimary: j['theme_primary'] as String?,
-        themeAccent: j['theme_accent'] as String?,
-        dashboardOrder: (j['dashboard_order'] as String?)?.trim().isNotEmpty == true
-            ? (j['dashboard_order'] as String).trim()
-            : 'ventas,taller,compras',
-      );
+    id: j['id'] as int,
+    name: j['name'] as String,
+    currency: (j['currency'] as String?)?.trim().isNotEmpty == true
+        ? (j['currency'] as String).trim()
+        : 'Bs',
+    logoUrl: j['logo_url'] as String?,
+    themePrimary: j['theme_primary'] as String?,
+    themeAccent: j['theme_accent'] as String?,
+    dashboardOrder: (j['dashboard_order'] as String?)?.trim().isNotEmpty == true
+        ? (j['dashboard_order'] as String).trim()
+        : 'ventas,taller,compras',
+  );
 }
 
 class AppUser {
@@ -55,11 +55,11 @@ class AppUser {
   AppUser({required this.id, required this.name, this.email, this.phone});
 
   factory AppUser.fromJson(Map<String, dynamic> j) => AppUser(
-        id: j['id'] as int,
-        name: j['name'] as String,
-        email: j['email'] as String?,
-        phone: j['phone'] as String?,
-      );
+    id: j['id'] as int,
+    name: j['name'] as String,
+    email: j['email'] as String?,
+    phone: j['phone'] as String?,
+  );
 }
 
 /// Contexto de sesión que devuelve /api/me (empresa activa, permisos, plan).
@@ -80,25 +80,29 @@ class MeContext {
     required this.planFeatures,
   });
 
-  bool can(String permission) => isSuperAdmin || permissions.contains(permission);
-  bool canAny(List<String> perms) => isSuperAdmin || perms.any(permissions.contains);
-  bool planAllows(String feature) => isSuperAdmin || planFeatures.contains(feature);
+  bool can(String permission) =>
+      isSuperAdmin || permissions.contains(permission);
+  bool canAny(List<String> perms) =>
+      isSuperAdmin || perms.any(permissions.contains);
+  bool planAllows(String feature) =>
+      isSuperAdmin || planFeatures.contains(feature);
 
   factory MeContext.fromJson(Map<String, dynamic> j) => MeContext(
-        user: AppUser.fromJson(j['user'] as Map<String, dynamic>),
-        isSuperAdmin: (j['is_super_admin'] as bool?) ?? false,
-        company: j['company'] == null
-            ? null
-            : Company.fromJson(j['company'] as Map<String, dynamic>),
-        companies: ((j['companies'] as List?) ?? [])
-            .map((e) => Company.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        permissions:
-            ((j['permissions'] as List?) ?? []).map((e) => e.toString()).toList(),
-        planFeatures: ((j['plan']?['features'] as List?) ?? [])
-            .map((e) => e.toString())
-            .toList(),
-      );
+    user: AppUser.fromJson(j['user'] as Map<String, dynamic>),
+    isSuperAdmin: (j['is_super_admin'] as bool?) ?? false,
+    company: j['company'] == null
+        ? null
+        : Company.fromJson(j['company'] as Map<String, dynamic>),
+    companies: ((j['companies'] as List?) ?? [])
+        .map((e) => Company.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    permissions: ((j['permissions'] as List?) ?? [])
+        .map((e) => e.toString())
+        .toList(),
+    planFeatures: ((j['plan']?['features'] as List?) ?? [])
+        .map((e) => e.toString())
+        .toList(),
+  );
 }
 
 class Product {
@@ -123,17 +127,17 @@ class Product {
   });
 
   factory Product.fromJson(Map<String, dynamic> j) => Product(
-        id: j['id'] as int,
-        name: j['name'] as String,
-        sku: j['sku'] as String?,
-        barcode: j['barcode'] as String?,
-        unit: j['unit'] as String?,
-        price: _toDouble(j['price']),
-        currentStock: _toDouble(j['current_stock']),
-        imageUrl: (j['image_url'] as String?)?.isNotEmpty == true
-            ? j['image_url'] as String
-            : null,
-      );
+    id: j['id'] as int,
+    name: j['name'] as String,
+    sku: j['sku'] as String?,
+    barcode: j['barcode'] as String?,
+    unit: j['unit'] as String?,
+    price: _toDouble(j['price']),
+    currentStock: _toDouble(j['current_stock']),
+    imageUrl: (j['image_url'] as String?)?.isNotEmpty == true
+        ? j['image_url'] as String
+        : null,
+  );
 }
 
 /// Opción genérica id + nombre (categorías, marcas, almacenes, etc.).
@@ -150,13 +154,17 @@ class WarehouseStock {
   final int id;
   final String warehouse;
   final double qty;
-  WarehouseStock({required this.id, required this.warehouse, required this.qty});
+  WarehouseStock({
+    required this.id,
+    required this.warehouse,
+    required this.qty,
+  });
 
   factory WarehouseStock.fromJson(Map<String, dynamic> j) => WarehouseStock(
-        id: (j['id'] as num?)?.toInt() ?? 0,
-        warehouse: (j['warehouse'] ?? '') as String,
-        qty: _toDouble(j['qty']),
-      );
+    id: (j['id'] as num?)?.toInt() ?? 0,
+    warehouse: (j['warehouse'] ?? '') as String,
+    qty: _toDouble(j['qty']),
+  );
 }
 
 /// Ficha completa de un producto (precio, stock por almacén, origen, modelos).
@@ -194,40 +202,40 @@ class ProductDetail {
   });
 
   factory ProductDetail.fromJson(Map<String, dynamic> j) => ProductDetail(
-        id: j['id'] as int,
-        name: j['name'] as String,
-        sku: j['sku'] as String?,
-        code: j['code'] as String?,
-        barcode: j['barcode'] as String?,
-        unit: j['unit'] as String?,
-        price: _toDouble(j['price']),
-        currentStock: _toDouble(j['current_stock']),
-        category: j['category'] as String?,
-        brand: j['brand'] as String?,
-        origin: j['origin'] as String?,
-        compatibleModels: ((j['compatible_models'] as List?) ?? [])
-            .map((e) => e.toString())
-            .toList(),
-        stockByWarehouse: ((j['stock_by_warehouse'] as List?) ?? [])
-            .map((e) => WarehouseStock.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        photos: ((j['photos'] as List?) ?? [])
-            .map((e) => e.toString())
-            .where((e) => e.isNotEmpty)
-            .toList(),
-      );
+    id: j['id'] as int,
+    name: j['name'] as String,
+    sku: j['sku'] as String?,
+    code: j['code'] as String?,
+    barcode: j['barcode'] as String?,
+    unit: j['unit'] as String?,
+    price: _toDouble(j['price']),
+    currentStock: _toDouble(j['current_stock']),
+    category: j['category'] as String?,
+    brand: j['brand'] as String?,
+    origin: j['origin'] as String?,
+    compatibleModels: ((j['compatible_models'] as List?) ?? [])
+        .map((e) => e.toString())
+        .toList(),
+    stockByWarehouse: ((j['stock_by_warehouse'] as List?) ?? [])
+        .map((e) => WarehouseStock.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    photos: ((j['photos'] as List?) ?? [])
+        .map((e) => e.toString())
+        .where((e) => e.isNotEmpty)
+        .toList(),
+  );
 
   /// Producto ligero para el carrito (lo que el POS necesita).
   Product toProduct() => Product(
-        id: id,
-        name: name,
-        sku: sku,
-        barcode: barcode,
-        unit: unit,
-        price: price,
-        currentStock: currentStock,
-        imageUrl: photos.isNotEmpty ? photos.first : null,
-      );
+    id: id,
+    name: name,
+    sku: sku,
+    barcode: barcode,
+    unit: unit,
+    price: price,
+    currentStock: currentStock,
+    imageUrl: photos.isNotEmpty ? photos.first : null,
+  );
 }
 
 class Client {
@@ -236,19 +244,14 @@ class Client {
   final String? idNumber;
   final String? phone;
 
-  Client({
-    required this.id,
-    required this.fullName,
-    this.idNumber,
-    this.phone,
-  });
+  Client({required this.id, required this.fullName, this.idNumber, this.phone});
 
   factory Client.fromJson(Map<String, dynamic> j) => Client(
-        id: j['id'] as int,
-        fullName: j['full_name'] as String,
-        idNumber: j['id_number'] as String?,
-        phone: j['phone'] as String?,
-      );
+    id: j['id'] as int,
+    fullName: j['full_name'] as String,
+    idNumber: j['id_number'] as String?,
+    phone: j['phone'] as String?,
+  );
 }
 
 class CashSession {
@@ -273,15 +276,15 @@ class CashSession {
   });
 
   factory CashSession.fromJson(Map<String, dynamic> j) => CashSession(
-        id: j['id'] as int,
-        cashRegister: j['cash_register'] as String?,
-        branch: j['branch'] as String?,
-        branchId: j['branch_id'] as int?,
-        openingAmount: _toDouble(j['opening_amount']),
-        totalIncome: _toDouble(j['total_income']),
-        totalExpense: _toDouble(j['total_expense']),
-        expectedAmount: _toDouble(j['expected_amount']),
-      );
+    id: j['id'] as int,
+    cashRegister: j['cash_register'] as String?,
+    branch: j['branch'] as String?,
+    branchId: j['branch_id'] as int?,
+    openingAmount: _toDouble(j['opening_amount']),
+    totalIncome: _toDouble(j['total_income']),
+    totalExpense: _toDouble(j['total_expense']),
+    expectedAmount: _toDouble(j['expected_amount']),
+  );
 }
 
 /// Resumen de ventas del día (para el inicio).
@@ -297,10 +300,10 @@ class DaySummary {
   });
 
   factory DaySummary.fromJson(Map<String, dynamic> j) => DaySummary(
-        salesCount: (j['sales_count'] as num?)?.toInt() ?? 0,
-        salesTotal: _toDouble(j['sales_total']),
-        scope: (j['scope'] ?? 'own') as String,
-      );
+    salesCount: (j['sales_count'] as num?)?.toInt() ?? 0,
+    salesTotal: _toDouble(j['sales_total']),
+    scope: (j['scope'] ?? 'own') as String,
+  );
 }
 
 /// Resumen de OTs del día (para el inicio): recibidas hoy y activas.
@@ -346,14 +349,14 @@ class CashMovement {
   bool get isExpense => type == 'expense';
 
   factory CashMovement.fromJson(Map<String, dynamic> j) => CashMovement(
-        id: j['id'] as int,
-        type: (j['type'] ?? 'expense') as String,
-        category: (j['category'] ?? '') as String,
-        amount: _toDouble(j['amount']),
-        method: j['method'] as String?,
-        description: j['description'] as String?,
-        date: j['date'] != null ? DateTime.tryParse(j['date'] as String) : null,
-      );
+    id: j['id'] as int,
+    type: (j['type'] ?? 'expense') as String,
+    category: (j['category'] ?? '') as String,
+    amount: _toDouble(j['amount']),
+    method: j['method'] as String?,
+    description: j['description'] as String?,
+    date: j['date'] != null ? DateTime.tryParse(j['date'] as String) : null,
+  );
 }
 
 class CashRegisterOption {
@@ -394,12 +397,12 @@ class SaleItem {
   });
 
   factory SaleItem.fromJson(Map<String, dynamic> j) => SaleItem(
-        name: (j['name'] ?? '') as String,
-        quantity: _toDouble(j['quantity']),
-        unitPrice: _toDouble(j['unit_price']),
-        discount: _toDouble(j['discount']),
-        subtotal: _toDouble(j['subtotal']),
-      );
+    name: (j['name'] ?? '') as String,
+    quantity: _toDouble(j['quantity']),
+    unitPrice: _toDouble(j['unit_price']),
+    discount: _toDouble(j['discount']),
+    subtotal: _toDouble(j['subtotal']),
+  );
 }
 
 class Mechanic {
@@ -416,10 +419,10 @@ class VehicleOption {
   final String? plate;
   VehicleOption({required this.id, required this.label, this.plate});
   factory VehicleOption.fromJson(Map<String, dynamic> j) => VehicleOption(
-        id: j['id'] as int,
-        label: (j['label'] ?? '') as String,
-        plate: j['plate'] as String?,
-      );
+    id: j['id'] as int,
+    label: (j['label'] ?? '') as String,
+    plate: j['plate'] as String?,
+  );
 }
 
 class WoService {
@@ -438,13 +441,13 @@ class WoService {
     this.mechanic,
   });
   factory WoService.fromJson(Map<String, dynamic> j) => WoService(
-        id: j['id'] as int,
-        description: (j['description'] ?? '') as String,
-        price: _toDouble(j['price']),
-        quantity: (j['quantity'] as num?)?.toInt() ?? 1,
-        subtotal: _toDouble(j['subtotal']),
-        mechanic: j['mechanic'] as String?,
-      );
+    id: j['id'] as int,
+    description: (j['description'] ?? '') as String,
+    price: _toDouble(j['price']),
+    quantity: (j['quantity'] as num?)?.toInt() ?? 1,
+    subtotal: _toDouble(j['subtotal']),
+    mechanic: j['mechanic'] as String?,
+  );
 }
 
 class WoPart {
@@ -461,12 +464,12 @@ class WoPart {
     required this.subtotal,
   });
   factory WoPart.fromJson(Map<String, dynamic> j) => WoPart(
-        id: j['id'] as int,
-        name: (j['name'] ?? '') as String,
-        quantity: (j['quantity'] as num?)?.toInt() ?? 1,
-        unitPrice: _toDouble(j['unit_price']),
-        subtotal: _toDouble(j['subtotal']),
-      );
+    id: j['id'] as int,
+    name: (j['name'] ?? '') as String,
+    quantity: (j['quantity'] as num?)?.toInt() ?? 1,
+    unitPrice: _toDouble(j['unit_price']),
+    subtotal: _toDouble(j['subtotal']),
+  );
 }
 
 /// Orden de trabajo. En el listado los campos de detalle vienen vacíos;
@@ -527,38 +530,38 @@ class WorkOrder {
   });
 
   factory WorkOrder.fromJson(Map<String, dynamic> j) => WorkOrder(
-        id: j['id'] as int,
-        code: j['code'] as String,
-        status: (j['status'] ?? '') as String,
-        statusLabel: (j['status_label'] ?? '') as String,
-        paymentStatus: (j['payment_status'] ?? '') as String,
-        total: _toDouble(j['total']),
-        balance: _toDouble(j['balance']),
-        paidAmount: _toDouble(j['paid_amount']),
-        client: j['client'] as String?,
-        clientPhone: j['client_phone'] as String?,
-        vehicle: j['vehicle'] as String?,
-        mechanic: j['mechanic'] as String?,
-        receptionDate: j['reception_date'] as String?,
-        reportedIssue: j['reported_issue'] as String?,
-        diagnosis: j['diagnosis'] as String?,
-        mileage: (j['mileage'] as num?)?.toInt(),
-        fuelLevel: j['fuel_level'] as String?,
-        receivedItems: j['received_items'] as String?,
-        notes: j['notes'] as String?,
-        subtotalServices: _toDouble(j['subtotal_services']),
-        subtotalParts: _toDouble(j['subtotal_parts']),
-        discount: _toDouble(j['discount']),
-        services: ((j['services'] as List?) ?? [])
-            .map((e) => WoService.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        parts: ((j['parts'] as List?) ?? [])
-            .map((e) => WoPart.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        photos: ((j['photos'] as List?) ?? [])
-            .map((e) => WoPhoto.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
+    id: j['id'] as int,
+    code: j['code'] as String,
+    status: (j['status'] ?? '') as String,
+    statusLabel: (j['status_label'] ?? '') as String,
+    paymentStatus: (j['payment_status'] ?? '') as String,
+    total: _toDouble(j['total']),
+    balance: _toDouble(j['balance']),
+    paidAmount: _toDouble(j['paid_amount']),
+    client: j['client'] as String?,
+    clientPhone: j['client_phone'] as String?,
+    vehicle: j['vehicle'] as String?,
+    mechanic: j['mechanic'] as String?,
+    receptionDate: j['reception_date'] as String?,
+    reportedIssue: j['reported_issue'] as String?,
+    diagnosis: j['diagnosis'] as String?,
+    mileage: (j['mileage'] as num?)?.toInt(),
+    fuelLevel: j['fuel_level'] as String?,
+    receivedItems: j['received_items'] as String?,
+    notes: j['notes'] as String?,
+    subtotalServices: _toDouble(j['subtotal_services']),
+    subtotalParts: _toDouble(j['subtotal_parts']),
+    discount: _toDouble(j['discount']),
+    services: ((j['services'] as List?) ?? [])
+        .map((e) => WoService.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    parts: ((j['parts'] as List?) ?? [])
+        .map((e) => WoPart.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    photos: ((j['photos'] as List?) ?? [])
+        .map((e) => WoPhoto.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
 }
 
 /// Foto de una orden de trabajo.
@@ -569,11 +572,11 @@ class WoPhoto {
   final String? caption;
   WoPhoto({required this.id, required this.url, this.fileName, this.caption});
   factory WoPhoto.fromJson(Map<String, dynamic> j) => WoPhoto(
-        id: j['id'] as int,
-        url: (j['url'] ?? '') as String,
-        fileName: j['file_name'] as String?,
-        caption: j['caption'] as String?,
-      );
+    id: j['id'] as int,
+    url: (j['url'] ?? '') as String,
+    fileName: j['file_name'] as String?,
+    caption: j['caption'] as String?,
+  );
 }
 
 class Sale {
@@ -602,19 +605,19 @@ class Sale {
   });
 
   factory Sale.fromJson(Map<String, dynamic> j) => Sale(
-        id: j['id'] as int,
-        code: j['code'] as String,
-        saleType: (j['sale_type'] ?? 'cash') as String,
-        total: _toDouble(j['total']),
-        paidAmount: _toDouble(j['paid_amount']),
-        balance: _toDouble(j['balance']),
-        paymentStatus: (j['payment_status'] ?? '') as String,
-        client: j['client'] as String?,
-        saleDate: j['sale_date'] != null
-            ? DateTime.tryParse(j['sale_date'] as String)
-            : null,
-        items: ((j['items'] as List?) ?? [])
-            .map((e) => SaleItem.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
+    id: j['id'] as int,
+    code: j['code'] as String,
+    saleType: (j['sale_type'] ?? 'cash') as String,
+    total: _toDouble(j['total']),
+    paidAmount: _toDouble(j['paid_amount']),
+    balance: _toDouble(j['balance']),
+    paymentStatus: (j['payment_status'] ?? '') as String,
+    client: j['client'] as String?,
+    saleDate: j['sale_date'] != null
+        ? DateTime.tryParse(j['sale_date'] as String)
+        : null,
+    items: ((j['items'] as List?) ?? [])
+        .map((e) => SaleItem.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
 }

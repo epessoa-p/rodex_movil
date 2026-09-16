@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
+import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
 import '../products/products_screen.dart';
@@ -169,13 +170,13 @@ class _NewPurchaseOrderScreenState
     } on ApiException catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        _snack(e.message);
+        AppToast.apiError(context, e);
       }
     }
   }
 
-  void _snack(String m) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+  // Validaciones y errores locales: toast rojo arriba (visible sobre hojas).
+  void _snack(String m) => AppToast.error(context, m);
 
   @override
   Widget build(BuildContext context) {

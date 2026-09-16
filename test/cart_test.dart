@@ -35,12 +35,7 @@ void main() {
 
       final items = cart.toItems();
       expect(items, [
-        {
-          'product_id': 7,
-          'quantity': 2.0,
-          'unit_price': 12.5,
-          'discount': 0.0,
-        }
+        {'product_id': 7, 'quantity': 2.0, 'unit_price': 12.5, 'discount': 0.0},
       ]);
     });
 

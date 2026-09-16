@@ -363,9 +363,7 @@ class _MechanicPaymentDetailScreenState
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No se pudo generar el PDF: $e')),
-        );
+        AppToast.error(context, 'No se pudo generar el PDF: $e');
       }
     }
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
+import '../../core/app_toast.dart';
 import '../../core/providers.dart';
 import 'workshop_repository.dart';
 
@@ -29,16 +30,20 @@ class MechanicsScreen extends ConsumerWidget {
         onRefresh: () async => ref.invalidate(mechanicsFullProvider),
         child: async.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => ListView(children: [
-            const SizedBox(height: 80),
-            Center(child: Text('$e', textAlign: TextAlign.center)),
-          ]),
+          error: (e, _) => ListView(
+            children: [
+              const SizedBox(height: 80),
+              Center(child: Text('$e', textAlign: TextAlign.center)),
+            ],
+          ),
           data: (list) {
             if (list.isEmpty) {
-              return ListView(children: const [
-                SizedBox(height: 80),
-                Center(child: Text('Aún no hay mecánicos. Crea el primero.')),
-              ]);
+              return ListView(
+                children: const [
+                  SizedBox(height: 80),
+                  Center(child: Text('Aún no hay mecánicos. Crea el primero.')),
+                ],
+              );
             }
             return ListView.separated(
               padding: const EdgeInsets.all(12),
@@ -52,20 +57,28 @@ class MechanicsScreen extends ConsumerWidget {
                       backgroundColor:
                           (m.active ? Colors.deepPurple : Colors.grey)
                               .withValues(alpha: .15),
-                      child: Icon(Icons.engineering_outlined,
-                          color: m.active ? Colors.deepPurple : Colors.grey),
+                      child: Icon(
+                        Icons.engineering_outlined,
+                        color: m.active ? Colors.deepPurple : Colors.grey,
+                      ),
                     ),
-                    title: Text(m.name,
-                        style: const TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: Text([
-                      if (m.specialty != null && m.specialty!.isNotEmpty)
-                        m.specialty,
-                      if (m.phone != null && m.phone!.isNotEmpty) m.phone,
-                      '${_trim(m.commissionRate)}% comisión',
-                      if (!m.active) 'inactivo',
-                    ].whereType<String>().join(' · ')),
+                    title: Text(
+                      m.name,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      [
+                        if (m.specialty != null && m.specialty!.isNotEmpty)
+                          m.specialty,
+                        if (m.phone != null && m.phone!.isNotEmpty) m.phone,
+                        '${_trim(m.commissionRate)}% comisión',
+                        if (!m.active) 'inactivo',
+                      ].whereType<String>().join(' · '),
+                    ),
                     trailing: canEdit ? const Icon(Icons.chevron_right) : null,
-                    onTap: canEdit ? () => _openForm(context, ref, edit: m) : null,
+                    onTap: canEdit
+                        ? () => _openForm(context, ref, edit: m)
+                        : null,
                   ),
                 );
               },
@@ -76,11 +89,14 @@ class MechanicsScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _openForm(BuildContext context, WidgetRef ref,
-      {MechanicFull? edit}) async {
-    final saved = await Navigator.of(context).push<bool>(MaterialPageRoute(
-      builder: (_) => MechanicFormScreen(edit: edit),
-    ));
+  Future<void> _openForm(
+    BuildContext context,
+    WidgetRef ref, {
+    MechanicFull? edit,
+  }) async {
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => MechanicFormScreen(edit: edit)),
+    );
     if (saved == true) ref.invalidate(mechanicsFullProvider);
   }
 
@@ -99,13 +115,15 @@ class MechanicFormScreen extends ConsumerStatefulWidget {
 
 class _MechanicFormScreenState extends ConsumerState<MechanicFormScreen> {
   late final _name = TextEditingController(text: widget.edit?.name ?? '');
-  late final _specialty =
-      TextEditingController(text: widget.edit?.specialty ?? '');
+  late final _specialty = TextEditingController(
+    text: widget.edit?.specialty ?? '',
+  );
   late final _phone = TextEditingController(text: widget.edit?.phone ?? '');
   late final _commission = TextEditingController(
-      text: (widget.edit != null && widget.edit!.commissionRate > 0)
-          ? _trim(widget.edit!.commissionRate)
-          : '');
+    text: (widget.edit != null && widget.edit!.commissionRate > 0)
+        ? _trim(widget.edit!.commissionRate)
+        : '',
+  );
   late bool _active = widget.edit?.active ?? true;
   bool _saving = false;
 
@@ -133,43 +151,49 @@ class _MechanicFormScreenState extends ConsumerState<MechanicFormScreen> {
       final repo = ref.read(workshopRepositoryProvider);
       final args = (
         name: _name.text.trim(),
-        specialty: _specialty.text.trim().isEmpty ? null : _specialty.text.trim(),
+        specialty: _specialty.text.trim().isEmpty
+            ? null
+            : _specialty.text.trim(),
         phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
         commissionRate: rate,
         active: _active,
       );
       if (widget.edit != null) {
-        await repo.updateMechanic(widget.edit!.id,
-            name: args.name,
-            specialty: args.specialty,
-            phone: args.phone,
-            commissionRate: args.commissionRate,
-            active: args.active);
+        await repo.updateMechanic(
+          widget.edit!.id,
+          name: args.name,
+          specialty: args.specialty,
+          phone: args.phone,
+          commissionRate: args.commissionRate,
+          active: args.active,
+        );
       } else {
         await repo.createMechanic(
-            name: args.name,
-            specialty: args.specialty,
-            phone: args.phone,
-            commissionRate: args.commissionRate,
-            active: args.active);
+          name: args.name,
+          specialty: args.specialty,
+          phone: args.phone,
+          commissionRate: args.commissionRate,
+          active: args.active,
+        );
       }
       if (mounted) Navigator.pop(context, true);
     } on ApiException catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        _snack(e.message);
+        AppToast.apiError(context, e);
       }
     }
   }
 
-  void _snack(String m) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+  // Validaciones y errores locales: toast rojo arriba (visible sobre hojas).
+  void _snack(String m) => AppToast.error(context, m);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-          title: Text(widget.edit != null ? 'Editar mecánico' : 'Nuevo mecánico')),
+        title: Text(widget.edit != null ? 'Editar mecánico' : 'Nuevo mecánico'),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -177,32 +201,39 @@ class _MechanicFormScreenState extends ConsumerState<MechanicFormScreen> {
             controller: _name,
             textCapitalization: TextCapitalization.words,
             decoration: const InputDecoration(
-                labelText: 'Nombre *', border: OutlineInputBorder()),
+              labelText: 'Nombre *',
+              border: OutlineInputBorder(),
+            ),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _specialty,
             decoration: const InputDecoration(
-                labelText: 'Especialidad',
-                hintText: 'Ej: Motor, eléctrico, suspensión…',
-                border: OutlineInputBorder()),
+              labelText: 'Especialidad',
+              hintText: 'Ej: Motor, eléctrico, suspensión…',
+              border: OutlineInputBorder(),
+            ),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _phone,
             keyboardType: TextInputType.phone,
             decoration: const InputDecoration(
-                labelText: 'Teléfono', border: OutlineInputBorder()),
+              labelText: 'Teléfono',
+              border: OutlineInputBorder(),
+            ),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _commission,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: const InputDecoration(
-                labelText: 'Comisión (%)',
-                suffixText: '%',
-                helperText: 'Sobre la mano de obra de sus OTs entregadas (0–100).',
-                border: OutlineInputBorder()),
+              labelText: 'Comisión (%)',
+              suffixText: '%',
+              helperText:
+                  'Sobre la mano de obra de sus OTs entregadas (0–100).',
+              border: OutlineInputBorder(),
+            ),
           ),
           const SizedBox(height: 4),
           SwitchListTile(
@@ -213,14 +244,18 @@ class _MechanicFormScreenState extends ConsumerState<MechanicFormScreen> {
           ),
           const SizedBox(height: 12),
           FilledButton.icon(
-            style:
-                FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(50),
+            ),
             icon: _saving
                 ? const SizedBox(
                     width: 18,
                     height: 18,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white))
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
                 : const Icon(Icons.check),
             label: const Text('Guardar mecánico'),
             onPressed: _saving ? null : _save,

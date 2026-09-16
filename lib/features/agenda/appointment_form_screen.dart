@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
+import '../../core/app_toast.dart';
 import '../../core/models.dart';
+import '../../core/sheet_focus.dart';
 import '../clients/clients_screen.dart';
 import '../workshop/workshop_repository.dart';
 import 'agenda_repository.dart';
@@ -32,7 +34,8 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
   final _name = TextEditingController();
   final _phone = TextEditingController();
 
-  int? _serviceId;
+  /// Servicios elegidos (varios), en el orden en que se agregaron.
+  final List<IdName> _services = [];
   int? _mechanicId;
   final _title = TextEditingController();
   final _notes = TextEditingController();
@@ -54,7 +57,7 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
       _vehicleId = e.vehicleId;
       _name.text = e.customerName ?? '';
       _phone.text = e.customerPhone ?? '';
-      _serviceId = e.serviceId;
+      _services.addAll(e.services);
       _mechanicId = e.mechanicId;
       _title.text = e.title ?? '';
       _notes.text = e.notes ?? '';
@@ -62,7 +65,10 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
       final parts = e.date.split('-');
       if (parts.length == 3) {
         _date = DateTime(
-            int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+          int.parse(parts[0]),
+          int.parse(parts[1]),
+          int.parse(parts[2]),
+        );
       }
       final t = e.time.split(':');
       if (t.length == 2) {
@@ -96,18 +102,20 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
   }
 
   Future<void> _pickClient() async {
-    await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => ClientsScreen(
-        onPick: (c) {
-          Navigator.pop(context);
-          setState(() {
-            _clientId = c.id;
-            _clientName = c.fullName;
-          });
-          _loadVehicles(c.id);
-        },
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ClientsScreen(
+          onPick: (c) {
+            Navigator.pop(context);
+            setState(() {
+              _clientId = c.id;
+              _clientName = c.fullName;
+            });
+            _loadVehicles(c.id);
+          },
+        ),
       ),
-    ));
+    );
   }
 
   String get _dateLabel =>
@@ -129,13 +137,43 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
     if (picked != null) setState(() => _time = picked);
   }
 
+  /// Hoja para elegir servicios del catálogo (varios, con buscador).
+  Future<void> _pickServices(List<IdName> catalog) async {
+    final picked = await showModalBottomSheet<List<IdName>>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => _ServicesPickerSheet(
+        catalog: catalog,
+        selected: _services.map((s) => s.id).toSet(),
+      ),
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _services
+        ..clear()
+        ..addAll(picked);
+      if (_title.text.trim().isEmpty && picked.isNotEmpty) {
+        _title.text = picked.map((s) => s.name).join(', ');
+      }
+    });
+  }
+
   Future<void> _save() async {
     if (_registered && _clientId == null) {
-      _snack('Elige un cliente o usa el modo rápido.');
+      AppToast.error(
+        context,
+        'Elige un cliente o usa el modo rápido.',
+        title: 'Falta el cliente',
+      );
       return;
     }
     if (!_registered && _name.text.trim().isEmpty) {
-      _snack('Escribe el nombre del cliente.');
+      AppToast.error(
+        context,
+        'Escribe el nombre del cliente.',
+        title: 'Falta el nombre',
+      );
       return;
     }
 
@@ -152,7 +190,8 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
       if (!_registered) 'customer_name': _name.text.trim(),
       if (!_registered && _phone.text.trim().isNotEmpty)
         'customer_phone': _phone.text.trim(),
-      if (_serviceId != null) 'service_id': _serviceId,
+      // Siempre se manda (vacío = sin servicios) para que el backend sincronice.
+      'service_ids': [for (final s in _services) s.id],
       if (_mechanicId != null) 'mechanic_id': _mechanicId,
       if (_title.text.trim().isNotEmpty) 'title': _title.text.trim(),
       if (_notes.text.trim().isNotEmpty) 'notes': _notes.text.trim(),
@@ -166,17 +205,20 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
       } else {
         await repo.create(body);
       }
-      if (mounted) Navigator.pop(context, true);
+      if (mounted) {
+        AppToast.success(
+          context,
+          widget.edit != null ? 'Cita actualizada.' : 'Cita agendada.',
+        );
+        Navigator.pop(context, true);
+      }
     } on ApiException catch (e) {
       if (mounted) {
         setState(() => _saving = false);
-        _snack(e.message);
+        AppToast.apiError(context, e);
       }
     }
   }
-
-  void _snack(String m) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
 
   @override
   Widget build(BuildContext context) {
@@ -184,7 +226,8 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
 
     return Scaffold(
       appBar: AppBar(
-          title: Text(widget.edit != null ? 'Editar cita' : 'Nueva cita')),
+        title: Text(widget.edit != null ? 'Editar cita' : 'Nueva cita'),
+      ),
       body: metaAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('$e')),
@@ -195,13 +238,15 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
             SegmentedButton<bool>(
               segments: const [
                 ButtonSegment(
-                    value: true,
-                    label: Text('Registrado'),
-                    icon: Icon(Icons.person_outline)),
+                  value: true,
+                  label: Text('Registrado'),
+                  icon: Icon(Icons.person_outline),
+                ),
                 ButtonSegment(
-                    value: false,
-                    label: Text('Rápido'),
-                    icon: Icon(Icons.person_add_alt)),
+                  value: false,
+                  label: Text('Rápido'),
+                  icon: Icon(Icons.person_add_alt),
+                ),
               ],
               selected: {_registered},
               onSelectionChanged: (s) => setState(() => _registered = s.first),
@@ -224,17 +269,23 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
                     initialValue: _vehicleId,
                     isExpanded: true,
                     decoration: const InputDecoration(
-                        labelText: 'Vehículo', border: OutlineInputBorder()),
+                      labelText: 'Vehículo',
+                      border: OutlineInputBorder(),
+                    ),
                     items: [
                       const DropdownMenuItem(
-                          value: null, child: Text('— Sin especificar —')),
+                        value: null,
+                        child: Text('— Sin especificar —'),
+                      ),
                       for (final v in _vehicles)
                         DropdownMenuItem(
-                            value: v.id,
-                            child: Text(
-                                v.plate != null && v.plate!.isNotEmpty
-                                    ? '${v.label} · ${v.plate}'
-                                    : v.label)),
+                          value: v.id,
+                          child: Text(
+                            v.plate != null && v.plate!.isNotEmpty
+                                ? '${v.label} · ${v.plate}'
+                                : v.label,
+                          ),
+                        ),
                     ],
                     onChanged: (v) => setState(() => _vehicleId = v),
                   ),
@@ -243,48 +294,88 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
               TextField(
                 controller: _name,
                 decoration: const InputDecoration(
-                    labelText: 'Nombre del cliente *',
-                    border: OutlineInputBorder()),
+                  labelText: 'Nombre del cliente *',
+                  border: OutlineInputBorder(),
+                ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _phone,
                 keyboardType: TextInputType.phone,
                 decoration: const InputDecoration(
-                    labelText: 'Teléfono (opcional)',
-                    border: OutlineInputBorder()),
+                  labelText: 'Teléfono (opcional)',
+                  helperText: 'Con nombre y teléfono se registra como cliente.',
+                  border: OutlineInputBorder(),
+                ),
               ),
             ],
 
             const SizedBox(height: 16),
-            DropdownButtonFormField<int?>(
-              initialValue: _serviceId,
-              isExpanded: true,
-              decoration: const InputDecoration(
-                  labelText: 'Servicio', border: OutlineInputBorder()),
-              items: [
-                const DropdownMenuItem(
-                    value: null, child: Text('— Sin especificar —')),
-                for (final s in meta.services)
-                  DropdownMenuItem(value: s.id, child: Text(s.name)),
-              ],
-              onChanged: (v) => setState(() {
-                _serviceId = v;
-                if (_title.text.trim().isEmpty && v != null) {
-                  _title.text =
-                      meta.services.firstWhere((s) => s.id == v).name;
-                }
-              }),
+            // Servicios (varios): chips + botón para agregar desde el catálogo.
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.handyman_outlined,
+                          size: 18,
+                          color: Colors.black54,
+                        ),
+                        const SizedBox(width: 6),
+                        const Expanded(
+                          child: Text(
+                            'Servicios',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: () => _pickServices(meta.services),
+                          icon: const Icon(Icons.add, size: 18),
+                          label: Text(
+                            _services.isEmpty ? 'Agregar servicio' : 'Agregar',
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (_services.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 2, bottom: 4),
+                        child: Text(
+                          'Sin especificar. Puedes elegir varios.',
+                          style: TextStyle(fontSize: 12, color: Colors.black54),
+                        ),
+                      )
+                    else
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: -4,
+                        children: [
+                          for (final s in _services)
+                            InputChip(
+                              label: Text(s.name),
+                              onDeleted: () =>
+                                  setState(() => _services.remove(s)),
+                            ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<int?>(
               initialValue: _mechanicId,
               isExpanded: true,
               decoration: const InputDecoration(
-                  labelText: 'Mecánico', border: OutlineInputBorder()),
+                labelText: 'Mecánico',
+                border: OutlineInputBorder(),
+              ),
               items: [
-                const DropdownMenuItem(
-                    value: null, child: Text('Sin asignar')),
+                const DropdownMenuItem(value: null, child: Text('Sin asignar')),
                 for (final m in meta.mechanics)
                   DropdownMenuItem(value: m.id, child: Text(m.name)),
               ],
@@ -294,7 +385,9 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
             TextField(
               controller: _title,
               decoration: const InputDecoration(
-                  labelText: 'Motivo / detalle', border: OutlineInputBorder()),
+                labelText: 'Motivo / detalle',
+                border: OutlineInputBorder(),
+              ),
             ),
 
             const SizedBox(height: 16),
@@ -321,7 +414,9 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
             DropdownButtonFormField<int>(
               initialValue: _duration,
               decoration: const InputDecoration(
-                  labelText: 'Duración', border: OutlineInputBorder()),
+                labelText: 'Duración',
+                border: OutlineInputBorder(),
+              ),
               items: const [
                 DropdownMenuItem(value: 30, child: Text('30 min')),
                 DropdownMenuItem(value: 60, child: Text('1 hora')),
@@ -338,23 +433,167 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
               minLines: 2,
               maxLines: 4,
               decoration: const InputDecoration(
-                  labelText: 'Notas (opcional)', border: OutlineInputBorder()),
+                labelText: 'Notas (opcional)',
+                border: OutlineInputBorder(),
+              ),
             ),
             const SizedBox(height: 20),
             FilledButton.icon(
-              style:
-                  FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(50),
+              ),
               icon: _saving
                   ? const SizedBox(
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
                   : const Icon(Icons.check),
               label: const Text('Guardar cita'),
               onPressed: _saving ? null : _save,
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Hoja de selección múltiple de servicios del catálogo, con buscador.
+/// Devuelve la lista elegida (en el orden del catálogo) al confirmar.
+class _ServicesPickerSheet extends StatefulWidget {
+  final List<IdName> catalog;
+  final Set<int> selected;
+  const _ServicesPickerSheet({required this.catalog, required this.selected});
+
+  @override
+  State<_ServicesPickerSheet> createState() => _ServicesPickerSheetState();
+}
+
+class _ServicesPickerSheetState extends State<_ServicesPickerSheet> {
+  late final Set<int> _sel = {...widget.selected};
+  final _query = TextEditingController();
+  // Foco diferido: nunca `autofocus` dentro de una hoja (ANR en MIUI).
+  late final SheetFocus _focus = SheetFocus(this);
+
+  @override
+  void dispose() {
+    _query.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final q = _query.text.trim().toLowerCase();
+    final items = q.isEmpty
+        ? widget.catalog
+        : widget.catalog
+              .where((s) => s.name.toLowerCase().contains(q))
+              .toList();
+
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height * .7,
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Servicios',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '${_sel.length} elegidos',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: TextField(
+                  controller: _query,
+                  focusNode: _focus.node,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    hintText: 'Buscar servicio…',
+                    prefixIcon: const Icon(Icons.search),
+                    isDense: true,
+                    border: const OutlineInputBorder(),
+                    suffixIcon: q.isEmpty
+                        ? null
+                        : IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () => setState(_query.clear),
+                          ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Expanded(
+                child: items.isEmpty
+                    ? const Center(
+                        child: Text(
+                          'Sin resultados.',
+                          style: TextStyle(color: Colors.black54),
+                        ),
+                      )
+                    : ListView.builder(
+                        itemCount: items.length,
+                        itemBuilder: (_, i) {
+                          final s = items[i];
+                          return CheckboxListTile(
+                            dense: true,
+                            controlAffinity: ListTileControlAffinity.leading,
+                            title: Text(s.name),
+                            value: _sel.contains(s.id),
+                            onChanged: (v) => setState(() {
+                              if (v == true) {
+                                _sel.add(s.id);
+                              } else {
+                                _sel.remove(s.id);
+                              }
+                            }),
+                          );
+                        },
+                      ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(46),
+                  ),
+                  icon: const Icon(Icons.check),
+                  label: Text(
+                    _sel.isEmpty ? 'Sin servicios' : 'Listo (${_sel.length})',
+                  ),
+                  onPressed: () => Navigator.pop(context, [
+                    for (final s in widget.catalog)
+                      if (_sel.contains(s.id)) s,
+                  ]),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

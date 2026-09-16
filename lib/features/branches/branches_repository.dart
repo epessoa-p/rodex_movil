@@ -20,12 +20,12 @@ class BranchInfo {
   });
 
   factory BranchInfo.fromJson(Map<String, dynamic> j) => BranchInfo(
-        id: j['id'] as int,
-        name: (j['name'] ?? '') as String,
-        address: j['address'] as String?,
-        phone: j['phone'] as String?,
-        active: (j['active'] ?? true) as bool,
-      );
+    id: j['id'] as int,
+    name: (j['name'] ?? '') as String,
+    address: j['address'] as String?,
+    phone: j['phone'] as String?,
+    active: (j['active'] ?? true) as bool,
+  );
 }
 
 class BranchesRepository {
@@ -46,11 +46,10 @@ class BranchesRepository {
     String? address,
     String? phone,
   }) async {
-    final data = await _api.put('/branches/$id', body: {
-      'name': name,
-      'address': address ?? '',
-      'phone': phone ?? '',
-    });
+    final data = await _api.put(
+      '/branches/$id',
+      body: {'name': name, 'address': address ?? '', 'phone': phone ?? ''},
+    );
     return BranchInfo.fromJson((data as Map<String, dynamic>)['data']);
   }
 }

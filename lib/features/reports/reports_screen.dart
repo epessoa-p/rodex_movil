@@ -18,8 +18,8 @@ class ReportsScreen extends ConsumerWidget {
 
     final canAnalytics =
         (me.planAllows('sales') && me.can('sales-dashboard.view')) ||
-            (me.planAllows('workshop') && me.can('workshop-dashboard.view')) ||
-            (me.planAllows('purchases') && me.can('purchases-dashboard.view'));
+        (me.planAllows('workshop') && me.can('workshop-dashboard.view')) ||
+        (me.planAllows('purchases') && me.can('purchases-dashboard.view'));
 
     final tiles = <Widget>[
       if (canAnalytics)
@@ -94,9 +94,11 @@ class _ReportTile extends StatelessWidget {
             const SizedBox(height: 10),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text(label,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
             ),
           ],
         ),

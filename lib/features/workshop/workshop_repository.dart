@@ -38,13 +38,16 @@ class WorkshopRepository {
     double? commissionRate,
     bool active = true,
   }) async {
-    final data = await _api.post('/mechanics', body: {
-      'name': name,
-      'specialty': ?specialty,
-      'phone': ?phone,
-      'commission_rate': ?commissionRate,
-      'active': active,
-    });
+    final data = await _api.post(
+      '/mechanics',
+      body: {
+        'name': name,
+        'specialty': ?specialty,
+        'phone': ?phone,
+        'commission_rate': ?commissionRate,
+        'active': active,
+      },
+    );
     return MechanicFull.fromJson((data as Map<String, dynamic>)['data']);
   }
 
@@ -56,13 +59,16 @@ class WorkshopRepository {
     double? commissionRate,
     bool active = true,
   }) async {
-    final data = await _api.put('/mechanics/$id', body: {
-      'name': name,
-      'specialty': ?specialty,
-      'phone': ?phone,
-      'commission_rate': ?commissionRate,
-      'active': active,
-    });
+    final data = await _api.put(
+      '/mechanics/$id',
+      body: {
+        'name': name,
+        'specialty': ?specialty,
+        'phone': ?phone,
+        'commission_rate': ?commissionRate,
+        'active': active,
+      },
+    );
     return MechanicFull.fromJson((data as Map<String, dynamic>)['data']);
   }
 
@@ -109,12 +115,15 @@ class WorkshopRepository {
     required int quantity,
     int? mechanicId,
   }) async {
-    final data = await _api.post('/work-orders/$orderId/services', body: {
-      'description': description,
-      'price': price,
-      'quantity': quantity,
-      'mechanic_id': ?mechanicId,
-    });
+    final data = await _api.post(
+      '/work-orders/$orderId/services',
+      body: {
+        'description': description,
+        'price': price,
+        'quantity': quantity,
+        'mechanic_id': ?mechanicId,
+      },
+    );
     return WorkOrder.fromJson((data as Map<String, dynamic>)['data']);
   }
 
@@ -124,36 +133,47 @@ class WorkshopRepository {
     required int quantity,
     required double unitPrice,
   }) async {
-    final data = await _api.post('/work-orders/$orderId/parts', body: {
-      'product_id': productId,
-      'quantity': quantity,
-      'unit_price': unitPrice,
-    });
+    final data = await _api.post(
+      '/work-orders/$orderId/parts',
+      body: {
+        'product_id': productId,
+        'quantity': quantity,
+        'unit_price': unitPrice,
+      },
+    );
     return WorkOrder.fromJson((data as Map<String, dynamic>)['data']);
   }
 
   /// Asigna (o quita, con null) el mecánico de una OT.
   Future<WorkOrder> assignMechanic(int orderId, int? mechanicId) async {
-    final data = await _api.post('/work-orders/$orderId/mechanic',
-        body: {'mechanic_id': mechanicId});
+    final data = await _api.post(
+      '/work-orders/$orderId/mechanic',
+      body: {'mechanic_id': mechanicId},
+    );
     return WorkOrder.fromJson((data as Map<String, dynamic>)['data']);
   }
 
   Future<WorkOrder> saveDiagnosis(int orderId, String diagnosis) async {
-    final data = await _api
-        .post('/work-orders/$orderId/diagnosis', body: {'diagnosis': diagnosis});
+    final data = await _api.post(
+      '/work-orders/$orderId/diagnosis',
+      body: {'diagnosis': diagnosis},
+    );
     return WorkOrder.fromJson((data as Map<String, dynamic>)['data']);
   }
 
   Future<WorkOrder> changeStatus(int orderId, String status) async {
-    final data = await _api
-        .post('/work-orders/$orderId/status', body: {'status': status});
+    final data = await _api.post(
+      '/work-orders/$orderId/status',
+      body: {'status': status},
+    );
     return WorkOrder.fromJson((data as Map<String, dynamic>)['data']);
   }
 
   Future<WorkOrder> deliver(int orderId, {String? deliveredTo}) async {
-    final data = await _api.post('/work-orders/$orderId/deliver',
-        body: {'delivered_to': ?deliveredTo});
+    final data = await _api.post(
+      '/work-orders/$orderId/deliver',
+      body: {'delivered_to': ?deliveredTo},
+    );
     return WorkOrder.fromJson((data as Map<String, dynamic>)['data']);
   }
 
@@ -174,10 +194,15 @@ class WorkshopRepository {
   Future<List<WoPhoto>> uploadPhotos(int orderId, List<String> paths) async {
     final form = FormData();
     for (final p in paths) {
-      form.files.add(MapEntry(
-        'photos[]',
-        await MultipartFile.fromFile(p, filename: p.split(RegExp(r'[\\/]')).last),
-      ));
+      form.files.add(
+        MapEntry(
+          'photos[]',
+          await MultipartFile.fromFile(
+            p,
+            filename: p.split(RegExp(r'[\\/]')).last,
+          ),
+        ),
+      );
     }
     final data = await _api.post('/work-orders/$orderId/photos', body: form);
     return _list(data).map((e) => WoPhoto.fromJson(e)).toList();
@@ -185,9 +210,14 @@ class WorkshopRepository {
 
   /// Actualiza el comentario de una foto. Devuelve la lista de fotos.
   Future<List<WoPhoto>> updatePhotoCaption(
-      int orderId, int photoId, String? caption) async {
-    final data = await _api.put('/work-orders/$orderId/photos/$photoId',
-        body: {'caption': caption ?? ''});
+    int orderId,
+    int photoId,
+    String? caption,
+  ) async {
+    final data = await _api.put(
+      '/work-orders/$orderId/photos/$photoId',
+      body: {'caption': caption ?? ''},
+    );
     return _list(data).map((e) => WoPhoto.fromJson(e)).toList();
   }
 
@@ -226,13 +256,13 @@ class MechanicFull {
   });
 
   factory MechanicFull.fromJson(Map<String, dynamic> j) => MechanicFull(
-        id: j['id'] as int,
-        name: (j['name'] ?? '') as String,
-        specialty: j['specialty'] as String?,
-        phone: j['phone'] as String?,
-        commissionRate: (j['commission_rate'] as num?)?.toDouble() ?? 0,
-        active: (j['active'] as bool?) ?? true,
-      );
+    id: j['id'] as int,
+    name: (j['name'] ?? '') as String,
+    specialty: j['specialty'] as String?,
+    phone: j['phone'] as String?,
+    commissionRate: (j['commission_rate'] as num?)?.toDouble() ?? 0,
+    active: (j['active'] as bool?) ?? true,
+  );
 }
 
 final workshopRepositoryProvider = Provider<WorkshopRepository>(

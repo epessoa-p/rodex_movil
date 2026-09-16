@@ -25,17 +25,16 @@ class CompanyProfile {
   });
 
   factory CompanyProfile.fromJson(Map<String, dynamic> j) => CompanyProfile(
-        id: j['id'] as int,
-        name: (j['name'] ?? '') as String,
-        phone: j['phone'] as String?,
-        address: j['address'] as String?,
-        logoUrl: j['logo_url'] as String?,
-        trackingLinkDays: (j['tracking_link_days'] as num?)?.toInt() ?? 1,
-        dashboardOrder:
-            (j['dashboard_order'] as String?)?.trim().isNotEmpty == true
-                ? (j['dashboard_order'] as String).trim()
-                : 'ventas,taller,compras',
-      );
+    id: j['id'] as int,
+    name: (j['name'] ?? '') as String,
+    phone: j['phone'] as String?,
+    address: j['address'] as String?,
+    logoUrl: j['logo_url'] as String?,
+    trackingLinkDays: (j['tracking_link_days'] as num?)?.toInt() ?? 1,
+    dashboardOrder: (j['dashboard_order'] as String?)?.trim().isNotEmpty == true
+        ? (j['dashboard_order'] as String).trim()
+        : 'ventas,taller,compras',
+  );
 }
 
 class CompanyProfileRepository {
@@ -62,11 +61,15 @@ class CompanyProfileRepository {
       'dashboard_order': ?dashboardOrder,
     });
     if (logoPath != null) {
-      form.files.add(MapEntry(
-        'logo',
-        await MultipartFile.fromFile(logoPath,
-            filename: logoPath.split(RegExp(r'[\\/]')).last),
-      ));
+      form.files.add(
+        MapEntry(
+          'logo',
+          await MultipartFile.fromFile(
+            logoPath,
+            filename: logoPath.split(RegExp(r'[\\/]')).last,
+          ),
+        ),
+      );
     }
     final data = await _api.post('/company-profile', body: form);
     return CompanyProfile.fromJson((data as Map<String, dynamic>)['data']);

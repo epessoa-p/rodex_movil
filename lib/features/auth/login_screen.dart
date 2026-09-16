@@ -58,17 +58,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         color: scheme.primary,
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: Icon(Icons.handyman,
-                          color: scheme.onPrimary, size: 44),
+                      child: Icon(
+                        Icons.handyman,
+                        color: scheme.onPrimary,
+                        size: 44,
+                      ),
                     ),
                     const SizedBox(height: 16),
-                    Text(AppConfig.appName,
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.headlineSmall),
+                    Text(
+                      AppConfig.appName,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
                     const SizedBox(height: 4),
-                    Text('Accede a tu negocio',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: scheme.outline)),
+                    Text(
+                      'Accede a tu negocio',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: scheme.outline),
+                    ),
                     const SizedBox(height: 28),
                     if (auth.error != null)
                       Container(
@@ -78,15 +85,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           color: scheme.errorContainer,
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Row(children: [
-                          Icon(Icons.error_outline,
-                              color: scheme.onErrorContainer, size: 20),
-                          const SizedBox(width: 8),
-                          Expanded(
-                              child: Text(auth.error!,
-                                  style: TextStyle(
-                                      color: scheme.onErrorContainer))),
-                        ]),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              color: scheme.onErrorContainer,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                auth.error!,
+                                style: TextStyle(
+                                  color: scheme.onErrorContainer,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     TextFormField(
                       controller: _email,
@@ -108,9 +124,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         labelText: 'Contraseña',
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
-                          icon: Icon(_obscure
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined),
+                          icon: Icon(
+                            _obscure
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                          ),
                           onPressed: () => setState(() => _obscure = !_obscure),
                         ),
                       ),
@@ -126,8 +144,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ? const SizedBox(
                               height: 20,
                               width: 20,
-                              child:
-                                  CircularProgressIndicator(strokeWidth: 2))
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
                           : const Text('Iniciar sesión'),
                     ),
                   ],

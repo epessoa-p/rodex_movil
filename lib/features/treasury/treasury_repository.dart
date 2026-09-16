@@ -26,15 +26,15 @@ class TreasuryAccount {
   });
 
   factory TreasuryAccount.fromJson(Map<String, dynamic> j) => TreasuryAccount(
-        id: j['id'] as int,
-        name: (j['name'] ?? '') as String,
-        type: (j['type'] ?? 'cash') as String,
-        typeLabel: (j['type_label'] ?? '') as String,
-        bankName: j['bank_name'] as String?,
-        accountNumber: j['account_number'] as String?,
-        balance: (j['balance'] as num?)?.toDouble() ?? 0,
-        active: (j['active'] as bool?) ?? true,
-      );
+    id: j['id'] as int,
+    name: (j['name'] ?? '') as String,
+    type: (j['type'] ?? 'cash') as String,
+    typeLabel: (j['type_label'] ?? '') as String,
+    bankName: j['bank_name'] as String?,
+    accountNumber: j['account_number'] as String?,
+    balance: (j['balance'] as num?)?.toDouble() ?? 0,
+    active: (j['active'] as bool?) ?? true,
+  );
 }
 
 /// Movimiento de una cuenta (ingreso o gasto).
@@ -62,15 +62,15 @@ class TreasuryMovement {
   bool get isIncome => type == 'in';
 
   factory TreasuryMovement.fromJson(Map<String, dynamic> j) => TreasuryMovement(
-        id: j['id'] as int,
-        type: (j['type'] ?? 'in') as String,
-        category: (j['category'] ?? '') as String,
-        categoryLabel: (j['category_label'] ?? '') as String,
-        amount: (j['amount'] as num?)?.toDouble() ?? 0,
-        description: j['description'] as String?,
-        user: j['user'] as String?,
-        date: j['date'] as String?,
-      );
+    id: j['id'] as int,
+    type: (j['type'] ?? 'in') as String,
+    category: (j['category'] ?? '') as String,
+    categoryLabel: (j['category_label'] ?? '') as String,
+    amount: (j['amount'] as num?)?.toDouble() ?? 0,
+    description: j['description'] as String?,
+    user: j['user'] as String?,
+    date: j['date'] as String?,
+  );
 }
 
 /// Listado de cuentas + saldo total (para la pantalla de tesorería).
@@ -80,11 +80,11 @@ class TreasuryOverview {
   TreasuryOverview({required this.totalBalance, required this.accounts});
 
   factory TreasuryOverview.fromJson(Map<String, dynamic> j) => TreasuryOverview(
-        totalBalance: (j['total_balance'] as num?)?.toDouble() ?? 0,
-        accounts: ((j['accounts'] as List?) ?? [])
-            .map((e) => TreasuryAccount.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
+    totalBalance: (j['total_balance'] as num?)?.toDouble() ?? 0,
+    accounts: ((j['accounts'] as List?) ?? [])
+        .map((e) => TreasuryAccount.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
 }
 
 /// Detalle de una cuenta con sus últimos movimientos.
@@ -114,7 +114,8 @@ class TreasuryRepository {
   Future<TreasuryAccountDetail> account(int id) async {
     final data = await _api.get('/treasury/accounts/$id');
     return TreasuryAccountDetail.fromJson(
-        (data as Map<String, dynamic>)['data']);
+      (data as Map<String, dynamic>)['data'],
+    );
   }
 
   Future<TreasuryAccount> createAccount({
@@ -124,13 +125,16 @@ class TreasuryRepository {
     String? accountNumber,
     double? openingBalance,
   }) async {
-    final data = await _api.post('/treasury/accounts', body: {
-      'name': name,
-      'type': type,
-      'bank_name': ?bankName,
-      'account_number': ?accountNumber,
-      'opening_balance': ?openingBalance,
-    });
+    final data = await _api.post(
+      '/treasury/accounts',
+      body: {
+        'name': name,
+        'type': type,
+        'bank_name': ?bankName,
+        'account_number': ?accountNumber,
+        'opening_balance': ?openingBalance,
+      },
+    );
     return TreasuryAccount.fromJson((data as Map<String, dynamic>)['data']);
   }
 
@@ -142,11 +146,14 @@ class TreasuryRepository {
     required double amount,
     String? description,
   }) async {
-    final data = await _api.post('/treasury/accounts/$accountId/movements', body: {
-      'category': category,
-      'amount': amount,
-      'description': ?description,
-    });
+    final data = await _api.post(
+      '/treasury/accounts/$accountId/movements',
+      body: {
+        'category': category,
+        'amount': amount,
+        'description': ?description,
+      },
+    );
     final d = (data as Map<String, dynamic>)['data'] as Map<String, dynamic>;
     return TreasuryAccount.fromJson(d['account'] as Map<String, dynamic>);
   }
@@ -164,5 +171,5 @@ final treasuryAccountsProvider = FutureProvider<TreasuryOverview>(
 /// Detalle de una cuenta (con movimientos).
 final treasuryAccountProvider =
     FutureProvider.family<TreasuryAccountDetail, int>(
-  (ref, id) => ref.read(treasuryRepositoryProvider).account(id),
-);
+      (ref, id) => ref.read(treasuryRepositoryProvider).account(id),
+    );

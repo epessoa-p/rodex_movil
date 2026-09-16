@@ -9,9 +9,9 @@ class StatementLine {
   final double amount;
   StatementLine({required this.label, required this.amount});
   factory StatementLine.fromJson(Map<String, dynamic> j) => StatementLine(
-        label: (j['label'] ?? '') as String,
-        amount: (j['amount'] as num?)?.toDouble() ?? 0,
-      );
+    label: (j['label'] ?? '') as String,
+    amount: (j['amount'] as num?)?.toDouble() ?? 0,
+  );
 }
 
 /// Estado de resultados por movimientos (caja + tesorería).
@@ -35,18 +35,18 @@ class IncomeStatement {
   });
 
   factory IncomeStatement.fromJson(Map<String, dynamic> j) => IncomeStatement(
-        from: (j['from'] ?? '') as String,
-        to: (j['to'] ?? '') as String,
-        income: ((j['income'] as List?) ?? [])
-            .map((e) => StatementLine.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        expense: ((j['expense'] as List?) ?? [])
-            .map((e) => StatementLine.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        totalIncome: (j['total_income'] as num?)?.toDouble() ?? 0,
-        totalExpense: (j['total_expense'] as num?)?.toDouble() ?? 0,
-        net: (j['net'] as num?)?.toDouble() ?? 0,
-      );
+    from: (j['from'] ?? '') as String,
+    to: (j['to'] ?? '') as String,
+    income: ((j['income'] as List?) ?? [])
+        .map((e) => StatementLine.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    expense: ((j['expense'] as List?) ?? [])
+        .map((e) => StatementLine.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    totalIncome: (j['total_income'] as num?)?.toDouble() ?? 0,
+    totalExpense: (j['total_expense'] as num?)?.toDouble() ?? 0,
+    net: (j['net'] as num?)?.toDouble() ?? 0,
+  );
 }
 
 class IncomeStatementRepository {
@@ -54,8 +54,10 @@ class IncomeStatementRepository {
   IncomeStatementRepository(this._api);
 
   Future<IncomeStatement> get(String from, String to) async {
-    final data = await _api
-        .get('/income-statement', query: {'from': from, 'to': to});
+    final data = await _api.get(
+      '/income-statement',
+      query: {'from': from, 'to': to},
+    );
     return IncomeStatement.fromJson((data as Map<String, dynamic>)['data']);
   }
 
@@ -76,8 +78,10 @@ const incomeStatementAllKey = 'all';
 
 /// Estado de resultados por rango "from|to" (YYYY-MM-DD|YYYY-MM-DD) o
 /// [incomeStatementAllKey] para todo el historial.
-final incomeStatementProvider =
-    FutureProvider.family<IncomeStatement, String>((ref, key) {
+final incomeStatementProvider = FutureProvider.family<IncomeStatement, String>((
+  ref,
+  key,
+) {
   final repo = ref.read(incomeStatementRepositoryProvider);
   if (key == incomeStatementAllKey) return repo.all();
   final parts = key.split('|');

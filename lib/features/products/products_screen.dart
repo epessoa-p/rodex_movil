@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
@@ -15,14 +16,16 @@ class ProductsScreen extends ConsumerStatefulWidget {
   // Exige stock > 0 para elegir (POS). En false permite elegir sin stock
   // (p. ej. al crear una orden de compra).
   final bool requireStock;
+
   /// Oculta el "Stock inicial" en el alta de producto (flujos de compra).
   final bool hideInitialStock;
 
-  const ProductsScreen(
-      {super.key,
-      this.onPick,
-      this.requireStock = true,
-      this.hideInitialStock = false});
+  const ProductsScreen({
+    super.key,
+    this.onPick,
+    this.requireStock = true,
+    this.hideInitialStock = false,
+  });
 
   @override
   ConsumerState<ProductsScreen> createState() => _ProductsScreenState();
@@ -50,8 +53,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
   /// la ficha. Respeta el requisito de stock del modo actual.
   void _pick(Product p) {
     if (widget.requireStock && p.currentStock <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${p.name}: sin stock disponible.')));
+      AppToast.error(context, '${p.name}: sin stock disponible.');
       return;
     }
     widget.onPick!(p);
@@ -79,8 +81,9 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
   Future<void> _newProduct() async {
     final product = await Navigator.of(context).push<Product>(
       MaterialPageRoute(
-          builder: (_) =>
-              NewProductScreen(hideInitialStock: widget.hideInitialStock)),
+        builder: (_) =>
+            NewProductScreen(hideInitialStock: widget.hideInitialStock),
+      ),
     );
     if (product == null) return;
     if (widget.onPick != null) {
@@ -150,65 +153,67 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
                 : _error != null
-                    ? Center(child: Text(_error!))
-                    : _items.isEmpty
-                        ? const Center(child: Text('Sin productos.'))
-                        : ListView.separated(
-                            itemCount: _items.length,
-                            separatorBuilder: (_, _) =>
-                                const Divider(height: 1),
-                            itemBuilder: (context, i) {
-                              final p = _items[i];
-                              final low = p.currentStock <= 0;
-                              return ListTile(
-                                title: Text(p.name),
-                                subtitle: Text(
-                                    '${p.sku ?? ''}  ·  Stock: ${qty(p.currentStock)} ${p.unit ?? ''}'),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(money(p.price),
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.w700)),
-                                    if (picking) ...[
-                                      const SizedBox(width: 2),
-                                      IconButton(
-                                        tooltip: 'Ver ficha y foto',
-                                        visualDensity: VisualDensity.compact,
-                                        icon: const Icon(Icons.info_outline,
-                                            color: Colors.black45),
-                                        onPressed: () => _openDetail(p),
-                                      ),
-                                      IconButton(
-                                        tooltip: 'Agregar',
-                                        visualDensity: VisualDensity.compact,
-                                        icon: Icon(
-                                          Icons.add_circle,
-                                          color: low && widget.requireStock
-                                              ? Colors.black26
-                                              : Theme.of(context)
-                                                  .colorScheme
-                                                  .primary,
-                                        ),
-                                        onPressed: () => _pick(p),
-                                      ),
-                                    ] else ...[
-                                      const SizedBox(width: 4),
-                                      Icon(Icons.chevron_right,
-                                          color:
-                                              low ? Colors.red : Colors.black26),
-                                    ],
-                                  ],
+                ? Center(child: Text(_error!))
+                : _items.isEmpty
+                ? const Center(child: Text('Sin productos.'))
+                : ListView.separated(
+                    itemCount: _items.length,
+                    separatorBuilder: (_, _) => const Divider(height: 1),
+                    itemBuilder: (context, i) {
+                      final p = _items[i];
+                      final low = p.currentStock <= 0;
+                      return ListTile(
+                        title: Text(p.name),
+                        subtitle: Text(
+                          '${p.sku ?? ''}  ·  Stock: ${qty(p.currentStock)} ${p.unit ?? ''}',
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              money(p.price),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            if (picking) ...[
+                              const SizedBox(width: 2),
+                              IconButton(
+                                tooltip: 'Ver ficha y foto',
+                                visualDensity: VisualDensity.compact,
+                                icon: const Icon(
+                                  Icons.info_outline,
+                                  color: Colors.black45,
                                 ),
-                                // En POS/compra: tocar agrega directo; mantener
-                                // pulsado abre la ficha (stock, ajustar, etc.).
-                                onTap: () =>
-                                    picking ? _pick(p) : _openDetail(p),
-                                onLongPress:
-                                    picking ? () => _openDetail(p) : null,
-                              );
-                            },
-                          ),
+                                onPressed: () => _openDetail(p),
+                              ),
+                              IconButton(
+                                tooltip: 'Agregar',
+                                visualDensity: VisualDensity.compact,
+                                icon: Icon(
+                                  Icons.add_circle,
+                                  color: low && widget.requireStock
+                                      ? Colors.black26
+                                      : Theme.of(context).colorScheme.primary,
+                                ),
+                                onPressed: () => _pick(p),
+                              ),
+                            ] else ...[
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.chevron_right,
+                                color: low ? Colors.red : Colors.black26,
+                              ),
+                            ],
+                          ],
+                        ),
+                        // En POS/compra: tocar agrega directo; mantener
+                        // pulsado abre la ficha (stock, ajustar, etc.).
+                        onTap: () => picking ? _pick(p) : _openDetail(p),
+                        onLongPress: picking ? () => _openDetail(p) : null,
+                      );
+                    },
+                  ),
           ),
         ],
       ),

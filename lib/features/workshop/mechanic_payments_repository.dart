@@ -24,14 +24,14 @@ class MechanicPayEntry {
   });
 
   factory MechanicPayEntry.fromJson(Map<String, dynamic> j) => MechanicPayEntry(
-        id: j['id'] as int,
-        name: (j['name'] ?? '') as String,
-        active: (j['active'] as bool?) ?? true,
-        commissionRate: (j['commission_rate'] as num?)?.toDouble() ?? 0,
-        pending: (j['pending'] as num?)?.toDouble() ?? 0,
-        pendingCount: (j['pending_count'] as num?)?.toInt() ?? 0,
-        paid: (j['paid'] as num?)?.toDouble() ?? 0,
-      );
+    id: j['id'] as int,
+    name: (j['name'] ?? '') as String,
+    active: (j['active'] as bool?) ?? true,
+    commissionRate: (j['commission_rate'] as num?)?.toDouble() ?? 0,
+    pending: (j['pending'] as num?)?.toDouble() ?? 0,
+    pendingCount: (j['pending_count'] as num?)?.toInt() ?? 0,
+    paid: (j['paid'] as num?)?.toDouble() ?? 0,
+  );
 }
 
 /// OT vinculada al mecánico (pendiente o pagada).
@@ -99,7 +99,9 @@ class MechanicPaymentItem {
         account: j['account'] as String?,
         notes: j['notes'] as String?,
         orders: ((j['orders'] as List?) ?? [])
-            .map((e) => MechanicOt.fromJson(e as Map<String, dynamic>, paid: true))
+            .map(
+              (e) => MechanicOt.fromJson(e as Map<String, dynamic>, paid: true),
+            )
             .toList(),
       );
 }
@@ -133,7 +135,9 @@ class MechanicDetail {
       pendingTotal: (m['pending_total'] as num?)?.toDouble() ?? 0,
       paidTotal: (m['paid_total'] as num?)?.toDouble() ?? 0,
       pending: ((j['pending'] as List?) ?? [])
-          .map((e) => MechanicOt.fromJson(e as Map<String, dynamic>, paid: false))
+          .map(
+            (e) => MechanicOt.fromJson(e as Map<String, dynamic>, paid: false),
+          )
           .toList(),
       payments: ((j['payments'] as List?) ?? [])
           .map((e) => MechanicPaymentItem.fromJson(e as Map<String, dynamic>))
@@ -170,15 +174,18 @@ class MechanicPaymentsRepository {
     String? method,
     String? notes,
   }) async {
-    final data = await _api.post('/mechanic-payments', body: {
-      'mechanic_id': mechanicId,
-      'work_order_ids': workOrderIds,
-      'amount': amount,
-      'payment_source': paymentSource,
-      'treasury_account_id': ?treasuryAccountId,
-      'method': ?method,
-      'notes': ?notes,
-    });
+    final data = await _api.post(
+      '/mechanic-payments',
+      body: {
+        'mechanic_id': mechanicId,
+        'work_order_ids': workOrderIds,
+        'amount': amount,
+        'payment_source': paymentSource,
+        'treasury_account_id': ?treasuryAccountId,
+        'method': ?method,
+        'notes': ?notes,
+      },
+    );
     return MechanicDetail.fromJson((data as Map<String, dynamic>)['data']);
   }
 }
@@ -193,7 +200,6 @@ final mechanicPaymentsProvider = FutureProvider<List<MechanicPayEntry>>(
 );
 
 /// Detalle de un mecánico (OTs pendientes/pagadas).
-final mechanicDetailProvider =
-    FutureProvider.family<MechanicDetail, int>(
+final mechanicDetailProvider = FutureProvider.family<MechanicDetail, int>(
   (ref, id) => ref.read(mechanicPaymentsRepositoryProvider).detail(id),
 );

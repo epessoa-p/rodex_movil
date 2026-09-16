@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
+import '../../core/app_toast.dart';
 import '../../core/providers.dart';
 import 'purchases_repository.dart';
 
@@ -131,15 +132,15 @@ class _SuppliersTabState extends ConsumerState<SuppliersTab> {
           );
       if (mounted) {
         setState(() => _items = [s, ..._items]);
-        _snack('Proveedor "${s.name}" creado.');
+        AppToast.success(context, 'Proveedor "${s.name}" creado.');
       }
     } on ApiException catch (e) {
-      if (mounted) _snack(e.message);
+      if (mounted) AppToast.apiError(context, e);
     }
   }
 
-  void _snack(String m) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+  // Validaciones y errores locales: toast rojo arriba (visible sobre hojas).
+  void _snack(String m) => AppToast.error(context, m);
 
   @override
   Widget build(BuildContext context) {

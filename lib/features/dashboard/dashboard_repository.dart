@@ -11,10 +11,10 @@ class SeriesPoint {
   SeriesPoint({required this.label, required this.amount, required this.count});
 
   factory SeriesPoint.fromJson(Map<String, dynamic> j) => SeriesPoint(
-        label: (j['label'] ?? '') as String,
-        amount: (j['amount'] as num?)?.toDouble() ?? 0,
-        count: (j['count'] as num?)?.toInt() ?? 0,
-      );
+    label: (j['label'] ?? '') as String,
+    amount: (j['amount'] as num?)?.toDouble() ?? 0,
+    count: (j['count'] as num?)?.toInt() ?? 0,
+  );
 }
 
 /// Un día en la comparativa semana anterior vs. actual.
@@ -33,12 +33,12 @@ class WeekComparePoint {
   });
 
   factory WeekComparePoint.fromJson(Map<String, dynamic> j) => WeekComparePoint(
-        label: (j['label'] ?? '') as String,
-        currentAmount: (j['current_amount'] as num?)?.toDouble() ?? 0,
-        currentCount: (j['current_count'] as num?)?.toInt() ?? 0,
-        prevAmount: (j['prev_amount'] as num?)?.toDouble() ?? 0,
-        prevCount: (j['prev_count'] as num?)?.toInt() ?? 0,
-      );
+    label: (j['label'] ?? '') as String,
+    currentAmount: (j['current_amount'] as num?)?.toDouble() ?? 0,
+    currentCount: (j['current_count'] as num?)?.toInt() ?? 0,
+    prevAmount: (j['prev_amount'] as num?)?.toDouble() ?? 0,
+    prevCount: (j['prev_count'] as num?)?.toInt() ?? 0,
+  );
 }
 
 /// Serie comparativa: semanal + mensual + comparación día por día de la semana.
@@ -46,22 +46,23 @@ class DashboardSeries {
   final List<SeriesPoint> weekly;
   final List<SeriesPoint> monthly;
   final List<WeekComparePoint> weekCompare;
-  DashboardSeries(
-      {required this.weekly,
-      required this.monthly,
-      required this.weekCompare});
+  DashboardSeries({
+    required this.weekly,
+    required this.monthly,
+    required this.weekCompare,
+  });
 
   factory DashboardSeries.fromJson(Map<String, dynamic> j) => DashboardSeries(
-        weekly: ((j['weekly'] as List?) ?? [])
-            .map((e) => SeriesPoint.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        monthly: ((j['monthly'] as List?) ?? [])
-            .map((e) => SeriesPoint.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        weekCompare: ((j['week_compare'] as List?) ?? [])
-            .map((e) => WeekComparePoint.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
+    weekly: ((j['weekly'] as List?) ?? [])
+        .map((e) => SeriesPoint.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    monthly: ((j['monthly'] as List?) ?? [])
+        .map((e) => SeriesPoint.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    weekCompare: ((j['week_compare'] as List?) ?? [])
+        .map((e) => WeekComparePoint.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
 }
 
 // ── Análisis → Top ─────────────────────────────────────────────────
@@ -72,18 +73,19 @@ class RevenueSlice {
   final String label;
   final double amount;
   final int count;
-  RevenueSlice(
-      {required this.key,
-      required this.label,
-      required this.amount,
-      required this.count});
+  RevenueSlice({
+    required this.key,
+    required this.label,
+    required this.amount,
+    required this.count,
+  });
 
   factory RevenueSlice.fromJson(Map<String, dynamic> j) => RevenueSlice(
-        key: (j['key'] ?? '') as String,
-        label: (j['label'] ?? '') as String,
-        amount: (j['amount'] as num?)?.toDouble() ?? 0,
-        count: (j['count'] as num?)?.toInt() ?? 0,
-      );
+    key: (j['key'] ?? '') as String,
+    label: (j['label'] ?? '') as String,
+    amount: (j['amount'] as num?)?.toDouble() ?? 0,
+    count: (j['count'] as num?)?.toInt() ?? 0,
+  );
 }
 
 /// Fila de un ranking: siempre trae monto y cantidad.
@@ -94,16 +96,16 @@ class RankRow {
   RankRow({required this.label, required this.amount, required this.qty});
 
   factory RankRow.fromJson(Map<String, dynamic> j) => RankRow(
-        label: (j['label'] ?? '') as String,
-        amount: (j['amount'] as num?)?.toDouble() ?? 0,
-        qty: (j['qty'] as num?)?.toDouble() ?? 0,
-      );
+    label: (j['label'] ?? '') as String,
+    amount: (j['amount'] as num?)?.toDouble() ?? 0,
+    qty: (j['qty'] as num?)?.toDouble() ?? 0,
+  );
 
   static List<RankRow>? listOrNull(dynamic v) => v == null
       ? null
       : (v as List)
-          .map((e) => RankRow.fromJson(e as Map<String, dynamic>))
-          .toList();
+            .map((e) => RankRow.fromJson(e as Map<String, dynamic>))
+            .toList();
 }
 
 class DashboardTop {
@@ -113,6 +115,7 @@ class DashboardTop {
   final String to;
   final String by;
   final List<RevenueSlice> revenue;
+
   /// `null` = sección no habilitada (plan/permiso); `[]` = sin datos.
   final List<RankRow>? topProducts;
   final List<RankRow>? topServices;
@@ -166,8 +169,10 @@ class DashboardRepository {
 
   /// `period`: month | last_month | quarter | year · `by`: amount | qty.
   Future<DashboardTop> top(String period, String by) async {
-    final data = await _api
-        .get('/dashboard/top', query: {'period': period, 'by': by});
+    final data = await _api.get(
+      '/dashboard/top',
+      query: {'period': period, 'by': by},
+    );
     return DashboardTop.fromJson((data as Map<String, dynamic>)['data']);
   }
 }
@@ -177,8 +182,10 @@ final dashboardRepositoryProvider = Provider<DashboardRepository>(
 );
 
 /// Serie por módulo ('sales' | 'workshop' | 'purchases').
-final dashboardSeriesProvider =
-    FutureProvider.family<DashboardSeries, String>((ref, module) {
+final dashboardSeriesProvider = FutureProvider.family<DashboardSeries, String>((
+  ref,
+  module,
+) {
   final repo = ref.read(dashboardRepositoryProvider);
   return switch (module) {
     'workshop' => repo.workshop(),
@@ -188,8 +195,10 @@ final dashboardSeriesProvider =
 });
 
 /// Top del período. Clave "period|by" (p. ej. "month|amount").
-final dashboardTopProvider =
-    FutureProvider.family<DashboardTop, String>((ref, key) {
+final dashboardTopProvider = FutureProvider.family<DashboardTop, String>((
+  ref,
+  key,
+) {
   final parts = key.split('|');
   return ref
       .read(dashboardRepositoryProvider)

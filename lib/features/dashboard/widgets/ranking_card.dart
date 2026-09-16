@@ -8,8 +8,11 @@ class RankingItem {
   final String label;
   final double amount;
   final double qty;
-  const RankingItem(
-      {required this.label, required this.amount, required this.qty});
+  const RankingItem({
+    required this.label,
+    required this.amount,
+    required this.qty,
+  });
 }
 
 /// Tarjeta de ranking con barra proporcional. Reutilizada por el dashboard
@@ -24,6 +27,7 @@ class RankingCard extends StatelessWidget {
   final List<RankingItem> items;
   final bool byAmount;
   final String emptyText;
+
   /// Etiqueta de la cantidad en modo Cantidad ("u." / "OTs" / "ops").
   final String qtyUnit;
 
@@ -41,7 +45,9 @@ class RankingCard extends StatelessWidget {
   double _main(RankingItem i) => byAmount ? i.amount : i.qty;
 
   String _qtyText(double q) {
-    final s = q == q.roundToDouble() ? q.toInt().toString() : q.toStringAsFixed(1);
+    final s = q == q.roundToDouble()
+        ? q.toInt().toString()
+        : q.toStringAsFixed(1);
     return qtyUnit.isEmpty ? s : '$s $qtyUnit';
   }
 
@@ -63,48 +69,63 @@ class RankingCard extends StatelessWidget {
                 Icon(icon, size: 18, color: Colors.black54),
                 const SizedBox(width: 6),
                 Expanded(
-                  child: Text(title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w700)),
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
                 ),
                 if (hint != null)
-                  Text(hint!,
-                      style:
-                          const TextStyle(fontSize: 11, color: Colors.black45)),
+                  Text(
+                    hint!,
+                    style: const TextStyle(fontSize: 11, color: Colors.black45),
+                  ),
               ],
             ),
             const SizedBox(height: 10),
             if (items.isEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Text(emptyText,
-                    style: const TextStyle(color: Colors.black54)),
+                child: Text(
+                  emptyText,
+                  style: const TextStyle(color: Colors.black54),
+                ),
               )
             else
               for (final s in items) ...[
                 Row(
                   children: [
                     Expanded(
-                      child: Text(s.label,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                      child: Text(
+                        s.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
                     ),
                     const SizedBox(width: 8),
-                    Text(byAmount ? '×${_qtyText(s.qty)}' : money(s.amount),
-                        style: const TextStyle(
-                            fontSize: 11, color: Colors.black45)),
+                    Text(
+                      byAmount ? '×${_qtyText(s.qty)}' : money(s.amount),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.black45,
+                      ),
+                    ),
                     const SizedBox(width: 10),
-                    Text(byAmount ? money(s.amount) : _qtyText(s.qty),
-                        style: const TextStyle(fontWeight: FontWeight.w700)),
+                    Text(
+                      byAmount ? money(s.amount) : _qtyText(s.qty),
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 4),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
-                    value: max > 0 ? (_main(s) / max).clamp(0, 1).toDouble() : 0,
+                    value: max > 0
+                        ? (_main(s) / max).clamp(0, 1).toDouble()
+                        : 0,
                     minHeight: 6,
                     backgroundColor: primary.withValues(alpha: .10),
                     color: primary,

@@ -221,9 +221,7 @@ class _OpenSessionViewState extends ConsumerState<_OpenSessionView> {
     final amount = double.tryParse(amountCtrl.text.replaceAll(',', '.')) ?? 0;
     if (amount <= 0) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ingresa un monto válido.')),
-        );
+        AppToast.error(context, 'Ingresa un monto válido.');
       }
       return;
     }
@@ -241,9 +239,7 @@ class _OpenSessionViewState extends ConsumerState<_OpenSessionView> {
       ref.invalidate(cashSessionProvider);
       _reloadMovements();
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Gasto registrado.')));
+        AppToast.success(context, 'Gasto registrado.');
       }
     } on ApiException catch (e) {
       if (mounted) {
@@ -312,9 +308,7 @@ class _OpenSessionViewState extends ConsumerState<_OpenSessionView> {
       await ref.read(posRepositoryProvider).closeSession(closingAmount: amount);
       ref.invalidate(cashSessionProvider);
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Caja cerrada.')));
+        AppToast.success(context, 'Caja cerrada.');
       }
     } on ApiException catch (e) {
       if (mounted) {

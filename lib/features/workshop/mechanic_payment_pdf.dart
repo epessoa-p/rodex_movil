@@ -22,82 +22,120 @@ Future<Uint8List> buildMechanicPaymentPdf(
   }
 
   pw.Widget infoRow(String k, String v) => pw.Padding(
-        padding: const pw.EdgeInsets.only(bottom: 1),
-        child: pw.RichText(
-          text: pw.TextSpan(
-            style: const pw.TextStyle(fontSize: 9),
+    padding: const pw.EdgeInsets.only(bottom: 1),
+    child: pw.RichText(
+      text: pw.TextSpan(
+        style: const pw.TextStyle(fontSize: 9),
+        children: [
+          pw.TextSpan(
+            text: '$k: ',
+            style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+          ),
+          pw.TextSpan(text: v),
+        ],
+      ),
+    ),
+  );
+
+  doc.addPage(
+    pw.Page(
+      pageFormat: PdfPageFormat.roll80,
+      margin: const pw.EdgeInsets.all(12),
+      build: (ctx) => pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.stretch,
+        children: [
+          if (company != null && company.isNotEmpty)
+            pw.Center(
+              child: pw.Text(
+                company,
+                style: pw.TextStyle(
+                  fontSize: 13,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+            ),
+          pw.SizedBox(height: 4),
+          pw.Center(
+            child: pw.Text(
+              'Comprobante de pago',
+              style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+            ),
+          ),
+          pw.Center(
+            child: pw.Text(
+              'N.º ${pago.id}',
+              style: const pw.TextStyle(fontSize: 9),
+            ),
+          ),
+          pw.Divider(height: 12),
+          infoRow('Mecánico', mechanicName),
+          if (dateStr.isNotEmpty) infoRow('Fecha', dateStr),
+          infoRow('Método', (pago.method ?? 'efectivo')),
+          infoRow('Origen', pago.sourceLabel),
+          pw.Divider(height: 12),
+          pw.Text(
+            'Órdenes de trabajo',
+            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold),
+          ),
+          for (final o in pago.orders)
+            pw.Row(
+              children: [
+                pw.Expanded(
+                  child: pw.Text(
+                    '${o.code}   ${_fmt(o.date)}',
+                    style: const pw.TextStyle(fontSize: 9),
+                  ),
+                ),
+                pw.Text(
+                  money(o.commission),
+                  style: const pw.TextStyle(fontSize: 9),
+                ),
+              ],
+            ),
+          pw.Divider(height: 12),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
-              pw.TextSpan(
-                  text: '$k: ',
-                  style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-              pw.TextSpan(text: v),
+              pw.Text(
+                'Total pagado',
+                style: pw.TextStyle(
+                  fontSize: 11,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.Text(
+                money(pago.amount),
+                style: pw.TextStyle(
+                  fontSize: 11,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
             ],
           ),
-        ),
-      );
-
-  doc.addPage(pw.Page(
-    pageFormat: PdfPageFormat.roll80,
-    margin: const pw.EdgeInsets.all(12),
-    build: (ctx) => pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.stretch,
-      children: [
-        if (company != null && company.isNotEmpty)
-          pw.Center(
-            child: pw.Text(company,
-                style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
-          ),
-        pw.SizedBox(height: 4),
-        pw.Center(
-          child: pw.Text('Comprobante de pago',
-              style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
-        ),
-        pw.Center(
-          child: pw.Text('N.º ${pago.id}',
-              style: const pw.TextStyle(fontSize: 9)),
-        ),
-        pw.Divider(height: 12),
-        infoRow('Mecánico', mechanicName),
-        if (dateStr.isNotEmpty) infoRow('Fecha', dateStr),
-        infoRow('Método', (pago.method ?? 'efectivo')),
-        infoRow('Origen', pago.sourceLabel),
-        pw.Divider(height: 12),
-        pw.Text('Órdenes de trabajo',
-            style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold)),
-        for (final o in pago.orders)
-          pw.Row(children: [
-            pw.Expanded(
-                child: pw.Text('${o.code}   ${_fmt(o.date)}',
-                    style: const pw.TextStyle(fontSize: 9))),
-            pw.Text(money(o.commission), style: const pw.TextStyle(fontSize: 9)),
-          ]),
-        pw.Divider(height: 12),
-        pw.Row(
-          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-          children: [
-            pw.Text('Total pagado',
-                style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
-            pw.Text(money(pago.amount),
-                style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+          if (pago.notes != null && pago.notes!.isNotEmpty) ...[
+            pw.SizedBox(height: 6),
+            pw.Text(
+              'Notas: ${pago.notes}',
+              style: const pw.TextStyle(fontSize: 8),
+            ),
           ],
-        ),
-        if (pago.notes != null && pago.notes!.isNotEmpty) ...[
-          pw.SizedBox(height: 6),
-          pw.Text('Notas: ${pago.notes}',
-              style: const pw.TextStyle(fontSize: 8)),
-        ],
-        pw.SizedBox(height: 28),
-        pw.Container(
+          pw.SizedBox(height: 28),
+          pw.Container(
             decoration: const pw.BoxDecoration(
-                border: pw.Border(top: pw.BorderSide(width: .5)))),
-        pw.SizedBox(height: 2),
-        pw.Center(
-          child: pw.Text('Recibí conforme — $mechanicName',
-              style: const pw.TextStyle(fontSize: 8)),
-        ),
-      ],
+              border: pw.Border(top: pw.BorderSide(width: .5)),
+            ),
+          ),
+          pw.SizedBox(height: 2),
+          pw.Center(
+            child: pw.Text(
+              'Recibí conforme — $mechanicName',
+              style: const pw.TextStyle(fontSize: 8),
+            ),
+          ),
+        ],
+      ),
     ),
-  ));
+  );
 
   return doc.save();
 }

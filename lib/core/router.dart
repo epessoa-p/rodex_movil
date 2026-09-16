@@ -42,30 +42,35 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/', builder: (_, _) => const _Splash()),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
       GoRoute(
-          path: '/select-company',
-          builder: (_, _) => const SelectCompanyScreen()),
+        path: '/select-company',
+        builder: (_, _) => const SelectCompanyScreen(),
+      ),
       GoRoute(path: '/home', builder: (_, _) => const HomeScreen()),
       // Dashboard operativo del día; las gráficas están en Reportes → Análisis.
       GoRoute(path: '/dashboard', builder: (_, _) => const DashboardScreen()),
       GoRoute(path: '/reports', builder: (_, _) => const ReportsScreen()),
       GoRoute(
-          path: '/reports/analytics',
-          builder: (_, _) => const AnalyticsScreen()),
+        path: '/reports/analytics',
+        builder: (_, _) => const AnalyticsScreen(),
+      ),
       GoRoute(path: '/pos', builder: (_, _) => const PosScreen()),
       GoRoute(path: '/sales', builder: (_, _) => const SalesHistoryScreen()),
       // Compras: tabs Compras / OCs / Proveedores en una sola pantalla.
       GoRoute(
-          path: '/purchases/receptions',
-          builder: (_, _) => const PurchasesScreen()),
+        path: '/purchases/receptions',
+        builder: (_, _) => const PurchasesScreen(),
+      ),
       GoRoute(
-          path: '/purchases/direct',
-          builder: (_, _) => const DirectPurchaseScreen()),
+        path: '/purchases/direct',
+        builder: (_, _) => const DirectPurchaseScreen(),
+      ),
       GoRoute(path: '/products', builder: (_, _) => const ProductsScreen()),
       GoRoute(path: '/clients', builder: (_, _) => const ClientsScreen()),
       GoRoute(path: '/cash', builder: (_, _) => const CashScreen()),
       GoRoute(
-          path: '/cash-registers',
-          builder: (_, _) => const CashRegistersScreen()),
+        path: '/cash-registers',
+        builder: (_, _) => const CashRegistersScreen(),
+      ),
       GoRoute(path: '/workshop', builder: (_, _) => const WorkOrdersScreen()),
       GoRoute(path: '/agenda', builder: (_, _) => const AgendaScreen()),
       // Pagos: tabs Mecánicos / Proveedores / Personal / Gastos.
@@ -76,11 +81,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/profile', builder: (_, _) => const ProfileScreen()),
       GoRoute(path: '/branches', builder: (_, _) => const BranchesScreen()),
       GoRoute(
-          path: '/company-profile',
-          builder: (_, _) => const CompanyProfileScreen()),
+        path: '/company-profile',
+        builder: (_, _) => const CompanyProfileScreen(),
+      ),
       GoRoute(
-          path: '/income-statement',
-          builder: (_, _) => const IncomeStatementScreen()),
+        path: '/income-statement',
+        builder: (_, _) => const IncomeStatementScreen(),
+      ),
     ],
     redirect: (context, state) {
       final status = ref.read(authControllerProvider).status;

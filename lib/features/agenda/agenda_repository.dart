@@ -37,6 +37,9 @@ class Appointment {
   final String? mechanicName;
   final int? workOrderId;
 
+  /// Servicios de la cita (varios); `serviceId/serviceName` es el primero.
+  final List<IdName> services;
+
   Appointment({
     required this.id,
     required this.date,
@@ -59,31 +62,44 @@ class Appointment {
     this.mechanicId,
     this.mechanicName,
     this.workOrderId,
+    this.services = const [],
   });
 
   factory Appointment.fromJson(Map<String, dynamic> j) => Appointment(
-        id: j['id'] as int,
-        date: (j['date'] ?? '') as String,
-        time: (j['time'] ?? '') as String,
-        endTime: j['end_time'] as String?,
-        durationMinutes: (j['duration_minutes'] as num?)?.toInt() ?? 60,
-        status: (j['status'] ?? 'programada') as String,
-        statusLabel: (j['status_label'] ?? '') as String,
-        title: j['title'] as String?,
-        notes: j['notes'] as String?,
-        displayName: (j['display_name'] ?? 'Sin nombre') as String,
-        displayPhone: j['display_phone'] as String?,
-        clientId: j['client_id'] as int?,
-        customerName: j['customer_name'] as String?,
-        customerPhone: j['customer_phone'] as String?,
-        vehicleId: j['vehicle_id'] as int?,
-        vehicleLabel: j['vehicle_label'] as String?,
-        serviceId: j['service_id'] as int?,
-        serviceName: j['service_name'] as String?,
-        mechanicId: j['mechanic_id'] as int?,
-        mechanicName: j['mechanic_name'] as String?,
-        workOrderId: j['work_order_id'] as int?,
-      );
+    id: j['id'] as int,
+    date: (j['date'] ?? '') as String,
+    time: (j['time'] ?? '') as String,
+    endTime: j['end_time'] as String?,
+    durationMinutes: (j['duration_minutes'] as num?)?.toInt() ?? 60,
+    status: (j['status'] ?? 'programada') as String,
+    statusLabel: (j['status_label'] ?? '') as String,
+    title: j['title'] as String?,
+    notes: j['notes'] as String?,
+    displayName: (j['display_name'] ?? 'Sin nombre') as String,
+    displayPhone: j['display_phone'] as String?,
+    clientId: j['client_id'] as int?,
+    customerName: j['customer_name'] as String?,
+    customerPhone: j['customer_phone'] as String?,
+    vehicleId: j['vehicle_id'] as int?,
+    vehicleLabel: j['vehicle_label'] as String?,
+    serviceId: j['service_id'] as int?,
+    serviceName: j['service_name'] as String?,
+    mechanicId: j['mechanic_id'] as int?,
+    mechanicName: j['mechanic_name'] as String?,
+    workOrderId: j['work_order_id'] as int?,
+    services: j['services'] is List
+        ? (j['services'] as List)
+              .map((e) => IdName.fromJson(e as Map<String, dynamic>))
+              .toList()
+        : (j['service_id'] != null
+              ? [
+                  IdName(
+                    id: j['service_id'] as int,
+                    name: (j['service_name'] ?? '') as String,
+                  ),
+                ]
+              : const []),
+  );
 }
 
 /// Citas de un día + resumen.
@@ -126,13 +142,13 @@ class AppointmentMeta {
   AppointmentMeta({required this.services, required this.mechanics});
 
   factory AppointmentMeta.fromJson(Map<String, dynamic> j) => AppointmentMeta(
-        services: ((j['services'] as List?) ?? [])
-            .map((e) => IdName.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        mechanics: ((j['mechanics'] as List?) ?? [])
-            .map((e) => IdName.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
+    services: ((j['services'] as List?) ?? [])
+        .map((e) => IdName.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    mechanics: ((j['mechanics'] as List?) ?? [])
+        .map((e) => IdName.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
 }
 
 class AgendaRepository {
@@ -146,8 +162,10 @@ class AgendaRepository {
 
   /// Citas entre dos fechas (YYYY-MM-DD), para las vistas de semana/mes.
   Future<List<Appointment>> range(String from, String to) async {
-    final data =
-        await _api.get('/appointments/range', query: {'from': from, 'to': to});
+    final data = await _api.get(
+      '/appointments/range',
+      query: {'from': from, 'to': to},
+    );
     final d = (data as Map<String, dynamic>)['data'] as Map<String, dynamic>;
     return ((d['appointments'] as List?) ?? [])
         .map((e) => Appointment.fromJson(e as Map<String, dynamic>))
@@ -170,8 +188,10 @@ class AgendaRepository {
   }
 
   Future<Appointment> changeStatus(int id, String status) async {
-    final data =
-        await _api.post('/appointments/$id/status', body: {'status': status});
+    final data = await _api.post(
+      '/appointments/$id/status',
+      body: {'status': status},
+    );
     return Appointment.fromJson((data as Map<String, dynamic>)['data']);
   }
 
@@ -201,8 +221,10 @@ final appointmentMetaProvider = FutureProvider<AppointmentMeta>(
 );
 
 /// Citas de un rango "from|to" (YYYY-MM-DD|YYYY-MM-DD) para semana/mes.
-final agendaRangeProvider =
-    FutureProvider.family<List<Appointment>, String>((ref, key) {
+final agendaRangeProvider = FutureProvider.family<List<Appointment>, String>((
+  ref,
+  key,
+) {
   final parts = key.split('|');
   return ref.read(agendaRepositoryProvider).range(parts[0], parts[1]);
 });

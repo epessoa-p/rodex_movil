@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
+import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
@@ -44,10 +45,22 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
   Future<void> _load() async {
     try {
-      final d = await ref.read(posRepositoryProvider).productDetail(widget.productId);
-      if (mounted) setState(() { _detail = d; _loading = false; });
+      final d = await ref
+          .read(posRepositoryProvider)
+          .productDetail(widget.productId);
+      if (mounted) {
+        setState(() {
+          _detail = d;
+          _loading = false;
+        });
+      }
     } on ApiException catch (e) {
-      if (mounted) setState(() { _error = e.message; _loading = false; });
+      if (mounted) {
+        setState(() {
+          _error = e.message;
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -73,11 +86,15 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                   items: [
                     for (final w in d.stockByWarehouse)
                       DropdownMenuItem(
-                          value: w.id,
-                          child: Text('${w.warehouse} (${qty(w.qty)})')),
+                        value: w.id,
+                        child: Text('${w.warehouse} (${qty(w.qty)})'),
+                      ),
                   ],
-                  onChanged: (v) => setLocal(() => warehouse =
-                      d.stockByWarehouse.firstWhere((w) => w.id == v)),
+                  onChanged: (v) => setLocal(
+                    () => warehouse = d.stockByWarehouse.firstWhere(
+                      (w) => w.id == v,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
@@ -93,27 +110,32 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 TextField(
                   controller: qtyCtrl,
                   autofocus: true,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   decoration: InputDecoration(
-                      labelText: type == 'set' ? 'Cantidad final' : 'Cantidad'),
+                    labelText: type == 'set' ? 'Cantidad final' : 'Cantidad',
+                  ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: reasonCtrl,
-                  decoration:
-                      const InputDecoration(labelText: 'Motivo (opcional)'),
+                  decoration: const InputDecoration(
+                    labelText: 'Motivo (opcional)',
+                  ),
                 ),
               ],
             ),
           ),
           actions: [
             TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancelar')),
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancelar'),
+            ),
             FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Aplicar')),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Aplicar'),
+            ),
           ],
         ),
       ),
@@ -123,31 +145,32 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     final q = double.tryParse(qtyCtrl.text.replaceAll(',', '.')) ?? -1;
     if (q < 0 || (type != 'set' && q <= 0)) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Ingresa una cantidad válida.')));
+        AppToast.error(context, 'Ingresa una cantidad válida.');
       }
       return;
     }
 
     try {
-      await ref.read(posRepositoryProvider).adjustStock(
+      await ref
+          .read(posRepositoryProvider)
+          .adjustStock(
             productId: d.id,
             warehouseId: warehouse.id,
             type: type,
             quantity: q,
-            reason: reasonCtrl.text.trim().isEmpty ? null : reasonCtrl.text.trim(),
+            reason: reasonCtrl.text.trim().isEmpty
+                ? null
+                : reasonCtrl.text.trim(),
           );
       if (!mounted) return;
       setState(() => _loading = true);
       await _load(); // recarga la ficha con el stock actualizado
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Stock actualizado.')));
+        AppToast.success(context, 'Stock actualizado.');
       }
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.message)));
+        AppToast.apiError(context, e);
       }
     }
   }
@@ -155,7 +178,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final d = _detail;
-    final canEdit = ref.watch(authControllerProvider).me?.can('products.edit') ?? false;
+    final canEdit =
+        ref.watch(authControllerProvider).me?.can('products.edit') ?? false;
     return Scaffold(
       appBar: AppBar(
         title: Text(d?.name ?? widget.productName),
@@ -171,24 +195,27 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Text('$_error', textAlign: TextAlign.center),
-                  ),
-                )
-              : _content(d!),
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text('$_error', textAlign: TextAlign.center),
+              ),
+            )
+          : _content(d!),
       bottomNavigationBar: (d != null && widget.showAdd)
           ? SafeArea(
               child: Padding(
                 padding: const EdgeInsets.all(12),
                 child: FilledButton.icon(
                   style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(50)),
+                    minimumSize: const Size.fromHeight(50),
+                  ),
                   icon: const Icon(Icons.add_shopping_cart),
-                  label: Text((widget.requireStock && d.currentStock <= 0)
-                      ? 'Sin stock'
-                      : 'Agregar'),
+                  label: Text(
+                    (widget.requireStock && d.currentStock <= 0)
+                        ? 'Sin stock'
+                        : 'Agregar',
+                  ),
                   onPressed: (!widget.requireStock || d.currentStock > 0)
                       ? () => Navigator.pop(context, d.toProduct())
                       : null,
@@ -208,19 +235,25 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           _PhotoGallery(photos: d.photos),
           const SizedBox(height: 16),
         ],
-        Text(d.name,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+        Text(
+          d.name,
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+        ),
         const SizedBox(height: 4),
-        Text([d.sku, d.code, d.barcode].where((e) => e != null && e.isNotEmpty).join('  ·  '),
-            style: const TextStyle(color: Colors.black54)),
+        Text(
+          [
+            d.sku,
+            d.code,
+            d.barcode,
+          ].where((e) => e != null && e.isNotEmpty).join('  ·  '),
+          style: const TextStyle(color: Colors.black54),
+        ),
         const SizedBox(height: 16),
 
         // Precio + stock total
         Row(
           children: [
-            Expanded(
-              child: _bigStat('Precio', money(d.price), Colors.blue),
-            ),
+            Expanded(child: _bigStat('Precio', money(d.price), Colors.blue)),
             const SizedBox(width: 10),
             Expanded(
               child: _bigStat(
@@ -235,15 +268,18 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
         // Atributos
         _chips([
-          if (d.category != null && d.category!.isNotEmpty) ('Categoría', d.category!),
+          if (d.category != null && d.category!.isNotEmpty)
+            ('Categoría', d.category!),
           if (d.brand != null && d.brand!.isNotEmpty) ('Marca', d.brand!),
           if (d.origin != null && d.origin!.isNotEmpty) ('Origen', d.origin!),
         ]),
 
         if (d.compatibleModels.isNotEmpty) ...[
           const SizedBox(height: 16),
-          const Text('Modelos compatibles',
-              style: TextStyle(fontWeight: FontWeight.w700)),
+          const Text(
+            'Modelos compatibles',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
           const SizedBox(height: 8),
           Wrap(
             spacing: 6,
@@ -260,12 +296,16 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         ],
 
         const SizedBox(height: 16),
-        const Text('Stock por almacén',
-            style: TextStyle(fontWeight: FontWeight.w700)),
+        const Text(
+          'Stock por almacén',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
         const SizedBox(height: 8),
         if (d.stockByWarehouse.isEmpty)
-          const Text('Sin almacenes registrados.',
-              style: TextStyle(color: Colors.black54))
+          const Text(
+            'Sin almacenes registrados.',
+            style: TextStyle(color: Colors.black54),
+          )
         else
           for (final w in d.stockByWarehouse)
             ListTile(
@@ -273,55 +313,72 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.warehouse_outlined),
               title: Text(w.warehouse),
-              trailing: Text('${qty(w.qty)} ${d.unit ?? ''}'.trim(),
-                  style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: w.qty <= 0 ? Colors.red : null)),
+              trailing: Text(
+                '${qty(w.qty)} ${d.unit ?? ''}'.trim(),
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: w.qty <= 0 ? Colors.red : null,
+                ),
+              ),
             ),
       ],
     );
   }
 
   Widget _bigStat(String label, String value, Color color) => Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: .08),
-          borderRadius: BorderRadius.circular(12),
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: .08),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(color: Colors.black54, fontSize: 12),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: const TextStyle(color: Colors.black54, fontSize: 12)),
-            const SizedBox(height: 4),
-            Text(value,
-                style: TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.w800, color: color)),
-          ],
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: color,
+          ),
         ),
-      );
+      ],
+    ),
+  );
 
   Widget _chips(List<(String, String)> items) => Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          for (final (label, value) in items)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.black12),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text.rich(TextSpan(children: [
+    spacing: 8,
+    runSpacing: 8,
+    children: [
+      for (final (label, value) in items)
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.black12),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text.rich(
+            TextSpan(
+              children: [
                 TextSpan(
-                    text: '$label: ',
-                    style: const TextStyle(color: Colors.black54)),
+                  text: '$label: ',
+                  style: const TextStyle(color: Colors.black54),
+                ),
                 TextSpan(
-                    text: value,
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
-              ])),
+                  text: value,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ],
             ),
-        ],
-      );
+          ),
+        ),
+    ],
+  );
 }
 
 /// Galería de fotos del producto: foto principal grande + miniaturas. Al tocar
@@ -338,10 +395,12 @@ class _PhotoGalleryState extends State<_PhotoGallery> {
   int _current = 0;
 
   void _openViewer() {
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) =>
-          _PhotoViewer(photos: widget.photos, initialIndex: _current),
-    ));
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) =>
+            _PhotoViewer(photos: widget.photos, initialIndex: _current),
+      ),
+    );
   }
 
   @override
@@ -350,8 +409,7 @@ class _PhotoGalleryState extends State<_PhotoGallery> {
     // Ver el comentario en _Thumb: sin cacheWidth, una foto sin redimensionar se
     // decodifica completa en memoria y puede congelar la app.
     final dpr = MediaQuery.devicePixelRatioOf(context);
-    final mainCacheWidth =
-        (MediaQuery.sizeOf(context).width * dpr).round();
+    final mainCacheWidth = (MediaQuery.sizeOf(context).width * dpr).round();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -368,15 +426,19 @@ class _PhotoGalleryState extends State<_PhotoGallery> {
                 cacheWidth: mainCacheWidth,
                 errorBuilder: (_, _, _) => Container(
                   color: Colors.black12,
-                  child: const Icon(Icons.broken_image_outlined,
-                      color: Colors.black38, size: 40),
+                  child: const Icon(
+                    Icons.broken_image_outlined,
+                    color: Colors.black38,
+                    size: 40,
+                  ),
                 ),
                 loadingBuilder: (ctx, child, progress) => progress == null
                     ? child
                     : Container(
                         color: Colors.black12,
                         child: const Center(
-                            child: CircularProgressIndicator(strokeWidth: 2)),
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
                       ),
               ),
             ),
@@ -406,13 +468,16 @@ class _PhotoGalleryState extends State<_PhotoGallery> {
                       ),
                     ),
                     clipBehavior: Clip.antiAlias,
-                    child: Image.network(widget.photos[i],
-                        fit: BoxFit.cover,
-                        cacheWidth: (56 * dpr).round(),
-                        filterQuality: FilterQuality.low,
-                        errorBuilder: (_, _, _) => const Icon(
-                            Icons.broken_image_outlined,
-                            color: Colors.black38)),
+                    child: Image.network(
+                      widget.photos[i],
+                      fit: BoxFit.cover,
+                      cacheWidth: (56 * dpr).round(),
+                      filterQuality: FilterQuality.low,
+                      errorBuilder: (_, _, _) => const Icon(
+                        Icons.broken_image_outlined,
+                        color: Colors.black38,
+                      ),
+                    ),
                   ),
                 );
               },
@@ -452,12 +517,16 @@ class _PhotoViewer extends StatelessWidget {
               fit: BoxFit.contain,
               // Tope de decodificación: el doble del ancho de pantalla alcanza
               // para el zoom sin cargar el original completo en memoria.
-              cacheWidth: (MediaQuery.sizeOf(context).width *
-                      MediaQuery.devicePixelRatioOf(context) *
-                      2)
-                  .round(),
-              errorBuilder: (_, _, _) => const Icon(Icons.broken_image_outlined,
-                  color: Colors.white38, size: 60),
+              cacheWidth:
+                  (MediaQuery.sizeOf(context).width *
+                          MediaQuery.devicePixelRatioOf(context) *
+                          2)
+                      .round(),
+              errorBuilder: (_, _, _) => const Icon(
+                Icons.broken_image_outlined,
+                color: Colors.white38,
+                size: 60,
+              ),
             ),
           ),
         ),

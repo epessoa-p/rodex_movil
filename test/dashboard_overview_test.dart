@@ -12,11 +12,21 @@ const _full = {
     'received_today': 3,
     'active': 12,
     'vehicles_in_shop': 11,
-    'by_status': {'recibida': 4, 'diagnosticada': 2, 'en_proceso': 5, 'terminada': 1},
+    'by_status': {
+      'recibida': 4,
+      'diagnosticada': 2,
+      'en_proceso': 5,
+      'terminada': 1,
+    },
     'appointments': {
       'total': 4,
       'pending': 2,
-      'next': {'id': 9, 'time': '15:30', 'client': 'Juan Pérez', 'title': 'Cambio de aceite'},
+      'next': {
+        'id': 9,
+        'time': '15:30',
+        'client': 'Juan Pérez',
+        'title': 'Cambio de aceite',
+      },
     },
     'top_services': [
       {'label': 'Cambio de aceite', 'amount': 1200.0, 'count': 8},
@@ -24,10 +34,16 @@ const _full = {
     ],
     'recent': [
       {
-        'id': 1, 'code': 'OT-00042', 'status': 'en_proceso',
-        'status_label': 'En proceso', 'payment_status': 'pendiente',
-        'total': 350.0, 'balance': 350.0, 'client': 'María López',
-        'vehicle': 'Honda CG 150 · 1234-ABC', 'reception_date': '2026-09-11',
+        'id': 1,
+        'code': 'OT-00042',
+        'status': 'en_proceso',
+        'status_label': 'En proceso',
+        'payment_status': 'pendiente',
+        'total': 350.0,
+        'balance': 350.0,
+        'client': 'María López',
+        'vehicle': 'Honda CG 150 · 1234-ABC',
+        'reception_date': '2026-09-11',
       },
     ],
   },
@@ -35,16 +51,18 @@ const _full = {
 };
 
 Widget _app(Map<String, dynamic> payload) => ProviderScope(
-      overrides: [
-        dashboardOverviewProvider.overrideWith(
-            (ref) async => DashboardOverview.fromJson(payload)),
-      ],
-      child: const MaterialApp(home: DashboardScreen()),
-    );
+  overrides: [
+    dashboardOverviewProvider.overrideWith(
+      (ref) async => DashboardOverview.fromJson(payload),
+    ),
+  ],
+  child: const MaterialApp(home: DashboardScreen()),
+);
 
 void main() {
-  testWidgets('Dashboard completo: KPIs, estados, cita, servicios y OTs',
-      (tester) async {
+  testWidgets('Dashboard completo: KPIs, estados, cita, servicios y OTs', (
+    tester,
+  ) async {
     // Superficie alta para que el ListView construya todos los bloques.
     tester.view.physicalSize = const Size(1080, 4000);
     tester.view.devicePixelRatio = 1.0;
@@ -75,8 +93,9 @@ void main() {
     expect(find.text('OT-00042'), findsOneWidget);
   });
 
-  testWidgets('Sin sección de taller (plan/permiso): solo ventas y stock',
-      (tester) async {
+  testWidgets('Sin sección de taller (plan/permiso): solo ventas y stock', (
+    tester,
+  ) async {
     final payload = Map<String, dynamic>.from(_full)..['workshop'] = null;
     await tester.pumpWidget(_app(payload));
     await tester.pumpAndSettle();

@@ -20,10 +20,10 @@ class NamedOption {
       registerId != null && registerId != exceptRegisterId;
 
   factory NamedOption.fromJson(Map<String, dynamic> j) => NamedOption(
-        id: j['id'] as int,
-        name: (j['name'] ?? '') as String,
-        registerId: j['register_id'] as int?,
-      );
+    id: j['id'] as int,
+    name: (j['name'] ?? '') as String,
+    registerId: j['register_id'] as int?,
+  );
 }
 
 /// Caja (para administración: crear/asignar a personal).
@@ -50,7 +50,8 @@ class CashRegisterAdmin {
     required this.hasSession,
   });
 
-  factory CashRegisterAdmin.fromJson(Map<String, dynamic> j) => CashRegisterAdmin(
+  factory CashRegisterAdmin.fromJson(Map<String, dynamic> j) =>
+      CashRegisterAdmin(
         id: j['id'] as int,
         name: (j['name'] ?? '') as String,
         description: j['description'] as String?,
@@ -86,7 +87,10 @@ class CashAdminRepository {
     List<NamedOption> opts(String k) => ((d[k] as List?) ?? [])
         .map((e) => NamedOption.fromJson(e as Map<String, dynamic>))
         .toList();
-    return CashRegisterFormData(branches: opts('branches'), personal: opts('personal'));
+    return CashRegisterFormData(
+      branches: opts('branches'),
+      personal: opts('personal'),
+    );
   }
 
   Future<CashRegisterAdmin> create({
@@ -96,13 +100,16 @@ class CashAdminRepository {
     String? description,
     bool active = true,
   }) async {
-    final data = await _api.post('/cash-registers', body: {
-      'branch_id': branchId,
-      'name': name,
-      'assigned_personal_id': assignedPersonalId,
-      'description': ?description,
-      'active': active,
-    });
+    final data = await _api.post(
+      '/cash-registers',
+      body: {
+        'branch_id': branchId,
+        'name': name,
+        'assigned_personal_id': assignedPersonalId,
+        'description': ?description,
+        'active': active,
+      },
+    );
     return CashRegisterAdmin.fromJson((data as Map<String, dynamic>)['data']);
   }
 
@@ -114,13 +121,16 @@ class CashAdminRepository {
     String? description,
     bool active = true,
   }) async {
-    final data = await _api.put('/cash-registers/$id', body: {
-      'branch_id': branchId,
-      'name': name,
-      'assigned_personal_id': assignedPersonalId,
-      'description': ?description,
-      'active': active,
-    });
+    final data = await _api.put(
+      '/cash-registers/$id',
+      body: {
+        'branch_id': branchId,
+        'name': name,
+        'assigned_personal_id': assignedPersonalId,
+        'description': ?description,
+        'active': active,
+      },
+    );
     return CashRegisterAdmin.fromJson((data as Map<String, dynamic>)['data']);
   }
 }

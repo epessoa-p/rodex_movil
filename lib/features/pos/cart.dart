@@ -20,9 +20,11 @@ class CartLine {
     return v < 0 ? 0 : v;
   }
 
-  CartLine copyWith({double? quantity, double? discount}) =>
-      CartLine(product, quantity ?? this.quantity,
-          discount: discount ?? this.discount);
+  CartLine copyWith({double? quantity, double? discount}) => CartLine(
+    product,
+    quantity ?? this.quantity,
+    discount: discount ?? this.discount,
+  );
 }
 
 /// Carrito del POS (venta en construcción).
@@ -76,14 +78,16 @@ class Cart extends StateNotifier<List<CartLine>> {
   int get count => state.length;
 
   List<Map<String, dynamic>> toItems() => [
-        for (final l in state)
-          {
-            'product_id': l.product.id,
-            'quantity': l.quantity,
-            'unit_price': l.product.price,
-            'discount': l.discount.clamp(0, l.gross),
-          }
-      ];
+    for (final l in state)
+      {
+        'product_id': l.product.id,
+        'quantity': l.quantity,
+        'unit_price': l.product.price,
+        'discount': l.discount.clamp(0, l.gross),
+      },
+  ];
 }
 
-final cartProvider = StateNotifierProvider<Cart, List<CartLine>>((ref) => Cart());
+final cartProvider = StateNotifierProvider<Cart, List<CartLine>>(
+  (ref) => Cart(),
+);
