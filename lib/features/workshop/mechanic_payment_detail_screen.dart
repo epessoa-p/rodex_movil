@@ -6,6 +6,7 @@ import '../../core/api_client.dart';
 import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/providers.dart';
+import '../../core/upper_case.dart';
 import '../pos/pos_repository.dart';
 import '../treasury/treasury_repository.dart';
 import 'mechanic_payment_pdf.dart';
@@ -585,6 +586,8 @@ class _PaySheetState extends ConsumerState<_PaySheet> {
           ],
           const SizedBox(height: 12),
           TextField(
+            textCapitalization: TextCapitalization.characters,
+            inputFormatters: upperCaseFormatters,
             controller: _notes,
             minLines: 1,
             maxLines: 2,
@@ -593,6 +596,7 @@ class _PaySheetState extends ConsumerState<_PaySheet> {
               border: OutlineInputBorder(),
             ),
           ),
+
           const SizedBox(height: 16),
           FilledButton.icon(
             style: FilledButton.styleFrom(

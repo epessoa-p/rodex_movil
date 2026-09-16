@@ -5,6 +5,7 @@ import '../../core/api_client.dart';
 import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/sheet_focus.dart';
+import '../../core/upper_case.dart';
 import '../pos/pos_repository.dart' show cashSessionProvider;
 import '../treasury/treasury_repository.dart' show treasuryAccountsProvider;
 import 'payments_repository.dart';
@@ -283,8 +284,9 @@ class _PayrollSheetState extends ConsumerState<_PayrollSheet> {
             if (_period == 'Otro') ...[
               const SizedBox(height: 10),
               TextField(
+                textCapitalization: TextCapitalization.characters,
+                inputFormatters: upperCaseFormatters,
                 controller: _otherPeriod,
-                textCapitalization: TextCapitalization.sentences,
                 decoration: const InputDecoration(
                   labelText: '¿Qué se paga?',
                   hintText: 'Ej.: Bono, Adelanto, Aguinaldo',
@@ -297,12 +299,15 @@ class _PayrollSheetState extends ConsumerState<_PayrollSheet> {
             PaymentSourceField(onChanged: (s) => setState(() => _source = s)),
             const SizedBox(height: 12),
             TextField(
+              textCapitalization: TextCapitalization.characters,
+              inputFormatters: upperCaseFormatters,
               controller: _notes,
               decoration: const InputDecoration(
                 labelText: 'Notas (opcional)',
                 border: OutlineInputBorder(),
               ),
             ),
+
             const SizedBox(height: 16),
             FilledButton.icon(
               style: FilledButton.styleFrom(

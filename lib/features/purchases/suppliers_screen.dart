@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api_client.dart';
 import '../../core/app_toast.dart';
 import '../../core/providers.dart';
+import '../../core/upper_case.dart';
 import 'purchases_repository.dart';
 
 /// Tab de Proveedores dentro de Compras: listar/buscar y alta rápida.
@@ -73,20 +74,24 @@ class _SuppliersTabState extends ConsumerState<SuppliersTab> {
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
+                textCapitalization: TextCapitalization.characters,
+                inputFormatters: upperCaseFormatters,
                 controller: name,
                 autofocus: true,
-                textCapitalization: TextCapitalization.words,
                 decoration: const InputDecoration(labelText: 'Nombre *'),
               ),
+
               TextField(
                 controller: nit,
                 decoration: const InputDecoration(labelText: 'NIT / documento'),
               ),
               TextField(
+                textCapitalization: TextCapitalization.characters,
+                inputFormatters: upperCaseFormatters,
                 controller: contact,
-                textCapitalization: TextCapitalization.words,
                 decoration: const InputDecoration(labelText: 'Contacto'),
               ),
+
               TextField(
                 controller: phone,
                 keyboardType: TextInputType.phone,

@@ -123,6 +123,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
       appBar: AppBar(title: Text(picking ? 'Agregar producto' : 'Productos')),
       floatingActionButton: canCreate
           ? FloatingActionButton.extended(
+              heroTag: 'fab-products',
               onPressed: _newProduct,
               icon: const Icon(Icons.add),
               label: const Text('Nuevo'),

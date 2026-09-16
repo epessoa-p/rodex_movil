@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api_client.dart';
 import '../../core/app_toast.dart';
 import '../../core/providers.dart';
+import '../../core/upper_case.dart';
 import 'branches_repository.dart';
 
 /// Sucursales (Ajustes → Sucursales). Alcance acotado: se listan y se editan
@@ -198,22 +199,26 @@ class _BranchFormState extends ConsumerState<_BranchForm> {
           ),
           const SizedBox(height: 16),
           TextField(
+            textCapitalization: TextCapitalization.characters,
+            inputFormatters: upperCaseFormatters,
             controller: _name,
-            textCapitalization: TextCapitalization.words,
             decoration: const InputDecoration(
               labelText: 'Nombre',
               border: OutlineInputBorder(),
             ),
           ),
+
           const SizedBox(height: 12),
           TextField(
+            textCapitalization: TextCapitalization.characters,
+            inputFormatters: upperCaseFormatters,
             controller: _address,
-            textCapitalization: TextCapitalization.sentences,
             decoration: const InputDecoration(
               labelText: 'Dirección',
               border: OutlineInputBorder(),
             ),
           ),
+
           const SizedBox(height: 12),
           TextField(
             controller: _phone,

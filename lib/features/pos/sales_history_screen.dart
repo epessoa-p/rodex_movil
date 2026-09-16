@@ -123,6 +123,7 @@ class _SalesHistoryScreenState extends ConsumerState<SalesHistoryScreen> {
       appBar: AppBar(title: const Text('Ventas')),
       floatingActionButton: canSell
           ? FloatingActionButton.extended(
+              heroTag: 'fab-sales',
               onPressed: () => context.push('/pos'),
               icon: const Icon(Icons.point_of_sale),
               label: const Text('Nueva venta'),

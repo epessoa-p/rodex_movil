@@ -44,8 +44,11 @@ String _cap(String s) =>
 enum _View { day, week, month }
 
 /// Agenda / Citas: vistas de Día, Semana y Mes.
+/// Agenda de citas. Con [embedded] = true es un tab del hub "Taller": sin
+/// AppBar propio, el conmutador Día/Semana/Mes y "Hoy" van arriba del cuerpo.
 class AgendaScreen extends ConsumerStatefulWidget {
-  const AgendaScreen({super.key});
+  final bool embedded;
+  const AgendaScreen({super.key, this.embedded = false});
 
   @override
   ConsumerState<AgendaScreen> createState() => _AgendaScreenState();
@@ -98,45 +101,65 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
     final me = ref.watch(authControllerProvider).me;
     final canCreate = me?.can('appointments.create') ?? false;
 
+    final viewSwitch = SegmentedButton<_View>(
+      segments: const [
+        ButtonSegment(value: _View.day, label: Text('Día')),
+        ButtonSegment(value: _View.week, label: Text('Semana')),
+        ButtonSegment(value: _View.month, label: Text('Mes')),
+      ],
+      selected: {_view},
+      onSelectionChanged: (s) => setState(() => _view = s.first),
+      showSelectedIcon: false,
+    );
+    final todayButton = IconButton(
+      tooltip: 'Hoy',
+      icon: const Icon(Icons.today_outlined),
+      onPressed: () => _go(DateTime.now()),
+    );
+    final body = switch (_view) {
+      _View.day => _buildDay(canCreate),
+      _View.week => _buildWeek(),
+      _View.month => _buildMonth(),
+    };
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Agenda'),
-        actions: [
-          IconButton(
-            tooltip: 'Hoy',
-            icon: const Icon(Icons.today_outlined),
-            onPressed: () => _go(DateTime.now()),
-          ),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(52),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-            child: SegmentedButton<_View>(
-              segments: const [
-                ButtonSegment(value: _View.day, label: Text('Día')),
-                ButtonSegment(value: _View.week, label: Text('Semana')),
-                ButtonSegment(value: _View.month, label: Text('Mes')),
-              ],
-              selected: {_view},
-              onSelectionChanged: (s) => setState(() => _view = s.first),
-              showSelectedIcon: false,
+      appBar: widget.embedded
+          ? null
+          : AppBar(
+              title: const Text('Agenda'),
+              actions: [todayButton],
+              bottom: PreferredSize(
+                preferredSize: const Size.fromHeight(52),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                  child: viewSwitch,
+                ),
+              ),
             ),
-          ),
-        ),
-      ),
       floatingActionButton: canCreate
           ? FloatingActionButton.extended(
+              heroTag: 'fab-agenda',
               onPressed: () => _openForm(),
               icon: const Icon(Icons.add),
               label: const Text('Nueva cita'),
             )
           : null,
-      body: switch (_view) {
-        _View.day => _buildDay(canCreate),
-        _View.week => _buildWeek(),
-        _View.month => _buildMonth(),
-      },
+      body: widget.embedded
+          ? Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 4, 4),
+                  child: Row(
+                    children: [
+                      Expanded(child: viewSwitch),
+                      todayButton,
+                    ],
+                  ),
+                ),
+                Expanded(child: body),
+              ],
+            )
+          : body,
     );
   }
 
@@ -145,7 +168,16 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
     final dayAsync = ref.watch(agendaDayProvider(_dateStr));
     return Column(
       children: [
-        _WeekStrip(weekStart: _weekStart, selected: _dateOnly, onPick: _go),
+        _WeekStrip(
+          weekStart: _weekStart,
+          selected: _dateOnly,
+          onPick: _go,
+          // Conteo por día (y si hay alguna vencida sin completar) desde la
+          // semana ya cargada; si aún no llegó, la tira va sin números.
+          badges: _dayBadges(
+            ref.watch(agendaRangeProvider(_weekKey)).valueOrNull ?? const [],
+          ),
+        ),
         _RangeHeader(
           label: _cap(
             '${_dowFull[_dateOnly.weekday - 1]} ${_dateOnly.day} de ${_months[_dateOnly.month - 1]}',
@@ -346,6 +378,21 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
   }
 
   // ── Helpers de datos ───────────────────────────────────────
+  /// Por fecha: cuántas citas hay y si alguna ya pasó sin completarse
+  /// (programada/confirmada con fecha y hora anteriores a ahora) → en rojo.
+  Map<String, _DayBadge> _dayBadges(List<Appointment> list) {
+    final now = DateTime.now();
+    final out = <String, _DayBadge>{};
+    for (final a in list) {
+      final cur = out[a.date] ?? const _DayBadge(0, false);
+      final pending = a.status == 'programada' || a.status == 'confirmada';
+      final at = DateTime.tryParse('${a.date} ${a.time}:00');
+      final overdue = pending && at != null && at.isBefore(now);
+      out[a.date] = _DayBadge(cur.count + 1, cur.overdue || overdue);
+    }
+    return out;
+  }
+
   Map<String, List<Appointment>> _groupByDate(List<Appointment> list) {
     final map = <String, List<Appointment>>{};
     for (final a in list) {
@@ -375,7 +422,10 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
   // ── Acciones sobre una cita ────────────────────────────────
   void _showActions(Appointment a) {
     final me = ref.read(authControllerProvider).me;
-    final canEdit = me?.can('appointments.edit') ?? false;
+    // Una cita completada (o ya convertida en OT) queda cerrada: no se edita
+    // ni se reprograma. El backend lo rechaza igual (422).
+    final closed = a.status == 'completada' || a.workOrderId != null;
+    final canEdit = (me?.can('appointments.edit') ?? false) && !closed;
     final canDelete = me?.can('appointments.delete') ?? false;
     final canConvert = me?.can('workshop.create') ?? false;
 
@@ -421,6 +471,12 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
               },
             ),
             const Divider(height: 1),
+            if (closed)
+              const ListTile(
+                leading: Icon(Icons.lock_outline, color: Colors.black45),
+                title: Text('Cita completada: ya no se edita'),
+                enabled: false,
+              ),
             if (canEdit)
               ListTile(
                 leading: const Icon(Icons.edit_outlined),
@@ -674,14 +730,24 @@ class _RangeHeader extends StatelessWidget {
   }
 }
 
+/// Conteo de citas de un día para la tira semanal; [overdue] = hay alguna
+/// pasada sin completar (se pinta en rojo).
+class _DayBadge {
+  final int count;
+  final bool overdue;
+  const _DayBadge(this.count, this.overdue);
+}
+
 class _WeekStrip extends StatelessWidget {
   final DateTime weekStart;
   final DateTime selected;
   final void Function(DateTime) onPick;
+  final Map<String, _DayBadge> badges;
   const _WeekStrip({
     required this.weekStart,
     required this.selected,
     required this.onPick,
+    this.badges = const {},
   });
 
   @override
@@ -735,16 +801,64 @@ class _WeekStrip extends StatelessWidget {
                               color: isSel ? Colors.white : null,
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          Container(
-                            width: 5,
-                            height: 5,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: isToday
-                                  ? (isSel ? Colors.white : Colors.red)
-                                  : Colors.transparent,
-                            ),
+                          const SizedBox(height: 3),
+                          // Numerito de citas del día (como en la web); rojo si
+                          // hay alguna vencida sin completar. Sin citas: punto
+                          // de "hoy" o nada, para mantener la altura.
+                          Builder(
+                            builder: (_) {
+                              final b = badges[_ymd(d)];
+                              if (b == null || b.count == 0) {
+                                return Container(
+                                  width: 16,
+                                  height: 16,
+                                  alignment: Alignment.center,
+                                  child: Container(
+                                    width: 5,
+                                    height: 5,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: isToday
+                                          ? (isSel ? Colors.white : Colors.red)
+                                          : Colors.transparent,
+                                    ),
+                                  ),
+                                );
+                              }
+                              final bg = b.overdue
+                                  ? Colors.red
+                                  : (isSel
+                                        ? Colors.white
+                                        : Theme.of(
+                                            context,
+                                          ).colorScheme.primary);
+                              final fg = b.overdue
+                                  ? Colors.white
+                                  : (isSel
+                                        ? Theme.of(context).colorScheme.primary
+                                        : Colors.white);
+                              return Container(
+                                constraints: const BoxConstraints(minWidth: 16),
+                                height: 16,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                ),
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: bg,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  '${b.count}',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    height: 1,
+                                    fontWeight: FontWeight.w700,
+                                    color: fg,
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),

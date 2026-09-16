@@ -4,25 +4,32 @@ import '../../core/api_client.dart';
 import '../../core/providers.dart';
 
 /// Opción simple id + nombre (sucursal / personal).
-///
-/// Para las sucursales, [registerId] indica la caja que ya la ocupa (null =
-/// libre): solo se permite UNA caja por sucursal.
 class NamedOption {
   final int id;
   final String name;
-  final int? registerId;
 
-  NamedOption({required this.id, required this.name, this.registerId});
+  NamedOption({required this.id, required this.name});
 
-  /// true si la sucursal ya tiene una caja distinta de [exceptRegisterId]
-  /// (la que se está editando).
-  bool isTaken({int? exceptRegisterId}) =>
-      registerId != null && registerId != exceptRegisterId;
+  factory NamedOption.fromJson(Map<String, dynamic> j) =>
+      NamedOption(id: j['id'] as int, name: (j['name'] ?? '') as String);
+}
 
-  factory NamedOption.fromJson(Map<String, dynamic> j) => NamedOption(
-    id: j['id'] as int,
-    name: (j['name'] ?? '') as String,
-    registerId: j['register_id'] as int?,
+/// Par (sucursal, personal) que ya tiene caja. Regla: UNA caja por sucursal
+/// POR PERSONAL (un personal puede tener varias cajas en sucursales distintas).
+class TakenPair {
+  final int registerId;
+  final int branchId;
+  final int personalId;
+  TakenPair({
+    required this.registerId,
+    required this.branchId,
+    required this.personalId,
+  });
+
+  factory TakenPair.fromJson(Map<String, dynamic> j) => TakenPair(
+    registerId: j['register_id'] as int,
+    branchId: j['branch_id'] as int,
+    personalId: j['personal_id'] as int,
   );
 }
 
@@ -38,6 +45,9 @@ class CashRegisterAdmin {
   final bool active;
   final bool hasSession;
 
+  /// Con sesiones o movimientos registrados la caja ya no se edita.
+  final bool hasRecords;
+
   CashRegisterAdmin({
     required this.id,
     required this.name,
@@ -48,6 +58,7 @@ class CashRegisterAdmin {
     this.personalId,
     required this.active,
     required this.hasSession,
+    this.hasRecords = false,
   });
 
   factory CashRegisterAdmin.fromJson(Map<String, dynamic> j) =>
@@ -61,13 +72,35 @@ class CashRegisterAdmin {
         personalId: j['assigned_personal_id'] as int?,
         active: (j['active'] ?? true) as bool,
         hasSession: (j['has_session'] ?? false) as bool,
+        hasRecords: (j['has_records'] ?? false) as bool,
       );
 }
 
 class CashRegisterFormData {
   final List<NamedOption> branches;
   final List<NamedOption> personal;
-  CashRegisterFormData({required this.branches, required this.personal});
+  final List<TakenPair> taken;
+  CashRegisterFormData({
+    required this.branches,
+    required this.personal,
+    this.taken = const [],
+  });
+
+  /// Sucursales donde [personalId] todavía NO tiene caja (o la que ya ocupa
+  /// la caja [exceptRegisterId] que se está editando).
+  List<NamedOption> freeBranchesFor(int? personalId, {int? exceptRegisterId}) {
+    if (personalId == null) return branches;
+    return branches
+        .where(
+          (b) => !taken.any(
+            (t) =>
+                t.branchId == b.id &&
+                t.personalId == personalId &&
+                t.registerId != exceptRegisterId,
+          ),
+        )
+        .toList();
+  }
 }
 
 class CashAdminRepository {
@@ -90,6 +123,9 @@ class CashAdminRepository {
     return CashRegisterFormData(
       branches: opts('branches'),
       personal: opts('personal'),
+      taken: ((d['taken'] as List?) ?? [])
+          .map((e) => TakenPair.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 

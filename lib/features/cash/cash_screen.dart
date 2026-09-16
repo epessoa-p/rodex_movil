@@ -5,6 +5,7 @@ import '../../core/api_client.dart';
 import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
+import '../../core/upper_case.dart';
 import '../pos/pos_repository.dart';
 
 class CashScreen extends ConsumerWidget {
@@ -196,6 +197,8 @@ class _OpenSessionViewState extends ConsumerState<_OpenSessionView> {
               ),
               const SizedBox(height: 12),
               TextField(
+                textCapitalization: TextCapitalization.characters,
+                inputFormatters: upperCaseFormatters,
                 controller: conceptCtrl,
                 decoration: const InputDecoration(
                   labelText: 'Concepto (opcional)',

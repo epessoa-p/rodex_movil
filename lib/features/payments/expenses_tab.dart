@@ -6,6 +6,7 @@ import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/providers.dart';
 import '../../core/sheet_focus.dart';
+import '../../core/upper_case.dart';
 import '../pos/pos_repository.dart' show cashSessionProvider;
 import '../treasury/treasury_repository.dart' show treasuryAccountsProvider;
 import 'payments_repository.dart';
@@ -47,6 +48,7 @@ class ExpensesTab extends ConsumerWidget {
     return Scaffold(
       floatingActionButton: canPay
           ? FloatingActionButton.extended(
+              heroTag: 'fab-expenses',
               onPressed: () => _otherExpense(context, ref),
               icon: const Icon(Icons.add),
               label: const Text('Otro gasto'),
@@ -396,14 +398,16 @@ class _ExpenseSheetState extends ConsumerState<_ExpenseSheet> {
               ),
               const SizedBox(height: 12),
               TextField(
+                textCapitalization: TextCapitalization.characters,
+                inputFormatters: upperCaseFormatters,
                 controller: _concept,
                 focusNode: _isService ? null : _focus.node,
-                textCapitalization: TextCapitalization.sentences,
                 decoration: const InputDecoration(
                   labelText: 'Concepto',
                   border: OutlineInputBorder(),
                 ),
               ),
+
               const SizedBox(height: 12),
             ],
             TextField(
@@ -424,8 +428,9 @@ class _ExpenseSheetState extends ConsumerState<_ExpenseSheet> {
             if (_isService) ...[
               const SizedBox(height: 12),
               TextField(
+                textCapitalization: TextCapitalization.characters,
+                inputFormatters: upperCaseFormatters,
                 controller: _period,
-                textCapitalization: TextCapitalization.words,
                 decoration: const InputDecoration(
                   labelText: 'Período',
                   helperText: 'Mes que se paga, ej. Sep 2026',
@@ -437,12 +442,15 @@ class _ExpenseSheetState extends ConsumerState<_ExpenseSheet> {
             PaymentSourceField(onChanged: (v) => setState(() => _source = v)),
             const SizedBox(height: 12),
             TextField(
+              textCapitalization: TextCapitalization.characters,
+              inputFormatters: upperCaseFormatters,
               controller: _notes,
               decoration: const InputDecoration(
                 labelText: 'Notas (opcional)',
                 border: OutlineInputBorder(),
               ),
             ),
+
             const SizedBox(height: 16),
             FilledButton.icon(
               style: FilledButton.styleFrom(
@@ -541,15 +549,17 @@ class _NewServiceSheetState extends ConsumerState<_NewServiceSheet> {
             ),
             const SizedBox(height: 16),
             TextField(
+              textCapitalization: TextCapitalization.characters,
+              inputFormatters: upperCaseFormatters,
               controller: _name,
               focusNode: _focus.node,
-              textCapitalization: TextCapitalization.words,
               decoration: const InputDecoration(
                 labelText: 'Nombre',
                 hintText: 'Ej. Luz (CRE), Internet (Tigo)',
                 border: OutlineInputBorder(),
               ),
             ),
+
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _type,

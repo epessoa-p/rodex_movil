@@ -5,6 +5,7 @@ import '../../core/api_client.dart';
 import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/providers.dart';
+import '../../core/upper_case.dart';
 import 'treasury_account_screen.dart';
 import 'treasury_repository.dart';
 
@@ -23,6 +24,7 @@ class TreasuryScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Tesorería')),
       floatingActionButton: canManage
           ? FloatingActionButton.extended(
+              heroTag: 'fab-treasury',
               onPressed: () => _newAccount(context, ref),
               icon: const Icon(Icons.add),
               label: const Text('Nueva cuenta'),
@@ -244,21 +246,27 @@ class _NewAccountSheetState extends ConsumerState<_NewAccountSheet> {
           ),
           const SizedBox(height: 12),
           TextField(
+            textCapitalization: TextCapitalization.characters,
+            inputFormatters: upperCaseFormatters,
             controller: _name,
             decoration: const InputDecoration(
               labelText: 'Nombre *',
               border: OutlineInputBorder(),
             ),
           ),
+
           if (isBank) ...[
             const SizedBox(height: 12),
             TextField(
+              textCapitalization: TextCapitalization.characters,
+              inputFormatters: upperCaseFormatters,
               controller: _bank,
               decoration: const InputDecoration(
                 labelText: 'Banco',
                 border: OutlineInputBorder(),
               ),
             ),
+
             const SizedBox(height: 12),
             TextField(
               controller: _number,

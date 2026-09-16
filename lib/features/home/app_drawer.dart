@@ -104,12 +104,19 @@ class AppDrawer extends ConsumerWidget {
                     '/clients',
                     show: me.can('clients.view') || canSell,
                   ),
+                  // Taller agrupa OTs / Agenda / Mecánicos (hub con tabs).
                   _item(
                     context,
-                    Icons.engineering_outlined,
-                    'Mecánicos',
-                    '/mechanics',
-                    show: me.planAllows('workshop') && me.can('mechanics.view'),
+                    Icons.build_circle_outlined,
+                    'Taller',
+                    '/workshop',
+                    show:
+                        me.planAllows('workshop') &&
+                        me.canAny([
+                          'workshop.view',
+                          'appointments.view',
+                          'mechanics.view',
+                        ]),
                   ),
                   // Pagos agrupa Mecánicos / Proveedores / Personal / Gastos.
                   _item(

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api_client.dart';
 import '../../core/app_toast.dart';
 import '../../core/models.dart';
+import '../../core/upper_case.dart';
 import '../pos/pos_repository.dart';
 
 class ClientsScreen extends ConsumerStatefulWidget {
@@ -65,9 +66,12 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
+              textCapitalization: TextCapitalization.characters,
+              inputFormatters: upperCaseFormatters,
               controller: name,
               decoration: const InputDecoration(labelText: 'Nombre completo *'),
             ),
+
             const SizedBox(height: 8),
             TextField(
               controller: phone,
@@ -143,6 +147,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(picking ? 'Elegir cliente' : 'Clientes')),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'fab-clients',
         onPressed: _createDialog,
         icon: const Icon(Icons.person_add_alt),
         label: const Text('Nuevo'),

@@ -6,6 +6,7 @@ import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/sheet_focus.dart';
 import '../../core/providers.dart';
+import '../../core/upper_case.dart';
 import '../pos/pos_repository.dart' show cashSessionProvider;
 import '../treasury/treasury_repository.dart';
 import 'purchases_repository.dart';
@@ -464,12 +465,15 @@ class _PaySheetState extends ConsumerState<_PaySheet> {
               const SizedBox(height: 12),
             ],
             TextField(
+              textCapitalization: TextCapitalization.characters,
+              inputFormatters: upperCaseFormatters,
               controller: _reference,
               decoration: const InputDecoration(
                 labelText: 'Referencia (opcional)',
                 border: OutlineInputBorder(),
               ),
             ),
+
             const SizedBox(height: 8),
             Text(
               _source == 'treasury'

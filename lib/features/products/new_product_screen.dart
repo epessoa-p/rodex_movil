@@ -8,6 +8,7 @@ import '../../core/api_client.dart';
 import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
+import '../../core/upper_case.dart';
 import '../pos/pos_repository.dart';
 
 /// Alta rápida de producto desde el móvil. Devuelve el `Product` creado
@@ -175,7 +176,7 @@ class _NewProductScreenState extends ConsumerState<NewProductScreen> {
               children: [
                 _photoPicker(),
                 const SizedBox(height: 16),
-                _field(_name, 'Nombre *', capitalize: true),
+                _field(_name, 'Nombre *'),
                 Row(
                   children: [
                     Expanded(
@@ -309,7 +310,6 @@ class _NewProductScreenState extends ConsumerState<NewProductScreen> {
     TextEditingController c,
     String label, {
     bool number = false,
-    bool capitalize = false,
     String? prefix,
   }) {
     return Padding(
@@ -319,9 +319,11 @@ class _NewProductScreenState extends ConsumerState<NewProductScreen> {
         keyboardType: number
             ? const TextInputType.numberWithOptions(decimal: true)
             : TextInputType.text,
-        textCapitalization: capitalize
-            ? TextCapitalization.words
-            : TextCapitalization.none,
+        // Texto (nombre, código, unidad) en MAYÚSCULAS, como en la web.
+        textCapitalization: number
+            ? TextCapitalization.none
+            : TextCapitalization.characters,
+        inputFormatters: number ? null : upperCaseFormatters,
         decoration: InputDecoration(
           labelText: label,
           prefixText: prefix,

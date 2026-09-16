@@ -5,6 +5,7 @@ import '../../core/api_client.dart';
 import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
+import '../../core/upper_case.dart';
 import '../products/products_screen.dart';
 import 'purchases_repository.dart';
 
@@ -269,6 +270,8 @@ class _NewPurchaseOrderScreenState
                     ),
                 const SizedBox(height: 12),
                 TextField(
+                  textCapitalization: TextCapitalization.characters,
+                  inputFormatters: upperCaseFormatters,
                   controller: _notes,
                   minLines: 1,
                   maxLines: 3,
@@ -277,6 +280,7 @@ class _NewPurchaseOrderScreenState
                     border: OutlineInputBorder(),
                   ),
                 ),
+
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,

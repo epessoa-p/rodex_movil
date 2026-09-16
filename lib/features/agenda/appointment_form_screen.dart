@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api_client.dart';
 import '../../core/app_toast.dart';
 import '../../core/models.dart';
+import '../../core/providers.dart';
 import '../../core/sheet_focus.dart';
+import '../../core/upper_case.dart';
 import '../clients/clients_screen.dart';
 import '../workshop/workshop_repository.dart';
 import 'agenda_repository.dart';
@@ -139,15 +141,33 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
 
   /// Hoja para elegir servicios del catálogo (varios, con buscador).
   Future<void> _pickServices(List<IdName> catalog) async {
+    final canCreate =
+        ref.read(authControllerProvider).me?.can('services.create') ?? false;
+    var created = false;
     final picked = await showModalBottomSheet<List<IdName>>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
       builder: (_) => _ServicesPickerSheet(
-        catalog: catalog,
+        // Catálogo + los ya elegidos que aún no estén en él (recién creados).
+        catalog: [
+          ...catalog,
+          ..._services.where((s) => !catalog.any((c) => c.id == s.id)),
+        ],
         selected: _services.map((s) => s.id).toSet(),
+        onCreate: canCreate
+            ? (name, price) async {
+                final s = await ref
+                    .read(agendaRepositoryProvider)
+                    .createService(name: name, price: price);
+                created = true;
+                return s;
+              }
+            : null,
       ),
     );
+    // Si se creó un servicio, el catálogo del formulario se refresca.
+    if (created) ref.invalidate(appointmentMetaProvider);
     if (picked == null || !mounted) return;
     setState(() {
       _services
@@ -292,12 +312,15 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
                 ),
             ] else ...[
               TextField(
+                textCapitalization: TextCapitalization.characters,
+                inputFormatters: upperCaseFormatters,
                 controller: _name,
                 decoration: const InputDecoration(
                   labelText: 'Nombre del cliente *',
                   border: OutlineInputBorder(),
                 ),
               ),
+
               const SizedBox(height: 12),
               TextField(
                 controller: _phone,
@@ -383,6 +406,8 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
             ),
             const SizedBox(height: 12),
             TextField(
+              textCapitalization: TextCapitalization.characters,
+              inputFormatters: upperCaseFormatters,
               controller: _title,
               decoration: const InputDecoration(
                 labelText: 'Motivo / detalle',
@@ -429,6 +454,8 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
             ),
             const SizedBox(height: 12),
             TextField(
+              textCapitalization: TextCapitalization.characters,
+              inputFormatters: upperCaseFormatters,
               controller: _notes,
               minLines: 2,
               maxLines: 4,
@@ -437,6 +464,7 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
                 border: OutlineInputBorder(),
               ),
             ),
+
             const SizedBox(height: 20),
             FilledButton.icon(
               style: FilledButton.styleFrom(
@@ -462,18 +490,29 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
   }
 }
 
-/// Hoja de selección múltiple de servicios del catálogo, con buscador.
+/// Alta rápida: (nombre, precio) → servicio creado en el catálogo.
+typedef _CreateService = Future<IdName> Function(String name, double price);
+
+/// Hoja de selección múltiple de servicios del catálogo, con buscador y
+/// (con permiso `services.create`) alta rápida del servicio que no existe.
 /// Devuelve la lista elegida (en el orden del catálogo) al confirmar.
 class _ServicesPickerSheet extends StatefulWidget {
   final List<IdName> catalog;
   final Set<int> selected;
-  const _ServicesPickerSheet({required this.catalog, required this.selected});
+  final _CreateService? onCreate;
+  const _ServicesPickerSheet({
+    required this.catalog,
+    required this.selected,
+    this.onCreate,
+  });
 
   @override
   State<_ServicesPickerSheet> createState() => _ServicesPickerSheetState();
 }
 
 class _ServicesPickerSheetState extends State<_ServicesPickerSheet> {
+  // Copia mutable: aquí se agregan los servicios recién creados.
+  late final List<IdName> _catalog = [...widget.catalog];
   late final Set<int> _sel = {...widget.selected};
   final _query = TextEditingController();
   // Foco diferido: nunca `autofocus` dentro de una hoja (ANR en MIUI).
@@ -486,14 +525,30 @@ class _ServicesPickerSheetState extends State<_ServicesPickerSheet> {
     super.dispose();
   }
 
+  Future<void> _create(String suggestedName) async {
+    final onCreate = widget.onCreate;
+    if (onCreate == null) return;
+    final created = await showDialog<IdName>(
+      context: context,
+      builder: (_) =>
+          _NewServiceDialog(initialName: suggestedName, onCreate: onCreate),
+    );
+    if (created == null || !mounted) return;
+    setState(() {
+      // Si el backend reutilizó uno existente, no se duplica en la lista.
+      if (!_catalog.any((s) => s.id == created.id)) _catalog.add(created);
+      _sel.add(created.id);
+      _query.clear();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final q = _query.text.trim().toLowerCase();
     final items = q.isEmpty
-        ? widget.catalog
-        : widget.catalog
-              .where((s) => s.name.toLowerCase().contains(q))
-              .toList();
+        ? _catalog
+        : _catalog.where((s) => s.name.toLowerCase().contains(q)).toList();
+    final canCreate = widget.onCreate != null;
 
     return SafeArea(
       child: Padding(
@@ -547,13 +602,39 @@ class _ServicesPickerSheetState extends State<_ServicesPickerSheet> {
                   ),
                 ),
               ),
-              const SizedBox(height: 4),
+              if (canCreate)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: TextButton.icon(
+                      onPressed: () => _create(_query.text.trim()),
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Nuevo servicio'),
+                    ),
+                  ),
+                )
+              else
+                const SizedBox(height: 4),
               Expanded(
                 child: items.isEmpty
-                    ? const Center(
-                        child: Text(
-                          'Sin resultados.',
-                          style: TextStyle(color: Colors.black54),
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              'Sin resultados.',
+                              style: TextStyle(color: Colors.black54),
+                            ),
+                            if (canCreate && q.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              FilledButton.tonalIcon(
+                                onPressed: () => _create(_query.text.trim()),
+                                icon: const Icon(Icons.add),
+                                label: Text('Crear «${_query.text.trim()}»'),
+                              ),
+                            ],
+                          ],
                         ),
                       )
                     : ListView.builder(
@@ -587,7 +668,7 @@ class _ServicesPickerSheetState extends State<_ServicesPickerSheet> {
                     _sel.isEmpty ? 'Sin servicios' : 'Listo (${_sel.length})',
                   ),
                   onPressed: () => Navigator.pop(context, [
-                    for (final s in widget.catalog)
+                    for (final s in _catalog)
                       if (_sel.contains(s.id)) s,
                   ]),
                 ),
@@ -596,6 +677,114 @@ class _ServicesPickerSheetState extends State<_ServicesPickerSheet> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Diálogo de alta rápida de un servicio (nombre + precio).
+class _NewServiceDialog extends StatefulWidget {
+  final String initialName;
+  final _CreateService onCreate;
+  const _NewServiceDialog({required this.initialName, required this.onCreate});
+
+  @override
+  State<_NewServiceDialog> createState() => _NewServiceDialogState();
+}
+
+class _NewServiceDialogState extends State<_NewServiceDialog> {
+  late final _name = TextEditingController(text: widget.initialName);
+  final _price = TextEditingController();
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _price.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final name = _name.text.trim();
+    final price = double.tryParse(_price.text.trim().replaceAll(',', '.'));
+    if (name.isEmpty) {
+      AppToast.error(
+        context,
+        'Escribe el nombre del servicio.',
+        title: 'Falta el nombre',
+      );
+      return;
+    }
+    if (price == null || price < 0) {
+      AppToast.error(
+        context,
+        'Ingresa un precio válido (puede ser 0).',
+        title: 'Precio inválido',
+      );
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      final created = await widget.onCreate(name, price);
+      if (!mounted) return;
+      AppToast.success(
+        context,
+        'Servicio «${created.name}» listo.',
+        title: 'Servicio creado',
+      );
+      Navigator.pop(context, created);
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        AppToast.apiError(context, e);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Nuevo servicio'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              textCapitalization: TextCapitalization.characters,
+              inputFormatters: upperCaseFormatters,
+              controller: _name,
+              decoration: const InputDecoration(labelText: 'Nombre *'),
+            ),
+
+            const SizedBox(height: 8),
+            TextField(
+              controller: _price,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(
+                labelText: 'Precio *',
+                helperText: 'Precio de referencia del catálogo.',
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(
+          onPressed: _saving ? null : _submit,
+          child: _saving
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Crear'),
+        ),
+      ],
     );
   }
 }

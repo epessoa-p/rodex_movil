@@ -18,9 +18,9 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.example.rodex_movil"
-    // Fijado a 36 (estable, instalado). El default de Flutter pedía android-37
-    // (preview) que no está provisto en este equipo.
-    compileSdk = 36
+    // 37: lo exige flutter_secure_storage (android-37.0 ya está instalado).
+    // Es retrocompatible: no cambia minSdk ni targetSdk.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

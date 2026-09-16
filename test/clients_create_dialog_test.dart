@@ -66,7 +66,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(repo.created.single['phone'], '70011223');
-      expect(find.text('Cliente Ana Rojas creado.'), findsOneWidget);
+      expect(find.text('Cliente ANA ROJAS creado.'), findsOneWidget);
       expect(picked?.id, 7);
 
       // Tras cerrarse el toast, el diálogo ya no está.

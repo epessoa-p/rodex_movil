@@ -10,6 +10,9 @@ import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
+import '../../core/sheet_focus.dart';
+import '../../core/upper_case.dart';
+import '../agenda/agenda_repository.dart';
 import '../products/products_screen.dart';
 import 'work_order_pdf.dart';
 import 'workshop_repository.dart';
@@ -78,58 +81,30 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
       _order?.status == 'entregada' || _order?.status == 'anulada';
 
   Future<void> _addService() async {
-    final desc = TextEditingController();
-    final price = TextEditingController();
-    final qty = TextEditingController(text: '1');
-    final ok = await showDialog<bool>(
+    // Catálogo de servicios (con precio) para elegir en vez de escribir uno
+    // nuevo: el backend solo reutiliza si el nombre coincide exacto, así que
+    // teclearlo distinto creaba duplicados en el catálogo.
+    List<ServiceOption> catalog = const [];
+    try {
+      catalog = (await ref.read(appointmentMetaProvider.future)).services;
+    } catch (_) {
+      // sin catálogo: texto libre igual funciona
+    }
+    if (!mounted) return;
+
+    final picked = await showModalBottomSheet<_ServicePick>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Agregar servicio'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: desc,
-              decoration: const InputDecoration(labelText: 'Descripción *'),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: price,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              decoration: const InputDecoration(
-                labelText: 'Precio *',
-                prefixText: 'Bs ',
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: qty,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Cantidad'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Agregar'),
-          ),
-        ],
-      ),
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => _AddServiceSheet(catalog: catalog),
     );
-    if (ok != true || desc.text.trim().isEmpty) return;
+    if (picked == null || !mounted) return;
     await _run(
       () => _repo.addService(
         widget.orderId,
-        description: desc.text.trim(),
-        price: double.tryParse(price.text) ?? 0,
-        quantity: int.tryParse(qty.text) ?? 1,
+        description: picked.name,
+        price: picked.price,
+        quantity: picked.quantity,
       ),
     );
   }
@@ -212,6 +187,8 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
             Text('Total a cobrar: ${money(_order!.total)}'),
             const SizedBox(height: 8),
             TextField(
+              textCapitalization: TextCapitalization.characters,
+              inputFormatters: upperCaseFormatters,
               controller: to,
               decoration: const InputDecoration(
                 labelText: 'Entregado a (opcional)',
@@ -296,13 +273,28 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
               _diagnosisSection(o),
               const SizedBox(height: 8),
 
+              // Servicios y repuestos: botón "Agregar" en la cabecera de la
+              // tarjeta (como en Nueva cita) y × por línea para quitar.
               _section(
                 'Servicios',
+                icon: Icons.handyman_outlined,
+                color: _Accent.services,
+                action: _closed
+                    ? null
+                    : _HeaderAction(
+                        label: o.services.isEmpty
+                            ? 'Agregar servicio'
+                            : 'Agregar',
+                        onPressed: _busy ? null : _addService,
+                      ),
                 o.services.isEmpty
                     ? [
                         const ListTile(
                           dense: true,
-                          title: Text('Sin servicios'),
+                          title: Text(
+                            'Sin servicios',
+                            style: TextStyle(color: Colors.black54),
+                          ),
                         ),
                       ]
                     : [
@@ -313,25 +305,36 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
                             subtitle: Text(
                               '${s.quantity} x ${money(s.price)}${s.mechanic != null ? ' · ${s.mechanic}' : ''}',
                             ),
-                            trailing: Text(money(s.subtotal)),
+                            trailing: _lineTrailing(
+                              money(s.subtotal),
+                              onRemove: () => _removeLine(
+                                '¿Quitar el servicio «${s.description}»?',
+                                () => _repo.removeService(widget.orderId, s.id),
+                              ),
+                            ),
                           ),
                       ],
               ),
-              if (!_closed)
-                TextButton.icon(
-                  onPressed: _busy ? null : _addService,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Agregar servicio'),
-                ),
 
               const SizedBox(height: 8),
               _section(
                 'Repuestos',
+                icon: Icons.inventory_2_outlined,
+                color: _Accent.parts,
+                action: _closed
+                    ? null
+                    : _HeaderAction(
+                        label: o.parts.isEmpty ? 'Agregar repuesto' : 'Agregar',
+                        onPressed: _busy ? null : _addPart,
+                      ),
                 o.parts.isEmpty
                     ? [
                         const ListTile(
                           dense: true,
-                          title: Text('Sin repuestos'),
+                          title: Text(
+                            'Sin repuestos',
+                            style: TextStyle(color: Colors.black54),
+                          ),
                         ),
                       ]
                     : [
@@ -342,16 +345,16 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
                             subtitle: Text(
                               '${p.quantity} x ${money(p.unitPrice)}',
                             ),
-                            trailing: Text(money(p.subtotal)),
+                            trailing: _lineTrailing(
+                              money(p.subtotal),
+                              onRemove: () => _removeLine(
+                                '¿Quitar el repuesto «${p.name}»?',
+                                () => _repo.removePart(widget.orderId, p.id),
+                              ),
+                            ),
                           ),
                       ],
               ),
-              if (!_closed)
-                TextButton.icon(
-                  onPressed: _busy ? null : _addPart,
-                  icon: const Icon(Icons.add),
-                  label: const Text('Agregar repuesto'),
-                ),
 
               const SizedBox(height: 16),
               _totals(o),
@@ -693,7 +696,8 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
   // Validaciones y errores locales: toast rojo arriba (visible sobre hojas).
   void _snack(String m) => AppToast.error(context, m);
 
-  Widget _photosSection(WorkOrder o) => Card(
+  Widget _photosSection(WorkOrder o) => _AccentCard(
+    color: _Accent.photos,
     child: Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
       child: Column(
@@ -702,9 +706,16 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Fotos',
-                style: TextStyle(fontWeight: FontWeight.w700),
+              const Row(
+                children: [
+                  Icon(
+                    Icons.photo_library_outlined,
+                    size: 18,
+                    color: _Accent.photos,
+                  ),
+                  SizedBox(width: 6),
+                  Text('Fotos', style: TextStyle(fontWeight: FontWeight.w700)),
+                ],
               ),
               if (!_closed)
                 TextButton.icon(
@@ -829,7 +840,8 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
     ),
   );
 
-  Widget _header(WorkOrder o) => Card(
+  Widget _header(WorkOrder o) => _AccentCard(
+    color: _Accent.status(o.status),
     child: Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -908,28 +920,35 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
 
   Widget _diagnosisSection(WorkOrder o) {
     final has = o.diagnosis != null && o.diagnosis!.trim().isNotEmpty;
-    return _section('Diagnóstico', [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              has ? o.diagnosis! : 'Sin diagnóstico registrado.',
-              style: TextStyle(color: has ? null : Colors.black54),
-            ),
-            if (!_closed) ...[
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: _busy ? null : () => _editDiagnosis(o),
-                icon: const Icon(Icons.edit_note),
-                label: Text(has ? 'Editar diagnóstico' : 'Agregar diagnóstico'),
+    return _section(
+      'Diagnóstico',
+      icon: Icons.medical_information_outlined,
+      color: _Accent.diagnosis,
+      [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                has ? o.diagnosis! : 'Sin diagnóstico registrado.',
+                style: TextStyle(color: has ? null : Colors.black54),
               ),
+              if (!_closed) ...[
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : () => _editDiagnosis(o),
+                  icon: const Icon(Icons.edit_note),
+                  label: Text(
+                    has ? 'Editar diagnóstico' : 'Agregar diagnóstico',
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
-      ),
-    ]);
+      ],
+    );
   }
 
   Future<void> _editDiagnosis(WorkOrder o) async {
@@ -969,15 +988,42 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
     await _run(() => _repo.saveDiagnosis(o.id, text));
   }
 
-  Widget _section(String title, List<Widget> children) => Card(
+  /// Tarjeta de sección. [action] va arriba a la derecha (como la tarjeta de
+  /// Servicios en Nueva cita).
+  Widget _section(
+    String title,
+    List<Widget> children, {
+    IconData? icon,
+    _HeaderAction? action,
+    Color color = Colors.blueGrey,
+  }) => _AccentCard(
+    color: color,
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-          child: Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.w700),
+          padding: EdgeInsets.fromLTRB(16, action != null ? 4 : 12, 8, 4),
+          child: Row(
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 18, color: color),
+                const SizedBox(width: 6),
+              ],
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+              if (action != null)
+                TextButton.icon(
+                  onPressed: action.onPressed,
+                  icon: const Icon(Icons.add, size: 18),
+                  label: Text(action.label),
+                )
+              else
+                const SizedBox(width: 8),
+            ],
           ),
         ),
         ...children,
@@ -986,7 +1032,52 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
     ),
   );
 
-  Widget _totals(WorkOrder o) => Card(
+  /// Subtotal de la línea + × para quitarla (solo con la OT abierta).
+  Widget _lineTrailing(String amount, {required VoidCallback onRemove}) {
+    if (_closed) return Text(amount);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(amount),
+        IconButton(
+          visualDensity: VisualDensity.compact,
+          tooltip: 'Quitar',
+          icon: const Icon(Icons.close, size: 18, color: Colors.black45),
+          onPressed: _busy ? null : onRemove,
+        ),
+      ],
+    );
+  }
+
+  /// Confirma y quita una línea (servicio o repuesto) de la OT.
+  Future<void> _removeLine(
+    String question,
+    Future<WorkOrder> Function() action,
+  ) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Quitar de la OT'),
+        content: Text(question),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Quitar'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    await _run(action);
+  }
+
+  Widget _totals(WorkOrder o) => _AccentCard(
+    color: _Accent.totals,
     child: Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -1067,6 +1158,304 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// Acción de cabecera de una tarjeta de sección ("+ Agregar …").
+class _HeaderAction {
+  final String label;
+  final VoidCallback? onPressed;
+  const _HeaderAction({required this.label, this.onPressed});
+}
+
+/// Resultado de la hoja "Agregar servicio".
+class _ServicePick {
+  final String name;
+  final double price;
+  final int quantity;
+  const _ServicePick(this.name, this.price, this.quantity);
+}
+
+/// Hoja grande (como la de Nueva cita) para agregar un servicio a la OT:
+/// buscador sobre el catálogo (precarga el precio) o uno nuevo escrito a
+/// mano; abajo precio y cantidad.
+class _AddServiceSheet extends StatefulWidget {
+  final List<ServiceOption> catalog;
+  const _AddServiceSheet({required this.catalog});
+
+  @override
+  State<_AddServiceSheet> createState() => _AddServiceSheetState();
+}
+
+class _AddServiceSheetState extends State<_AddServiceSheet> {
+  final _query = TextEditingController();
+  final _price = TextEditingController();
+  final _qty = TextEditingController(text: '1');
+  // Foco diferido: nunca `autofocus` dentro de una hoja (ANR en MIUI).
+  late final SheetFocus _focus = SheetFocus(this);
+  ServiceOption? _selected;
+
+  @override
+  void dispose() {
+    _query.dispose();
+    _price.dispose();
+    _qty.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  /// Nombre a registrar: el elegido del catálogo o lo escrito.
+  String get _name => _selected?.name ?? _query.text.trim();
+
+  void _pick(ServiceOption s) => setState(() {
+    _selected = s;
+    _query.text = s.name;
+    if (s.price > 0) _price.text = s.price.toStringAsFixed(2);
+  });
+
+  void _submit() {
+    final name = _name;
+    final price = double.tryParse(_price.text.trim().replaceAll(',', '.'));
+    final qty = int.tryParse(_qty.text.trim()) ?? 1;
+    if (name.isEmpty) {
+      AppToast.error(
+        context,
+        'Elige un servicio del catálogo o escribe uno.',
+        title: 'Falta el servicio',
+      );
+      return;
+    }
+    if (price == null || price < 0) {
+      AppToast.error(
+        context,
+        'Ingresa un precio válido (puede ser 0).',
+        title: 'Precio inválido',
+      );
+      return;
+    }
+    Navigator.pop(context, _ServicePick(name, price, qty < 1 ? 1 : qty));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final q = _query.text.trim().toLowerCase();
+    final items = q.isEmpty
+        ? widget.catalog
+        : widget.catalog
+              .where((s) => s.name.toLowerCase().contains(q))
+              .toList();
+    // Lo escrito no coincide con ninguno del catálogo → se creará nuevo.
+    final isNew =
+        _selected == null &&
+        q.isNotEmpty &&
+        !widget.catalog.any((s) => s.name.toLowerCase() == q);
+
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height * .75,
+          child: Column(
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.handyman_outlined,
+                      size: 18,
+                      color: Colors.black54,
+                    ),
+                    SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Agregar servicio',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: TextField(
+                  controller: _query,
+                  focusNode: _focus.node,
+                  textCapitalization: TextCapitalization.characters,
+                  inputFormatters: upperCaseFormatters,
+                  onChanged: (_) => setState(() => _selected = null),
+                  decoration: InputDecoration(
+                    hintText: 'Buscar en el catálogo o escribir uno nuevo…',
+                    prefixIcon: const Icon(Icons.search),
+                    isDense: true,
+                    border: const OutlineInputBorder(),
+                    suffixIcon: q.isEmpty
+                        ? null
+                        : IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () => setState(() {
+                              _query.clear();
+                              _selected = null;
+                            }),
+                          ),
+                  ),
+                ),
+              ),
+              if (isNew)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.fiber_new_outlined,
+                        size: 16,
+                        color: Colors.orange,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          '«${_query.text.trim()}» se creará como servicio nuevo.',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.black54,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 4),
+              Expanded(
+                child: items.isEmpty
+                    ? const Center(
+                        child: Text(
+                          'Sin coincidencias en el catálogo.',
+                          style: TextStyle(color: Colors.black54),
+                        ),
+                      )
+                    : ListView.builder(
+                        itemCount: items.length,
+                        itemBuilder: (_, i) {
+                          final s = items[i];
+                          final sel = _selected?.id == s.id;
+                          return ListTile(
+                            dense: true,
+                            selected: sel,
+                            leading: Icon(
+                              sel
+                                  ? Icons.check_circle
+                                  : Icons.radio_button_unchecked,
+                              color: sel ? Colors.green : Colors.black38,
+                            ),
+                            title: Text(s.name),
+                            trailing: s.price > 0 ? Text(money(s.price)) : null,
+                            onTap: () => _pick(s),
+                          );
+                        },
+                      ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: TextField(
+                        controller: _price,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: InputDecoration(
+                          labelText: 'Precio *',
+                          prefixText: '$currencySymbol ',
+                          isDense: true,
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      flex: 2,
+                      child: TextField(
+                        controller: _qty,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Cantidad',
+                          isDense: true,
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(46),
+                  ),
+                  icon: const Icon(Icons.check),
+                  label: Text(
+                    _name.isEmpty ? 'Agregar' : 'Agregar «$_name»',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onPressed: _submit,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Colores de acento de los recuadros del detalle de OT: cada sección tiene el
+/// suyo (franja izquierda + ícono) para identificarla de un vistazo al
+/// deslizar, aunque esté vacía. Coherentes con el resto de la app.
+abstract final class _Accent {
+  static const photos = Colors.indigo;
+  static const diagnosis = Colors.blue;
+  static const services = Colors.deepPurple; // el de Taller
+  static const parts = Colors.brown; // el de repuestos/compras
+  static const totals = Colors.green;
+
+  /// Cabecera: el color del estado de la OT (mismos que el listado).
+  static Color status(String status) => switch (status) {
+    'recibida' => Colors.blueGrey,
+    'diagnosticada' => Colors.indigo,
+    'en_proceso' => Colors.orange,
+    'terminada' => Colors.green,
+    'entregada' => Colors.teal,
+    'anulada' => Colors.red,
+    _ => Colors.grey,
+  };
+}
+
+/// `Card` del tema con una franja de color de 4 px en el borde izquierdo.
+class _AccentCard extends StatelessWidget {
+  final Color color;
+  final Widget child;
+  const _AccentCard({required this.color, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border(left: BorderSide(color: color, width: 4)),
+        ),
+        child: child,
+      ),
     );
   }
 }

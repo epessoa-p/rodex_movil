@@ -20,6 +20,7 @@ _Última actualización: 2026-08-25_
 - ✅ **Moneda por empresa** (símbolo desde `/me`, aplicado al formateo).
 - ✅ Tema con colores de la empresa (`theme_primary`/`theme_accent`) — white-label.
 - ✅ `MeContext`: permisos + features del plan (`can()`, `planAllows()`) — para mostrar/ocultar.
+- ✅ **Mayúsculas automáticas** en los campos de texto (nombres, descripciones, direcciones, notas…) como en la web: `lib/core/upper_case.dart` (`UpperCaseTextFormatter` + `upperCaseFormatters`) aplicado en todos los formularios; no aplica a email/usuario/contraseña, buscadores, teléfonos ni números.
 
 ---
 
@@ -37,7 +38,9 @@ _Última actualización: 2026-08-25_
 
 ### Inicio (Home) ✅ / 🟡
 - ✅ Accesos: Nueva venta, Productos, Clientes, Taller, Caja.
-- ✅ **Navigation Drawer** (botón hamburguesa): menú lateral con los accesos (Dashboard, Ventas, Productos, Clientes, Mecánicos, Pagos, Compras, Tesorería, Reportes, Ajustes, Cerrar sesión), gateados por permiso/plan.
+- ✅ **Navigation Drawer** (botón hamburguesa): menú lateral con los accesos (Dashboard, Ventas, Productos, Clientes, **Taller**, Pagos, Compras, Tesorería, Reportes, Ajustes, Cerrar sesión), gateados por permiso/plan.
+- ✅ **Hub "Taller"** (`/workshop`, 2026-09-16): **OTs · Agenda · Mecánicos** en tabs inferiores (mismo patrón que Compras/Pagos: `NavigationBar` + `IndexedStack`, cada tab gateado por `workshop.view` / `appointments.view` / `mechanics.view`; un solo tab → sin barra). Las rutas `/agenda` y `/mechanics` abren el hub en su tab. Las pantallas se reutilizan en modo `embedded` (sin AppBar propio; la Agenda lleva Día/Semana/Mes + "Hoy" arriba del cuerpo). "Mecánicos" salió del drawer; el tile del Inicio pasa a llamarse **"Órdenes de trabajo"** (Taller engloba todo).
+- ✅ El botón de **Perfil** (arriba a la derecha) usa un ícono de persona en vez de la inicial.
 - ✅ **Ajustes** (drawer → *Ajustes*, `/settings`): hub con **recuadros** — *Mi empresa* y *Cajas* —
   cada uno abre su pantalla. Preparado para crecer. Se quitaron del drawer **"Caja"** (ya está la
   tarjeta de caja en el inicio), **"Cajas (admin)"** y **"Mi empresa"** (ahora viven en Ajustes).
@@ -63,7 +66,7 @@ _Última actualización: 2026-08-25_
 - ✅ Ver sesión actual, **abrir** (elegir caja + monto) y **cerrar** (monto contado).
 - ✅ Ver **movimientos** de la sesión (ingresos/gastos) y registrar **gasto** simple (operativo/servicio/transporte) desde caja. Endpoints `GET /cash/movements`, `POST /cash/expense`.
 - ✅ **Resumen de cierre**: esperado vs contado con **diferencia en vivo** al cerrar; el resumen (inicial, ingresos, gastos, esperado) se ve en la pantalla.
-- ✅ **Una caja por sucursal**: al crear, solo se ofrecen sucursales sin caja; si todas están ocupadas se avisa. Validado también en el backend (422 `branch_already_has_register`). Editar una caja sin moverla de sucursal siempre se permite (datos previos con varias cajas por sucursal). `GET /cash-registers/form-data` devuelve `register_id` por sucursal.
+- ✅ **Una caja por sucursal POR PERSONAL** (2026-09-16; reemplaza a "una por sucursal"): un personal puede tener varias cajas, pero en sucursales distintas. Al elegir el personal, el formulario solo ofrece las sucursales donde aún no tiene caja. Validado en backend (422 `personal_already_has_register_in_branch`). `GET /cash-registers/form-data` devuelve `taken[]` (pares sucursal+personal ocupados). **Una caja con sesiones o movimientos ya no se edita** (candado en la lista, aviso al tocarla; backend 422 `register_has_records`).
 - ✅ **Sucursales** (Ajustes → *Sucursales*): listar y editar **solo nombre, dirección y teléfono** (el alta/baja y el resto de campos quedan en la web). Endpoints `GET /branches`, `PUT /branches/{id}`. Gateado por `branches.view` / `branches.edit`.
 - ✅ **Crear caja y asignarla a un personal** (Ajustes → *Cajas*): listar/crear/editar cajas con sucursal + personal asignado. Requisito para que ese personal pueda abrir caja. Endpoints `GET/POST /cash-registers`, `GET /cash-registers/form-data`, `PUT /cash-registers/{id}`. Gateado por `plan:cash` + `cash-registers.view/create/edit`.
 - ✅ Gastos con integración (pago a proveedor/CxP, pago a personal, servicios recurrentes) → ver **Pagos**.
@@ -132,6 +135,8 @@ Una pantalla con **cuatro tabs inferiores**, cada uno gateado por su permiso (<2
 - ✅ **Ingresos/gastos** por cuenta: detalle con saldo, botones **Ingreso** (aporte de capital / ajuste +) y **Gasto** (gasto / ajuste −), e historial de movimientos. Valida que el gasto no supere el saldo. Endpoints `GET /treasury/accounts/{id}`, `POST /treasury/accounts/{id}/movements`. Gateado por `treasury.manage`.
 
 ### Taller (Órdenes de trabajo) ✅ / 🟡
+- ✅ **Agregar servicio en la OT desde el catálogo** (2026-09-16): hoja grande (como la de Nueva cita) con buscador sobre el catálogo (`appointments/meta` trae `price`), precarga el precio al elegir y avisa cuando lo escrito se creará como servicio nuevo; precio y cantidad abajo. Los botones **Agregar** de Servicios y Repuestos van en la cabecera de su tarjeta, y cada línea tiene **×** para quitarla (con confirmación; endpoints `DELETE work-orders/{id}/services/{line}` y `/parts/{line}` ya existentes). Antes el diálogo era texto libre (creaba duplicados) y no se podía quitar nada.
+- ✅ **Recuadros del detalle de OT con color distintivo** (2026-09-16): franja izquierda de 4 px + ícono teñido por sección (`_AccentCard`): Detalle = color del estado de la OT, Fotos índigo, Diagnóstico azul, Servicios morado (Taller), Repuestos marrón, Totales verde. Así se identifica cada recuadro al deslizar aunque esté vacío.
 - ✅ Listar órdenes (incluye **entregadas**; oculta solo las anuladas).
 - ✅ **Recepción** de vehículo (crea la OT) con los campos del web: cliente, **mecánico** (opcional), vehículo (existente o nuevo con marca/modelo/placa/**año/color**), **kilometraje**, **combustible**, **falla reportada**, **objetos/accesorios recibidos** y **notas**. (El `mechanic_id` es la base de la comisión.) Asigna la **sucursal** del personal (para el descuento de stock en la entrega). Se muestran en el detalle de la OT.
 - ✅ Detalle de la OT: agregar/quitar **servicios** y **repuestos**, cambiar **estado**, **entregar**, y **diagnóstico** editable (estados recibida/diagnosticada/en_proceso/terminada; recibida→diagnosticada al guardar). Endpoint `POST /work-orders/{id}/diagnosis`.
@@ -143,14 +148,14 @@ Una pantalla con **cuatro tabs inferiores**, cada uno gateado por su permiso (<2
 - ✅ **Enlace de seguimiento para el cliente**: botón "Compartir seguimiento" en el detalle de la OT → genera/entrega una URL pública (`/ot/{token}`, token único) y la comparte (`share_plus`). El cliente abre el enlace **sin login** y ve una **página web de seguimiento** (estado con línea de avance, vehículo, fechas, mecánico, falla, diagnóstico, detalle y total). Endpoint `GET /work-orders/{id}/share`. **DB:** script `20260829_work_order_public_token.sql` (columna `public_token`).
 
 ### Agenda / Citas ✅  (plan:workshop) — módulo nuevo (web + móvil)
-- ✅ **Vistas Día / Semana / Mes** (conmutador). **Día**: tira de semana + línea de tiempo + resumen (total/programadas/confirmadas/completadas). **Semana**: 7 columnas (lun-dom) con las citas de cada día. **Mes**: calendario con conteo por día; al tocar un día abre su vista. Endpoint de rango `GET /appointments/range?from=&to=`.
+- ✅ **Vistas Día / Semana / Mes** (conmutador). **Día**: tira de semana (con **numerito de citas por día**, en **rojo** si ese día tiene alguna cita pasada sin completar — 2026-09-16) + línea de tiempo + resumen (total/programadas/confirmadas/completadas). **Semana**: 7 columnas (lun-dom) con las citas de cada día. **Mes**: calendario con conteo por día; al tocar un día abre su vista. Endpoint de rango `GET /appointments/range?from=&to=`.
 - ✅ **Agendar cita**: cliente **registrado** (con su vehículo) o **rápido** (nombre+teléfono), servicio, mecánico, fecha/hora, duración (30 min–4 h), motivo y notas.
-- ✅ **Varios servicios por cita** (2026-09-15): tarjeta "Servicios" con chips y hoja con buscador y checkboxes; el motivo se autocompleta con los nombres. Se envía `service_ids[]` (el backend conserva `service_id` = primero). **DB:** tabla pivote `appointment_services` → script `20260915_appointment_services.sql` (con backfill).
+- ✅ **Varios servicios por cita** (2026-09-15): tarjeta "Servicios" con chips y hoja con buscador y checkboxes; **crear un servicio desde ahí** (botón "Nuevo servicio" o "Crear «lo buscado»" cuando no hay resultados; nombre + precio; gateado por `services.create`; endpoint `POST /services`, que reutiliza uno existente con el mismo nombre en vez de duplicar) y queda marcado; el motivo se autocompleta con los nombres. Se envía `service_ids[]` (el backend conserva `service_id` = primero). **DB:** tabla pivote `appointment_services` → script `20260915_appointment_services.sql` (con backfill).
 - ✅ **Al convertir a OT se copian los servicios** como líneas (`work_order_services`, precio del catálogo, cantidad 1, mecánico de la OT) — tanto en "Crear OT" directo como en la recepción con `appointment_id`.
 - ✅ **Cliente rápido con nombre + teléfono → se registra como cliente** (el backend lo busca por teléfono o lo crea y deja la cita con `client_id`). Solo nombre → sigue como walk-in.
 - ✅ **Nuevo cliente desde la cita**: nombre **y teléfono obligatorios** (también en la API `POST /clients`); validación y confirmación con `AppToast` arriba (antes el SnackBar quedaba detrás del diálogo).
 - ✅ **Estándar de avisos**: todos los `SnackBar` de la app pasaron a `AppToast` (éxito verde / error rojo / info azul, arriba, visibles sobre hojas y diálogos), incl. "OT creada desde la cita".
-- ✅ **Editar/reprogramar**, **cambiar estado** (programada/confirmada/completada/cancelada/no asistió) y **eliminar**.
+- ✅ **Editar/reprogramar**, **cambiar estado** (programada/confirmada/completada/cancelada/no asistió) y **eliminar**. **Una cita completada (o ya convertida en OT) no se edita ni reprograma** (2026-09-16): la hoja de acciones muestra "Cita completada: ya no se edita" y el backend rechaza el update (422 `appointment_closed`, también en la web).
 - ✅ **Contactar al cliente** desde la cita: **WhatsApp** (abre `wa.me` con mensaje de confirmación prellenado) y **Llamar** (`tel:`). Si no hay teléfono, avisa. (`url_launcher`).
 - ✅ **Convertir a OT**: crea la Orden de Trabajo desde la cita (requiere cliente registrado + vehículo); marca la cita como completada y enlaza la OT. Gateado por `workshop.create`.
 - Permisos: `appointments.view/create/edit/delete` (feature de plan: `workshop`). Tile en el Inicio + drawer.

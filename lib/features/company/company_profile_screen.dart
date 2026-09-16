@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/api_client.dart';
 import '../../core/app_toast.dart';
 import '../../core/providers.dart';
+import '../../core/upper_case.dart';
 import 'company_profile_repository.dart';
 
 /// "Mi empresa": la empresa activa edita teléfono, dirección, foto y la
@@ -182,6 +183,8 @@ class _FormState extends ConsumerState<_Form> {
         ),
         const SizedBox(height: 12),
         TextField(
+          textCapitalization: TextCapitalization.characters,
+          inputFormatters: upperCaseFormatters,
           controller: _address,
           enabled: widget.canEdit,
           minLines: 2,
@@ -191,6 +194,7 @@ class _FormState extends ConsumerState<_Form> {
             border: OutlineInputBorder(),
           ),
         ),
+
         const SizedBox(height: 12),
         TextField(
           controller: _days,

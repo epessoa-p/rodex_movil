@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api_client.dart';
 import '../../core/app_toast.dart';
 import '../../core/models.dart';
+import '../../core/upper_case.dart';
 import '../clients/clients_screen.dart';
 import 'workshop_repository.dart';
 
@@ -274,14 +275,20 @@ class _ReceptionScreenState extends ConsumerState<ReceptionScreen> {
             Column(
               children: [
                 TextField(
+                  textCapitalization: TextCapitalization.characters,
+                  inputFormatters: upperCaseFormatters,
                   controller: _brand,
                   decoration: const InputDecoration(labelText: 'Marca *'),
                 ),
+
                 const SizedBox(height: 8),
                 TextField(
+                  textCapitalization: TextCapitalization.characters,
+                  inputFormatters: upperCaseFormatters,
                   controller: _model,
                   decoration: const InputDecoration(labelText: 'Modelo'),
                 ),
+
                 const SizedBox(height: 8),
                 TextField(
                   controller: _plate,
@@ -329,6 +336,8 @@ class _ReceptionScreenState extends ConsumerState<ReceptionScreen> {
           ),
           const SizedBox(height: 16),
           TextField(
+            textCapitalization: TextCapitalization.characters,
+            inputFormatters: upperCaseFormatters,
             controller: _issue,
             maxLines: 3,
             decoration: const InputDecoration(
@@ -336,6 +345,7 @@ class _ReceptionScreenState extends ConsumerState<ReceptionScreen> {
               alignLabelWithHint: true,
             ),
           ),
+
           const SizedBox(height: 12),
           Row(
             children: [
@@ -357,6 +367,8 @@ class _ReceptionScreenState extends ConsumerState<ReceptionScreen> {
           ),
           const SizedBox(height: 12),
           TextField(
+            textCapitalization: TextCapitalization.characters,
+            inputFormatters: upperCaseFormatters,
             controller: _received,
             maxLines: 2,
             decoration: const InputDecoration(
@@ -364,8 +376,11 @@ class _ReceptionScreenState extends ConsumerState<ReceptionScreen> {
               alignLabelWithHint: true,
             ),
           ),
+
           const SizedBox(height: 12),
           TextField(
+            textCapitalization: TextCapitalization.characters,
+            inputFormatters: upperCaseFormatters,
             controller: _notes,
             maxLines: 2,
             decoration: const InputDecoration(
@@ -373,6 +388,7 @@ class _ReceptionScreenState extends ConsumerState<ReceptionScreen> {
               alignLabelWithHint: true,
             ),
           ),
+
           const SizedBox(height: 24),
           FilledButton.icon(
             icon: _submitting

@@ -188,6 +188,7 @@ class _DirectPurchasesTabState extends ConsumerState<_DirectPurchasesTab> {
     return Scaffold(
       floatingActionButton: canCreate
           ? FloatingActionButton.extended(
+              heroTag: 'fab-purchases',
               onPressed: _create,
               icon: const Icon(Icons.add),
               label: const Text('Compra directa'),

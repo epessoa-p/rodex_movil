@@ -6,6 +6,7 @@ import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
+import '../../core/upper_case.dart';
 import '../pos/pos_repository.dart';
 
 /// Ficha de un producto: precio, stock (total y por almacén), origen, marca,
@@ -119,6 +120,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 ),
                 const SizedBox(height: 12),
                 TextField(
+                  textCapitalization: TextCapitalization.characters,
+                  inputFormatters: upperCaseFormatters,
                   controller: reasonCtrl,
                   decoration: const InputDecoration(
                     labelText: 'Motivo (opcional)',

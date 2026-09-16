@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
 import '../../core/app_toast.dart';
+import '../../core/upper_case.dart';
 import 'cash_admin_repository.dart';
 
 /// Administración de cajas: crear una caja y asignarla a un personal
@@ -59,11 +60,13 @@ class _CashRegistersScreenState extends ConsumerState<CashRegistersScreen> {
       _snack('Primero crea una sucursal y registra personal (desde la web).');
       return;
     }
-    // Regla: una caja por sucursal. Al crear, solo se ofrecen las libres.
-    if (editing == null && !form.branches.any((b) => !b.isTaken())) {
-      _snack(
-        'Todas las sucursales ya tienen su caja. '
-        'Solo se permite una caja por sucursal.',
+    // Con registros (sesiones/movimientos) la caja queda congelada.
+    if (editing != null && editing.hasRecords) {
+      AppToast.info(
+        context,
+        '«${editing.name}» ya tiene sesiones o movimientos registrados. '
+        'Si necesitas cambiarla, crea otra caja.',
+        title: 'Caja no editable',
       );
       return;
     }
@@ -84,6 +87,7 @@ class _CashRegistersScreenState extends ConsumerState<CashRegistersScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Cajas')),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'fab-cash-registers',
         onPressed: () => _openForm(),
         icon: const Icon(Icons.add),
         label: const Text('Nueva caja'),
@@ -138,17 +142,33 @@ class _CashRegistersScreenState extends ConsumerState<CashRegistersScreen> {
                               'Personal: ${r.personal ?? '—'}',
                             ].join('  ·  '),
                           ),
-                          trailing: r.hasSession
-                              ? const Chip(
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (r.hasSession)
+                                const Chip(
                                   label: Text('En uso'),
                                   visualDensity: VisualDensity.compact,
                                 )
-                              : (r.active
-                                    ? null
-                                    : const Text(
-                                        'Inactiva',
-                                        style: TextStyle(color: Colors.grey),
-                                      )),
+                              else if (!r.active)
+                                const Text(
+                                  'Inactiva',
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              if (r.hasRecords)
+                                const Padding(
+                                  padding: EdgeInsets.only(left: 6),
+                                  child: Tooltip(
+                                    message: 'Con registros: no editable',
+                                    child: Icon(
+                                      Icons.lock_outline,
+                                      size: 18,
+                                      color: Colors.black38,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
                           onTap: () => _openForm(editing: r),
                         );
                       },
@@ -174,26 +194,26 @@ class _CashRegisterFormState extends ConsumerState<_CashRegisterForm> {
   bool _active = true;
   bool _saving = false;
 
-  /// Sucursales elegibles: las libres, más la propia cuando se edita
-  /// (una caja por sucursal).
-  late final List<NamedOption> _branches;
+  /// Sucursales elegibles para el personal elegido: donde aún no tiene caja
+  /// (una caja por sucursal POR PERSONAL), más la propia cuando se edita.
+  List<NamedOption> get _branches => widget.form.freeBranchesFor(
+    _personalId,
+    exceptRegisterId: widget.editing?.id,
+  );
 
   @override
   void initState() {
     super.initState();
     final e = widget.editing;
-    // Elegible = libre, o la que esta misma caja ya ocupa (así una caja antigua
-    // en una sucursal compartida sigue siendo editable).
-    _branches = widget.form.branches
-        .where(
-          (b) => !b.isTaken(exceptRegisterId: e?.id) || b.id == e?.branchId,
-        )
-        .toList();
     _name = TextEditingController(text: e?.name ?? '');
-    _branchId =
-        e?.branchId ?? (_branches.isNotEmpty ? _branches.first.id : null);
     _personalId = e?.personalId ?? widget.form.personal.first.id;
+    _branchId = e?.branchId ?? _firstFree();
     _active = e?.active ?? true;
+  }
+
+  int? _firstFree() {
+    final free = _branches;
+    return free.isNotEmpty ? free.first.id : null;
   }
 
   @override
@@ -255,20 +275,30 @@ class _CashRegisterFormState extends ConsumerState<_CashRegisterForm> {
           ),
           const SizedBox(height: 16),
           TextField(
+            textCapitalization: TextCapitalization.characters,
+            inputFormatters: upperCaseFormatters,
             controller: _name,
-            textCapitalization: TextCapitalization.words,
             decoration: const InputDecoration(
               labelText: 'Nombre de la caja',
               border: OutlineInputBorder(),
             ),
           ),
+
           const SizedBox(height: 12),
+          // La lista depende del personal: se re-crea al cambiarlo (key) para
+          // que el valor inicial siempre exista entre los ítems.
           DropdownButtonFormField<int>(
+            key: ValueKey('branch-$_personalId'),
             initialValue: _branchId,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Sucursal',
-              border: OutlineInputBorder(),
-              helperText: 'Una caja por sucursal',
+              border: const OutlineInputBorder(),
+              helperText: _branches.isEmpty
+                  ? 'Este personal ya tiene caja en todas las sucursales.'
+                  : 'Una caja por sucursal por personal',
+              helperStyle: _branches.isEmpty
+                  ? const TextStyle(color: Colors.red)
+                  : null,
             ),
             items: [
               for (final b in _branches)
@@ -287,7 +317,14 @@ class _CashRegisterFormState extends ConsumerState<_CashRegisterForm> {
               for (final p in widget.form.personal)
                 DropdownMenuItem(value: p.id, child: Text(p.name)),
             ],
-            onChanged: (v) => setState(() => _personalId = v),
+            onChanged: (v) => setState(() {
+              _personalId = v;
+              // Si la sucursal elegida ya está ocupada por este personal, se
+              // salta a la primera libre.
+              if (!_branches.any((b) => b.id == _branchId)) {
+                _branchId = _firstFree();
+              }
+            }),
           ),
           const SizedBox(height: 4),
           SwitchListTile(

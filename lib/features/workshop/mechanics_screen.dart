@@ -4,11 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api_client.dart';
 import '../../core/app_toast.dart';
 import '../../core/providers.dart';
+import '../../core/upper_case.dart';
 import 'workshop_repository.dart';
 
 /// Administración de mecánicos: listado + alta/edición con todos los campos.
+/// Mecánicos (alta/edición). Con [embedded] = true es un tab del hub "Taller".
 class MechanicsScreen extends ConsumerWidget {
-  const MechanicsScreen({super.key});
+  final bool embedded;
+  const MechanicsScreen({super.key, this.embedded = false});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -18,9 +21,10 @@ class MechanicsScreen extends ConsumerWidget {
     final async = ref.watch(mechanicsFullProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Mecánicos')),
+      appBar: embedded ? null : AppBar(title: const Text('Mecánicos')),
       floatingActionButton: canCreate
           ? FloatingActionButton.extended(
+              heroTag: 'fab-mechanics',
               onPressed: () => _openForm(context, ref),
               icon: const Icon(Icons.add),
               label: const Text('Nuevo mecánico'),
@@ -198,15 +202,19 @@ class _MechanicFormScreenState extends ConsumerState<MechanicFormScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           TextField(
+            textCapitalization: TextCapitalization.characters,
+            inputFormatters: upperCaseFormatters,
             controller: _name,
-            textCapitalization: TextCapitalization.words,
             decoration: const InputDecoration(
               labelText: 'Nombre *',
               border: OutlineInputBorder(),
             ),
           ),
+
           const SizedBox(height: 12),
           TextField(
+            textCapitalization: TextCapitalization.characters,
+            inputFormatters: upperCaseFormatters,
             controller: _specialty,
             decoration: const InputDecoration(
               labelText: 'Especialidad',
@@ -214,6 +222,7 @@ class _MechanicFormScreenState extends ConsumerState<MechanicFormScreen> {
               border: OutlineInputBorder(),
             ),
           ),
+
           const SizedBox(height: 12),
           TextField(
             controller: _phone,

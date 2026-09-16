@@ -135,15 +135,27 @@ class AgendaDay {
   }
 }
 
+/// Servicio del catálogo con su precio de referencia (para precargar en la OT).
+class ServiceOption extends IdName {
+  final double price;
+  ServiceOption({required super.id, required super.name, this.price = 0});
+
+  factory ServiceOption.fromJson(Map<String, dynamic> j) => ServiceOption(
+    id: j['id'] as int,
+    name: (j['name'] ?? '') as String,
+    price: (j['price'] as num?)?.toDouble() ?? 0,
+  );
+}
+
 /// Catálogos para el formulario (servicios + mecánicos).
 class AppointmentMeta {
-  final List<IdName> services;
+  final List<ServiceOption> services;
   final List<IdName> mechanics;
   AppointmentMeta({required this.services, required this.mechanics});
 
   factory AppointmentMeta.fromJson(Map<String, dynamic> j) => AppointmentMeta(
     services: ((j['services'] as List?) ?? [])
-        .map((e) => IdName.fromJson(e as Map<String, dynamic>))
+        .map((e) => ServiceOption.fromJson(e as Map<String, dynamic>))
         .toList(),
     mechanics: ((j['mechanics'] as List?) ?? [])
         .map((e) => IdName.fromJson(e as Map<String, dynamic>))
@@ -197,6 +209,19 @@ class AgendaRepository {
 
   Future<void> delete(int id) async {
     await _api.delete('/appointments/$id');
+  }
+
+  /// Alta rápida de un servicio del catálogo (desde el selector de la cita).
+  /// El backend reutiliza uno existente con el mismo nombre.
+  Future<IdName> createService({
+    required String name,
+    required double price,
+  }) async {
+    final data = await _api.post(
+      '/services',
+      body: {'name': name, 'price': price},
+    );
+    return IdName.fromJson((data as Map<String, dynamic>)['data']);
   }
 
   /// Convierte la cita en OT. Devuelve {work_order_id, code}.

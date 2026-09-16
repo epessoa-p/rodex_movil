@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../features/auth/auth_controller.dart';
 import '../features/auth/login_screen.dart';
-import '../features/agenda/agenda_screen.dart';
 import '../features/auth/select_company_screen.dart';
 import '../features/branches/branches_screen.dart';
 import '../features/company/company_profile_screen.dart';
@@ -25,8 +24,7 @@ import '../features/reports/reports_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/treasury/treasury_screen.dart';
 import '../features/payments/payments_screen.dart';
-import '../features/workshop/mechanics_screen.dart';
-import '../features/workshop/work_orders_screen.dart';
+import '../features/workshop/workshop_hub_screen.dart';
 import 'providers.dart';
 
 /// Router que redirige según el estado de sesión (auth).
@@ -71,11 +69,20 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/cash-registers',
         builder: (_, _) => const CashRegistersScreen(),
       ),
-      GoRoute(path: '/workshop', builder: (_, _) => const WorkOrdersScreen()),
-      GoRoute(path: '/agenda', builder: (_, _) => const AgendaScreen()),
+      // Hub Taller: OTs · Agenda · Mecánicos. Las tres rutas abren el hub en su tab.
+      GoRoute(path: '/workshop', builder: (_, _) => const WorkshopHubScreen()),
+      GoRoute(
+        path: '/agenda',
+        builder: (_, _) =>
+            const WorkshopHubScreen(initialTab: WorkshopTab.agenda),
+      ),
       // Pagos: tabs Mecánicos / Proveedores / Personal / Gastos.
       GoRoute(path: '/payments', builder: (_, _) => const PaymentsScreen()),
-      GoRoute(path: '/mechanics', builder: (_, _) => const MechanicsScreen()),
+      GoRoute(
+        path: '/mechanics',
+        builder: (_, _) =>
+            const WorkshopHubScreen(initialTab: WorkshopTab.mechanics),
+      ),
       GoRoute(path: '/treasury', builder: (_, _) => const TreasuryScreen()),
       GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
       GoRoute(path: '/profile', builder: (_, _) => const ProfileScreen()),

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api_client.dart';
 import '../../core/app_toast.dart';
 import '../../core/format.dart';
+import '../../core/upper_case.dart';
 import 'purchases_repository.dart';
 
 /// Detalle de una orden de compra y recepción de mercadería: por cada línea,
@@ -211,14 +212,19 @@ class _PoReceiveScreenState extends ConsumerState<PoReceiveScreen> {
         if (!readOnly) ...[
           const SizedBox(height: 16),
           TextField(
+            textCapitalization: TextCapitalization.characters,
+            inputFormatters: upperCaseFormatters,
             controller: _invoiceCtrl,
             decoration: const InputDecoration(
               labelText: 'N° de factura (opcional)',
               border: OutlineInputBorder(),
             ),
           ),
+
           const SizedBox(height: 12),
           TextField(
+            textCapitalization: TextCapitalization.characters,
+            inputFormatters: upperCaseFormatters,
             controller: _notesCtrl,
             minLines: 1,
             maxLines: 3,
@@ -227,6 +233,7 @@ class _PoReceiveScreenState extends ConsumerState<PoReceiveScreen> {
               border: OutlineInputBorder(),
             ),
           ),
+
           const SizedBox(height: 8),
           const Text(
             'Se sumará al stock del almacén, avanzará la orden y se generará la '

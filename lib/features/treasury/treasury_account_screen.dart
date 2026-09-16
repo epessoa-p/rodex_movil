@@ -5,6 +5,7 @@ import '../../core/api_client.dart';
 import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/providers.dart';
+import '../../core/upper_case.dart';
 import 'treasury_repository.dart';
 
 /// Detalle de una cuenta de tesorería: saldo, botones de Ingreso/Gasto y el
@@ -351,6 +352,8 @@ class _MovementSheetState extends ConsumerState<_MovementSheet> {
           ),
           const SizedBox(height: 12),
           TextField(
+            textCapitalization: TextCapitalization.characters,
+            inputFormatters: upperCaseFormatters,
             controller: _desc,
             minLines: 1,
             maxLines: 3,
@@ -359,6 +362,7 @@ class _MovementSheetState extends ConsumerState<_MovementSheet> {
               border: OutlineInputBorder(),
             ),
           ),
+
           const SizedBox(height: 16),
           FilledButton.icon(
             style: FilledButton.styleFrom(

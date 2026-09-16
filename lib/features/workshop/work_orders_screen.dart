@@ -6,8 +6,11 @@ import 'reception_screen.dart';
 import 'work_order_detail_screen.dart';
 import 'workshop_repository.dart';
 
+/// Listado de OTs activas. Con [embedded] = true es un tab del hub "Taller"
+/// (sin AppBar propio; el FAB queda dentro del tab).
 class WorkOrdersScreen extends ConsumerWidget {
-  const WorkOrdersScreen({super.key});
+  final bool embedded;
+  const WorkOrdersScreen({super.key, this.embedded = false});
 
   Color _statusColor(String status) => switch (status) {
     'recibida' => Colors.blueGrey,
@@ -24,8 +27,9 @@ class WorkOrdersScreen extends ConsumerWidget {
     final orders = ref.watch(workOrdersProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Taller')),
+      appBar: embedded ? null : AppBar(title: const Text('Órdenes de trabajo')),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'fab-work-orders',
         onPressed: () async {
           final created = await Navigator.of(context).push<bool>(
             MaterialPageRoute(builder: (_) => const ReceptionScreen()),
@@ -60,6 +64,10 @@ class WorkOrdersScreen extends ConsumerWidget {
                     final o = list[i];
                     return Card(
                       child: ListTile(
+                        // El chip va en Flexible: código + estado largo
+                        // ("Diagnosticada") desbordaban la fila en pantallas
+                        // de 360 dp. En debug ese overflow se imprime en cada
+                        // frame y congela la app (ANR); en release solo se ve.
                         title: Row(
                           children: [
                             Text(
@@ -69,9 +77,11 @@ class WorkOrdersScreen extends ConsumerWidget {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            _StatusChip(
-                              label: o.statusLabel,
-                              color: _statusColor(o.status),
+                            Flexible(
+                              child: _StatusChip(
+                                label: o.statusLabel,
+                                color: _statusColor(o.status),
+                              ),
                             ),
                           ],
                         ),
@@ -126,6 +136,8 @@ class _StatusChip extends StatelessWidget {
       ),
       child: Text(
         label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: TextStyle(
           color: color,
           fontSize: 11,

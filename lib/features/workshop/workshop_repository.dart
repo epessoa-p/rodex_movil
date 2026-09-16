@@ -144,6 +144,20 @@ class WorkshopRepository {
     return WorkOrder.fromJson((data as Map<String, dynamic>)['data']);
   }
 
+  /// Quita una línea de servicio de la OT (solo si no está cerrada).
+  Future<WorkOrder> removeService(int orderId, int serviceLineId) async {
+    final data = await _api.delete(
+      '/work-orders/$orderId/services/$serviceLineId',
+    );
+    return WorkOrder.fromJson((data as Map<String, dynamic>)['data']);
+  }
+
+  /// Quita una línea de repuesto de la OT (el stock se descuenta recién al entregar).
+  Future<WorkOrder> removePart(int orderId, int partLineId) async {
+    final data = await _api.delete('/work-orders/$orderId/parts/$partLineId');
+    return WorkOrder.fromJson((data as Map<String, dynamic>)['data']);
+  }
+
   /// Asigna (o quita, con null) el mecánico de una OT.
   Future<WorkOrder> assignMechanic(int orderId, int? mechanicId) async {
     final data = await _api.post(

@@ -36,17 +36,14 @@ class HomeScreen extends ConsumerWidget {
           IconButton(
             tooltip: 'Perfil',
             icon: CircleAvatar(
-              radius: 14,
+              radius: 15,
               backgroundColor: Theme.of(
                 context,
               ).colorScheme.onPrimary.withValues(alpha: .20),
-              child: Text(
-                me.user.name.isNotEmpty ? me.user.name[0].toUpperCase() : '?',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: Theme.of(context).colorScheme.onPrimary,
-                ),
+              child: Icon(
+                Icons.person,
+                size: 19,
+                color: Theme.of(context).colorScheme.onPrimary,
               ),
             ),
             onPressed: () => context.push('/profile'),
@@ -126,7 +123,7 @@ class HomeScreen extends ConsumerWidget {
                 if (me.planAllows('workshop') && me.can('workshop.view'))
                   _ActionTile(
                     icon: Icons.build_circle_outlined,
-                    label: 'Taller',
+                    label: 'Órdenes de trabajo',
                     color: Colors.deepPurple,
                     onTap: () => context.push('/workshop'),
                   ),
@@ -448,7 +445,16 @@ class _ActionTile extends StatelessWidget {
               child: Icon(icon, color: color, size: 28),
             ),
             const SizedBox(height: 10),
-            Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
           ],
         ),
       ),
