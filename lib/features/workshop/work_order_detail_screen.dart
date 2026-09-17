@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api_client.dart';
 import '../../core/app_toast.dart';
+import '../../core/company_logo.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
@@ -15,6 +16,7 @@ import '../../core/upper_case.dart';
 import '../../core/whatsapp.dart';
 import '../agenda/agenda_repository.dart';
 import '../products/products_screen.dart';
+import 'work_order_letter_pdf.dart';
 import 'work_order_pdf.dart';
 import 'workshop_repository.dart';
 
@@ -240,9 +242,9 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
             icon: const Icon(Icons.share_outlined),
             enabled: !_busy,
             onSelected: (v) => switch (v) {
-              'receipt_wa' => _shareReceipt(toClient: true),
+              'receipt_wa' => _shareReceiptPickFormat(toClient: true),
               'tracking_wa' => _shareTracking(toClient: true),
-              'receipt' => _shareReceipt(),
+              'receipt' => _shareReceiptPickFormat(),
               _ => _shareTracking(),
             },
             itemBuilder: (_) {
@@ -442,21 +444,68 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
     }
   }
 
+  /// Pregunta el formato (ticket 80 mm o tamaño carta) y comparte el recibo.
+  Future<void> _shareReceiptPickFormat({bool toClient = false}) async {
+    final letter = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Text(
+                'Formato del recibo',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.receipt_long_outlined),
+              title: const Text('Ticket (80 mm)'),
+              subtitle: const Text('Compacto, como el de la impresora'),
+              onTap: () => Navigator.pop(ctx, false),
+            ),
+            ListTile(
+              leading: const Icon(Icons.picture_as_pdf_outlined),
+              title: const Text('Tamaño carta'),
+              subtitle: const Text(
+                'Con logo, tablas, firmas; para imprimir o enviar',
+              ),
+              onTap: () => Navigator.pop(ctx, true),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (letter == null || !mounted) return;
+    await _shareReceipt(toClient: toClient, letter: letter);
+  }
+
   /// Con [toClient] abre WhatsApp en el chat del cliente con el PDF adjunto
   /// (Android); si no se puede (sin WhatsApp), cae al compartir genérico.
-  Future<void> _shareReceipt({bool toClient = false}) async {
+  /// [letter]: tamaño carta; si no, ticket 80 mm.
+  Future<void> _shareReceipt({
+    bool toClient = false,
+    bool letter = false,
+  }) async {
     final o = _order;
     if (o == null) return;
     setState(() => _busy = true);
     try {
-      final company = ref.read(authControllerProvider).me?.company?.name;
-      final bytes = await buildWorkOrderPdf(o, company: company);
+      final me = ref.read(authControllerProvider).me;
+      final logo = await loadCompanyLogo(me?.company?.logoUrl);
+      final bytes = letter
+          ? await buildWorkOrderLetterPdf(o, company: me?.company, logo: logo)
+          : await buildWorkOrderPdf(o, company: me?.company?.name, logo: logo);
+      final filename = '${o.code}${letter ? '-carta' : ''}.pdf';
       if (!mounted) return;
       setState(() => _busy = false);
       if (toClient) {
         final sent = await WhatsApp.sendFile(
           bytes,
-          '${o.code}.pdf',
+          filename,
           o.clientPhone,
           text: '${_greeting(o)}Le enviamos el recibo de su orden ${o.code}.',
         );
@@ -468,7 +517,7 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
           );
         }
       }
-      await Printing.sharePdf(bytes: bytes, filename: '${o.code}.pdf');
+      await Printing.sharePdf(bytes: bytes, filename: filename);
     } catch (e) {
       if (mounted) {
         setState(() => _busy = false);

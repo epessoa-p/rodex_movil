@@ -14,7 +14,11 @@ const _payLabels = {
 };
 
 /// Recibo en PDF (formato ticket 80 mm) de una orden de trabajo del taller.
-Future<Uint8List> buildWorkOrderPdf(WorkOrder o, {String? company}) async {
+Future<Uint8List> buildWorkOrderPdf(
+  WorkOrder o, {
+  String? company,
+  Uint8List? logo,
+}) async {
   final doc = pw.Document();
 
   String? dateStr;
@@ -79,6 +83,18 @@ Future<Uint8List> buildWorkOrderPdf(WorkOrder o, {String? company}) async {
       build: (ctx) => pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.stretch,
         children: [
+          // Logo de la empresa (ya reducido por loadCompanyLogo) sobre el nombre.
+          if (logo != null && logo.isNotEmpty)
+            pw.Padding(
+              padding: const pw.EdgeInsets.only(bottom: 4),
+              child: pw.Center(
+                child: pw.Image(
+                  pw.MemoryImage(logo),
+                  height: 42,
+                  fit: pw.BoxFit.contain,
+                ),
+              ),
+            ),
           if (company != null && company.isNotEmpty)
             pw.Center(
               child: pw.Text(

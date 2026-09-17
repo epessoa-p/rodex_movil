@@ -8,6 +8,8 @@ class Company {
   final String name;
   final String currency;
   final String? logoUrl;
+  final String? phone;
+  final String? address;
   final String? themePrimary;
   final String? themeAccent;
 
@@ -19,6 +21,8 @@ class Company {
     required this.name,
     this.currency = 'Bs',
     this.logoUrl,
+    this.phone,
+    this.address,
     this.themePrimary,
     this.themeAccent,
     this.dashboardOrder = 'ventas,taller,compras',
@@ -38,6 +42,8 @@ class Company {
         ? (j['currency'] as String).trim()
         : 'Bs',
     logoUrl: j['logo_url'] as String?,
+    phone: j['phone'] as String?,
+    address: j['address'] as String?,
     themePrimary: j['theme_primary'] as String?,
     themeAccent: j['theme_accent'] as String?,
     dashboardOrder: (j['dashboard_order'] as String?)?.trim().isNotEmpty == true

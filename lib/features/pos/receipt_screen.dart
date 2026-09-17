@@ -8,18 +8,27 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/company_logo.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
+import 'receipt_letter_pdf.dart';
 
 class ReceiptScreen extends ConsumerWidget {
   final Sale sale;
   const ReceiptScreen({super.key, required this.sale});
 
-  Future<void> _sharePdf(WidgetRef ref) async {
-    final company = ref.read(authControllerProvider).me?.company?.name;
-    final bytes = await buildReceiptPdf(sale, company: company);
-    await Printing.sharePdf(bytes: bytes, filename: 'recibo-${sale.code}.pdf');
+  /// [letter]: tamaño carta (cabecera con logo y tabla); si no, ticket 80 mm.
+  Future<void> _sharePdf(WidgetRef ref, {bool letter = false}) async {
+    final me = ref.read(authControllerProvider).me;
+    final logo = await loadCompanyLogo(me?.company?.logoUrl);
+    final bytes = letter
+        ? await buildReceiptLetterPdf(sale, company: me?.company, logo: logo)
+        : await buildReceiptPdf(sale, company: me?.company?.name, logo: logo);
+    await Printing.sharePdf(
+      bytes: bytes,
+      filename: 'recibo-${sale.code}${letter ? '-carta' : ''}.pdf',
+    );
   }
 
   Future<void> _shareText(WidgetRef ref) async {
@@ -39,13 +48,24 @@ class ReceiptScreen extends ConsumerWidget {
           PopupMenuButton<String>(
             tooltip: 'Compartir recibo',
             icon: const Icon(Icons.share),
-            onSelected: (v) => v == 'pdf' ? _sharePdf(ref) : _shareText(ref),
+            onSelected: (v) => switch (v) {
+              'pdf' => _sharePdf(ref),
+              'letter' => _sharePdf(ref, letter: true),
+              _ => _shareText(ref),
+            },
             itemBuilder: (_) => const [
               PopupMenuItem(
                 value: 'pdf',
                 child: ListTile(
+                  leading: Icon(Icons.receipt_long_outlined),
+                  title: Text('PDF ticket (80 mm)'),
+                ),
+              ),
+              PopupMenuItem(
+                value: 'letter',
+                child: ListTile(
                   leading: Icon(Icons.picture_as_pdf_outlined),
-                  title: Text('Compartir PDF'),
+                  title: Text('PDF tamaño carta'),
                 ),
               ),
               PopupMenuItem(
@@ -180,7 +200,11 @@ class ReceiptScreen extends ConsumerWidget {
 }
 
 /// Recibo en PDF (formato ticket 80 mm) para compartir/imprimir.
-Future<Uint8List> buildReceiptPdf(Sale sale, {String? company}) async {
+Future<Uint8List> buildReceiptPdf(
+  Sale sale, {
+  String? company,
+  Uint8List? logo,
+}) async {
   final doc = pw.Document();
   final df = DateFormat('dd/MM/yyyy HH:mm');
 
@@ -214,6 +238,18 @@ Future<Uint8List> buildReceiptPdf(Sale sale, {String? company}) async {
       build: (ctx) => pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.stretch,
         children: [
+          // Logo de la empresa (ya reducido por loadCompanyLogo) sobre el nombre.
+          if (logo != null && logo.isNotEmpty)
+            pw.Padding(
+              padding: const pw.EdgeInsets.only(bottom: 4),
+              child: pw.Center(
+                child: pw.Image(
+                  pw.MemoryImage(logo),
+                  height: 42,
+                  fit: pw.BoxFit.contain,
+                ),
+              ),
+            ),
           if (company != null && company.isNotEmpty)
             pw.Center(
               child: pw.Text(

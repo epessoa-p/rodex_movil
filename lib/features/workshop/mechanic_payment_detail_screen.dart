@@ -4,6 +4,7 @@ import 'package:printing/printing.dart';
 
 import '../../core/api_client.dart';
 import '../../core/app_toast.dart';
+import '../../core/company_logo.dart';
 import '../../core/format.dart';
 import '../../core/providers.dart';
 import '../../core/upper_case.dart';
@@ -352,11 +353,13 @@ class _MechanicPaymentDetailScreenState
     String mechanicName,
   ) async {
     try {
-      final company = ref.read(authControllerProvider).me?.company?.name;
+      final me = ref.read(authControllerProvider).me;
+      final logo = await loadCompanyLogo(me?.company?.logoUrl);
       final bytes = await buildMechanicPaymentPdf(
         pago,
         mechanicName: mechanicName,
-        company: company,
+        company: me?.company?.name,
+        logo: logo,
       );
       await Printing.sharePdf(
         bytes: bytes,

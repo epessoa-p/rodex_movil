@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
+import '../../core/company_logo.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
 import '../../core/storage.dart';
@@ -97,6 +100,7 @@ class AuthController extends StateNotifier<AuthState> {
   /// Limpia los datos cacheados de la sesión anterior (caja, resumen del día,
   /// carrito) para que al cambiar de usuario/empresa no se muestren stale.
   void _resetSessionData() {
+    clearCompanyLogoCache();
     _ref.invalidate(cashSessionProvider);
     _ref.invalidate(todaySummaryProvider);
     _ref.invalidate(workOrdersSummaryProvider);
@@ -168,6 +172,8 @@ class AuthController extends StateNotifier<AuthState> {
       // Nueva sesión/empresa: descarta los datos cacheados del usuario anterior.
       _resetSessionData();
       state = AuthState(status: AuthStatus.authenticated, me: me);
+      // Logo para los PDF: se descarga y reduce una vez, en segundo plano.
+      unawaited(prefetchCompanyLogo(me.company?.logoUrl));
     } on ApiException catch (e) {
       if (e.isUnauthorized) {
         await _clear();
@@ -194,6 +200,7 @@ class AuthController extends StateNotifier<AuthState> {
       final me = MeContext.fromJson(data);
       setCurrencySymbol(me.company?.currency);
       state = AuthState(status: AuthStatus.authenticated, me: me);
+      unawaited(prefetchCompanyLogo(me.company?.logoUrl));
     } on ApiException {
       // Silencioso: mantiene el estado actual si falla.
     }
