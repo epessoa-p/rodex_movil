@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/app_toast.dart';
 import '../../core/config.dart';
 import '../../core/providers.dart';
 
@@ -17,6 +18,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _password = TextEditingController();
   bool _obscure = true;
   bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Si llegamos aquí por un cierre de sesión forzado (token vencido, usuario
+    // desactivado), se muestra el motivo arriba una sola vez.
+    final auth = ref.read(authControllerProvider.notifier);
+    final reason = auth.sessionLostMessage;
+    if (reason != null) {
+      auth.sessionLostMessage = null;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) AppToast.info(context, reason, title: 'Sesión cerrada');
+      });
+    }
+  }
 
   @override
   void dispose() {

@@ -57,13 +57,14 @@ usas Android Studio / Flutter).
    cd d:\repository\rodex\rodex_movil\android\app
    ```
 
-2. Ejecuta (esto crea el archivo `rodex-release.jks`):
+2. Ejecuta (esto crea el archivo `rodex-release.jks`). `keytool` viene con el JDK
+   de Android Studio, que **no está en el PATH**, así que va con la ruta completa
+   (verificada en este equipo: es el JDK que usa Flutter según `flutter doctor -v`):
    ```
-   keytool -genkey -v -keystore rodex-release.jks -storetype JKS -keyalg RSA -keysize 2048 -validity 10000 -alias rodex
+   "C:\Program Files\Android\Android Studio\jbr\bin\keytool" -genkey -v -keystore rodex-release.jks -storetype JKS -keyalg RSA -keysize 2048 -validity 10000 -alias rodex
    ```
-   - Si `keytool` "no se reconoce", usa la ruta completa del JDK, por ejemplo:
-     `"C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe"` (o busca
-     `keytool.exe` en tu JDK) y ponla al inicio del comando.
+   - Si en otro equipo la ruta cambia, `flutter doctor -v` muestra "Java binary at:";
+     `keytool.exe` está en esa misma carpeta `bin`.
 
 3. Te va a preguntar, en orden:
    - **Contraseña del keystore** (invéntala y anótala) → la escribes dos veces.
@@ -125,11 +126,18 @@ flutter build appbundle --release
 
 Al compilar, si Gradle encontró tu `key.properties`, usa tu firma de release.
 Si no lo encuentra, usa la debug (y verás la app igual, pero **no** sirve para
-distribuir). Para confirmar la firma del APK generado:
+distribuir). Para confirmar la firma del APK generado, **desde la raíz del proyecto**
+(`d:\repository\rodex\rodex_movil`, no desde `android\app`: la ruta del APK es
+relativa a la raíz). Los APK actuales usan la firma **v2/v3 de Android**, que
+`keytool` no sabe leer (dice "No es un archivo jar firmado"); la herramienta correcta
+es `apksigner`, del SDK de Android (`build-tools`):
 ```
-keytool -printcert -jarfile build\app\outputs\flutter-apk\app-release.apk
+cd d:\repository\rodex\rodex_movil
+"C:\Users\Eric\AppData\Local\Android\Sdk\build-tools\37.0.0\apksigner.bat" verify --print-certs build\app\outputs\flutter-apk\app-release.apk
 ```
-Debe mostrar los datos que pusiste al crear el keystore (no "Android Debug").
+Debe mostrar `V2 Signer: certificate DN: CN=<tu nombre>, O=<tu organización>…` (los
+datos que pusiste al crear el keystore), no "Android Debug". Si el archivo "no
+existe", aún no compilaste: `flutter build apk --release` primero.
 
 ---
 

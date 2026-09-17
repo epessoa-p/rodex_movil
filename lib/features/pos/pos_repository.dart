@@ -80,6 +80,39 @@ class PosRepository {
     return ProductDetail.fromJson((data as Map<String, dynamic>)['data']);
   }
 
+  /// Edición de datos básicos/comerciales del producto (el stock va por
+  /// ajuste). Devuelve la ficha actualizada.
+  Future<ProductDetail> updateProduct(
+    int id, {
+    required String name,
+    required double price,
+    double? cost,
+    String? unit,
+    String? barcode,
+    String? description,
+    int? minStock,
+    int? categoryId,
+    int? brandId,
+    bool active = true,
+  }) async {
+    final data = await _api.put(
+      '/products/$id',
+      body: {
+        'name': name,
+        'price': price,
+        'cost': cost,
+        'unit': unit,
+        'barcode': barcode,
+        'description': description,
+        'min_stock': minStock,
+        'category_id': categoryId,
+        'brand_id': brandId,
+        'active': active,
+      },
+    );
+    return ProductDetail.fromJson((data as Map<String, dynamic>)['data']);
+  }
+
   /// Ajuste rápido de stock: type = 'in' | 'out' | 'set'.
   Future<void> adjustStock({
     required int productId,

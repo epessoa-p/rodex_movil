@@ -71,3 +71,8 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // FileProvider para enviar el recibo PDF directo a WhatsApp (MainActivity).
+    implementation("androidx.core:core:1.13.1")
+}

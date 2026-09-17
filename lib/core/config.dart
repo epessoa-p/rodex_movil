@@ -26,5 +26,5 @@ class AppConfig {
   static const String appName = 'Rodex Móvil';
 
   /// Versión visible en Ajustes (mantener en sync con pubspec.yaml `version:`).
-  static const String appVersion = '1.0.0';
+  static const String appVersion = '1.1.0';
 }

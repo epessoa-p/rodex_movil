@@ -35,6 +35,7 @@ _Última actualización: 2026-08-25_
 - ✅ **Cambiar contraseña** desde la app: `POST /change-password` (`current_password`, `password`,
   `password_confirmation`; mín. 8 caracteres). Va en el grupo `auth:sanctum` **fuera** del tenant
   (es acción de cuenta, no de empresa) y **revoca las demás sesiones** del usuario. Sin SQL.
+- ✅ **Caducidad de sesión** (2026-09-17): el token del móvil vence a los **30 días** (absoluto, `SANCTUM_EXPIRATION`) y a los **7 días sin usar la app** (ventana deslizante en `expires_at`, renovada en cada petición por el middleware `EnsureTokenFresh`); un **usuario desactivado** queda fuera en su siguiente petición (401 `user_inactive`). La app cierra sesión sola ante cualquier 401 (`ApiClient.onUnauthorized`), vuelve al login con el motivo en un toast ("Sesión cerrada") y, al volver del segundo plano tras >30 min, re-valida `/me` en silencio. Quien la usa a diario solo ve el login una vez al mes.
 
 ### Inicio (Home) ✅ / 🟡
 - ✅ Accesos: Nueva venta, Productos, Clientes, Taller, Caja.
@@ -74,7 +75,8 @@ _Última actualización: 2026-08-25_
 ### Clientes ✅
 - ✅ Listar/buscar clientes.
 - ✅ Alta rápida (nombre, documento, teléfono).
-- ⬜ Editar cliente / ver detalle (historial de compras).
+- ✅ **Ficha del cliente** (2026-09-17, tocar en el listado): datos de contacto con **Llamar / WhatsApp** y **tabs de actividad** como en la web — Ventas, OTs (abre el detalle), Vehículos, Citas, Alquileres — cada tab solo si el plan/permiso lo habilita (`null` en la API). Endpoint `GET /clients/{id}` (máx. 50 filas por tab). Barra de tabs desplazable (a 360 dp no caben repartidos).
+- ✅ **Editar cliente** (lápiz en la ficha, `clients.edit`): nombre, documento, teléfono (obligatorio), email, dirección, notas, activo. Endpoint `PUT /clients/{id}`.
 
 ### Inventario / Productos 🟡
 - ✅ Listar/buscar productos (lectura) para el POS — `GET /products` (nombre/código/barcode).
@@ -83,7 +85,8 @@ _Última actualización: 2026-08-25_
 - ✅ **Ajuste rápido de stock** desde la ficha (**entrada / salida / fijar** en un almacén, con motivo). Gateado por permiso `products.edit`. Endpoint `POST /products/{id}/stock-adjust`.
 - ⬜ Alertas de **stock bajo**.
 - ✅ **Alta rápida de producto** (nombre, precio, costo, código de barras, unidad, categoría/marca opcionales y **stock inicial** en un almacén). SKU autogenerado por empresa. Desde **Productos → "Nuevo"** (gateado por `products.create`); si se abre desde el POS, el producto creado se agrega al carrito. Endpoints `POST /products`, `GET /product-form-data`.
-- ⬜ Editar productos y gestión completa (kardex, almacenes, importar) → se hace en el **web**.
+- ✅ **Editar producto** (2026-09-17, lápiz en la ficha, `products.edit`): nombre, precio, costo, código de barras, unidad, categoría, marca, stock mínimo, descripción y activo. El stock sigue yendo por "Ajustar stock" (kardex). Endpoint `PUT /products/{id}`; `GET /products/{id}` trae ahora `category_id`, `brand_id`, `cost`, `min_stock`, `description`, `active`.
+- ⬜ Gestión completa (kardex, almacenes, importar, fotos adicionales) → se hace en el **web**.
 
 ### Compras 🟡  (plan:purchases)
 - ✅ **Compras**: una pantalla con **tres tabs inferiores** — **Compras** (directas), **OCs** y **Proveedores** — cada uno gateado por su permiso (`purchases.view` / `purchase-orders.view` o `goods-receipts.view` / `suppliers.view`); si solo queda un tab visible se muestra sin barra. Cada tab tiene su botón de acción arriba (**Compra directa** / **Nueva OC** / **Nuevo proveedor**).
@@ -143,6 +146,7 @@ Una pantalla con **cuatro tabs inferiores**, cada uno gateado por su permiso (<2
 - ✅ **Cobro/pago** de la OT al **contado** (entrega + cobro + descuento de stock, endpoint `deliver`). ⬜ Falta cobro a **crédito/cuotas** desde el móvil.
 - ✅ **Compartir recibo de la OT en PDF** (ticket 80 mm: empresa, código, fecha, cliente/vehículo/mecánico, diagnóstico, servicios, repuestos, subtotales, descuento, total/pagado/saldo y estado de pago). En el menú **Compartir** del detalle, junto al enlace de seguimiento. Usa `pdf` + `printing`.
 - ✅ **Asignar/cambiar mecánico desde el detalle** de la OT (botón en el encabezado → elige mecánico o "Sin asignar"). Endpoint `POST /work-orders/{id}/mechanic`. Solo si la OT no está entregada/anulada.
+- ✅ **Recibo y seguimiento directo al WhatsApp del cliente** (2026-09-17): el menú **Compartir** de la OT ofrece primero **"Recibo (PDF) al WhatsApp del cliente"** y **"Seguimiento al WhatsApp del cliente"** (van directo al chat del número de la OT, sin elegir contacto) y debajo las opciones "con otra app" (selector del sistema). El enlace usa `wa.me` con el mensaje escrito; el PDF usa un intent nativo a WhatsApp/WhatsApp Business (`MainActivity.kt`, canal `rodex/whatsapp`, extra `jid`, FileProvider de `share_plus`) y si WhatsApp no está instalado cae al compartir genérico. Helper compartido `lib/core/whatsapp.dart` (`WhatsApp.number/openChat/sendFile`). Opciones deshabilitadas si el cliente no tiene teléfono.
 - ✅ **Contactar al cliente desde la OT**: botones **WhatsApp** y **Llamar** en el encabezado (junto a "Cliente"). El detalle ahora incluye `client_phone`. Si no hay teléfono, avisa.
 - ✅ **Fotos de la OT**: en el detalle, galería de fotos con **agregar** (cámara o galería, varias a la vez), **ver** a pantalla completa, **eliminar** y **comentar cada foto** (ej. "cambiar esta pieza gastada"): el comentario se ve bajo la miniatura y se edita al tocarlo o desde el visor. También en la web (galería de la OT + lightbox). Endpoint `PUT /work-orders/{id}/photos/{photo}`. **DB:** columna `work_order_photos.caption` (script `20260831e_work_order_photo_caption.sql`). Usa la tabla existente `work_order_photos` (misma que la recepción web). Endpoints `GET/POST /work-orders/{id}/photos`, `DELETE /work-orders/{id}/photos/{photo}`. Se muestran también las fotos cargadas desde la recepción del web.
 - ✅ **Enlace de seguimiento para el cliente**: botón "Compartir seguimiento" en el detalle de la OT → genera/entrega una URL pública (`/ot/{token}`, token único) y la comparte (`share_plus`). El cliente abre el enlace **sin login** y ve una **página web de seguimiento** (estado con línea de avance, vehículo, fechas, mecánico, falla, diagnóstico, detalle y total). Endpoint `GET /work-orders/{id}/share`. **DB:** script `20260829_work_order_public_token.sql` (columna `public_token`).

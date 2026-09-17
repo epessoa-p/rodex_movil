@@ -6,6 +6,7 @@ import '../../core/app_toast.dart';
 import '../../core/models.dart';
 import '../../core/upper_case.dart';
 import '../pos/pos_repository.dart';
+import 'client_detail_screen.dart';
 
 class ClientsScreen extends ConsumerStatefulWidget {
   final void Function(Client)? onPick;
@@ -193,7 +194,22 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                               .join('  ·  '),
                           maxLines: 1,
                         ),
-                        onTap: picking ? () => widget.onPick!(c) : null,
+                        // Eligiendo (POS/cita): devuelve el cliente. Si no, abre
+                        // su ficha (datos + actividad); al volver se recarga.
+                        onTap: picking
+                            ? () => widget.onPick!(c)
+                            : () async {
+                                await Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        ClientDetailScreen(clientId: c.id),
+                                  ),
+                                );
+                                _load(_search.text);
+                              },
+                        trailing: picking
+                            ? null
+                            : const Icon(Icons.chevron_right),
                       );
                     },
                   ),

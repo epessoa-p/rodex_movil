@@ -12,6 +12,7 @@ import '../../core/models.dart';
 import '../../core/providers.dart';
 import '../../core/sheet_focus.dart';
 import '../../core/upper_case.dart';
+import '../../core/whatsapp.dart';
 import '../agenda/agenda_repository.dart';
 import '../products/products_screen.dart';
 import 'work_order_pdf.dart';
@@ -238,24 +239,57 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
             tooltip: 'Compartir',
             icon: const Icon(Icons.share_outlined),
             enabled: !_busy,
-            onSelected: (v) =>
-                v == 'receipt' ? _shareReceipt() : _shareTracking(),
-            itemBuilder: (_) => const [
-              PopupMenuItem(
-                value: 'receipt',
-                child: ListTile(
-                  leading: Icon(Icons.picture_as_pdf_outlined),
-                  title: Text('Compartir recibo (PDF)'),
+            onSelected: (v) => switch (v) {
+              'receipt_wa' => _shareReceipt(toClient: true),
+              'tracking_wa' => _shareTracking(toClient: true),
+              'receipt' => _shareReceipt(),
+              _ => _shareTracking(),
+            },
+            itemBuilder: (_) {
+              // Directo al WhatsApp del cliente (si tiene teléfono) o al
+              // selector de apps del sistema.
+              final hasPhone = WhatsApp.number(o.clientPhone) != null;
+              final phoneHint = hasPhone
+                  ? (o.clientPhone ?? '')
+                  : 'El cliente no tiene teléfono';
+              return [
+                PopupMenuItem(
+                  value: 'receipt_wa',
+                  enabled: hasPhone,
+                  child: ListTile(
+                    enabled: hasPhone,
+                    leading: const Icon(Icons.picture_as_pdf_outlined),
+                    title: const Text('Recibo (PDF) al WhatsApp del cliente'),
+                    subtitle: Text(phoneHint),
+                  ),
                 ),
-              ),
-              PopupMenuItem(
-                value: 'tracking',
-                child: ListTile(
-                  leading: Icon(Icons.link),
-                  title: Text('Compartir seguimiento (link)'),
+                PopupMenuItem(
+                  value: 'tracking_wa',
+                  enabled: hasPhone,
+                  child: ListTile(
+                    enabled: hasPhone,
+                    leading: const Icon(Icons.link),
+                    title: const Text('Seguimiento al WhatsApp del cliente'),
+                    subtitle: Text(phoneHint),
+                  ),
                 ),
-              ),
-            ],
+                const PopupMenuDivider(),
+                const PopupMenuItem(
+                  value: 'receipt',
+                  child: ListTile(
+                    leading: Icon(Icons.share_outlined),
+                    title: Text('Compartir recibo (PDF) con otra app'),
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'tracking',
+                  child: ListTile(
+                    leading: Icon(Icons.share_outlined),
+                    title: Text('Compartir seguimiento con otra app'),
+                  ),
+                ),
+              ];
+            },
           ),
         ],
       ),
@@ -376,7 +410,9 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
 
   final _picker = ImagePicker();
 
-  Future<void> _shareTracking() async {
+  /// Con [toClient] abre directamente el chat de WhatsApp del cliente con el
+  /// enlace ya escrito; si no, el selector de apps del sistema.
+  Future<void> _shareTracking({bool toClient = false}) async {
     final o = _order;
     if (o == null) return;
     setState(() => _busy = true);
@@ -385,6 +421,14 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
       if (!mounted) return;
       setState(() => _busy = false);
       final veh = o.vehicle != null ? ' (${o.vehicle})' : '';
+      if (toClient) {
+        final text =
+            '${_greeting(o)}Puede seguir el estado de su orden ${o.code}$veh aquí:\n$url';
+        if (!await WhatsApp.openChat(o.clientPhone, text)) {
+          _snack('No se pudo abrir WhatsApp.');
+        }
+        return;
+      }
       await SharePlus.instance.share(
         ShareParams(
           text: 'Sigue el estado de tu orden ${o.code}$veh aquí:\n$url',
@@ -398,7 +442,9 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
     }
   }
 
-  Future<void> _shareReceipt() async {
+  /// Con [toClient] abre WhatsApp en el chat del cliente con el PDF adjunto
+  /// (Android); si no se puede (sin WhatsApp), cae al compartir genérico.
+  Future<void> _shareReceipt({bool toClient = false}) async {
     final o = _order;
     if (o == null) return;
     setState(() => _busy = true);
@@ -407,6 +453,21 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
       final bytes = await buildWorkOrderPdf(o, company: company);
       if (!mounted) return;
       setState(() => _busy = false);
+      if (toClient) {
+        final sent = await WhatsApp.sendFile(
+          bytes,
+          '${o.code}.pdf',
+          o.clientPhone,
+          text: '${_greeting(o)}Le enviamos el recibo de su orden ${o.code}.',
+        );
+        if (sent) return;
+        if (mounted) {
+          AppToast.info(
+            context,
+            'WhatsApp no disponible: elige la app para compartir.',
+          );
+        }
+      }
       await Printing.sharePdf(bytes: bytes, filename: '${o.code}.pdf');
     } catch (e) {
       if (mounted) {
@@ -655,28 +716,22 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
     }
   }
 
-  String _waNumber(String phone) {
-    var d = phone.replaceAll(RegExp(r'[^0-9]'), '');
-    if (d.startsWith('0')) d = d.substring(1);
-    if (d.length == 8) d = '591$d';
-    return d;
+  /// "Hola NOMBRE, le escribimos de EMPRESA. " para los mensajes al cliente.
+  String _greeting(WorkOrder o) {
+    final company = ref.read(authControllerProvider).me?.company?.name ?? '';
+    final name = (o.client ?? '').trim();
+    return 'Hola${name.isNotEmpty ? ' $name' : ''}, le escribimos'
+        '${company.isNotEmpty ? ' de $company' : ''}. ';
   }
 
   Future<void> _whatsapp(WorkOrder o) async {
-    final phone = o.clientPhone;
-    if (phone == null || phone.trim().isEmpty) {
+    if (WhatsApp.number(o.clientPhone) == null) {
       _snack('Este cliente no tiene teléfono registrado.');
       return;
     }
-    final company = ref.read(authControllerProvider).me?.company?.name ?? '';
     final veh = o.vehicle != null ? ' (${o.vehicle})' : '';
-    final msg =
-        'Hola ${o.client ?? ''}, le escribimos${company.isNotEmpty ? ' de $company' : ''} '
-        'sobre su orden de trabajo ${o.code}$veh.';
-    final url = Uri.parse(
-      'https://wa.me/${_waNumber(phone)}?text=${Uri.encodeComponent(msg)}',
-    );
-    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+    final msg = '${_greeting(o)}Sobre su orden de trabajo ${o.code}$veh.';
+    if (!await WhatsApp.openChat(o.clientPhone, msg)) {
       _snack('No se pudo abrir WhatsApp.');
     }
   }

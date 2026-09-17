@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import 'config.dart';
 
@@ -27,6 +28,11 @@ class ApiClient {
   final Dio _dio;
   String? _token;
   int? _companyId;
+
+  /// Se dispara ante cualquier 401 con token puesto (sesión vencida, usuario
+  /// desactivado, token revocado). Lo registra AuthController para cerrar
+  /// sesión y llevar al login con el motivo. No aplica a /login.
+  void Function(ApiException e)? onUnauthorized;
 
   ApiClient() : _dio = Dio(BaseOptions(baseUrl: AppConfig.apiBaseUrl)) {
     _dio.options.headers['Accept'] = 'application/json';
@@ -72,12 +78,24 @@ class ApiClient {
   Future<dynamic> delete(String path, {Object? body}) =>
       _request(() => _dio.delete(path, data: body));
 
+  /// Solo para tests: ejecuta [run] con el mismo manejo de errores (401 → hook).
+  @visibleForTesting
+  Future<dynamic> runForTest(Future<Response> Function() run) => _request(run);
+
   Future<dynamic> _request(Future<Response> Function() run) async {
     try {
       final res = await run();
       return res.data;
     } on DioException catch (e) {
-      throw _toApiException(e);
+      final ex = _toApiException(e);
+      final path = e.requestOptions.path;
+      if (ex.isUnauthorized && _token != null && !path.endsWith('/login')) {
+        // La sesión ya no vale: se limpia y se avisa (una sola vez).
+        _token = null;
+        _companyId = null;
+        onUnauthorized?.call(ex);
+      }
+      throw ex;
     }
   }
 

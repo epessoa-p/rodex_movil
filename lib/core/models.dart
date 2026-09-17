@@ -183,6 +183,13 @@ class ProductDetail {
   final List<String> compatibleModels;
   final List<WarehouseStock> stockByWarehouse;
   final List<String> photos;
+  // Para el formulario de edición.
+  final int? categoryId;
+  final int? brandId;
+  final double cost;
+  final int minStock;
+  final String? description;
+  final bool active;
 
   ProductDetail({
     required this.id,
@@ -199,6 +206,12 @@ class ProductDetail {
     required this.compatibleModels,
     required this.stockByWarehouse,
     this.photos = const [],
+    this.categoryId,
+    this.brandId,
+    this.cost = 0,
+    this.minStock = 0,
+    this.description,
+    this.active = true,
   });
 
   factory ProductDetail.fromJson(Map<String, dynamic> j) => ProductDetail(
@@ -223,6 +236,12 @@ class ProductDetail {
         .map((e) => e.toString())
         .where((e) => e.isNotEmpty)
         .toList(),
+    categoryId: j['category_id'] as int?,
+    brandId: j['brand_id'] as int?,
+    cost: _toDouble(j['cost']),
+    minStock: (j['min_stock'] as num?)?.toInt() ?? 0,
+    description: j['description'] as String?,
+    active: (j['active'] ?? true) as bool,
   );
 
   /// Producto ligero para el carrito (lo que el POS necesita).
@@ -243,14 +262,25 @@ class Client {
   final String fullName;
   final String? idNumber;
   final String? phone;
+  final String? email;
+  final String? address;
 
-  Client({required this.id, required this.fullName, this.idNumber, this.phone});
+  Client({
+    required this.id,
+    required this.fullName,
+    this.idNumber,
+    this.phone,
+    this.email,
+    this.address,
+  });
 
   factory Client.fromJson(Map<String, dynamic> j) => Client(
     id: j['id'] as int,
     fullName: j['full_name'] as String,
     idNumber: j['id_number'] as String?,
     phone: j['phone'] as String?,
+    email: j['email'] as String?,
+    address: j['address'] as String?,
   );
 }
 

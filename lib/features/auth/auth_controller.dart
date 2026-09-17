@@ -47,7 +47,52 @@ class AuthController extends StateNotifier<AuthState> {
   final Ref _ref;
 
   AuthController(this._api, this._store, this._ref)
-    : super(const AuthState.loading());
+    : super(const AuthState.loading()) {
+    // Cualquier 401 (sesión vencida, usuario desactivado, token revocado)
+    // cierra la sesión y deja el motivo para que el login lo muestre.
+    _api.onUnauthorized = _onSessionLost;
+  }
+
+  /// Motivo del último cierre de sesión forzado (lo consume LoginScreen).
+  String? sessionLostMessage;
+
+  /// Última vez que la app estuvo en primer plano (para re-validar al volver).
+  DateTime _lastActive = DateTime.now();
+
+  Future<void> _onSessionLost(ApiException e) async {
+    if (state.status == AuthStatus.unauthenticated) return;
+    sessionLostMessage = switch (e.code) {
+      'user_inactive' =>
+        'Tu usuario fue desactivado. Contacta al administrador.',
+      'session_expired' => e.message,
+      _ => 'Tu sesión expiró. Vuelve a ingresar.',
+    };
+    await _clear();
+    state = const AuthState(status: AuthStatus.unauthenticated);
+    _resetSessionData();
+  }
+
+  /// Llamar al volver del segundo plano: si pasó más de [idle] sin usar la
+  /// app, re-valida el token con /me en silencio (si murió, cae al login ya,
+  /// no al primer botón que toque). Llamar también al pasar a segundo plano
+  /// con [paused] = true para anotar la hora.
+  Future<void> onAppLifecycle({
+    required bool paused,
+    Duration idle = const Duration(minutes: 30),
+  }) async {
+    if (paused) {
+      _lastActive = DateTime.now();
+      return;
+    }
+    if (state.status != AuthStatus.authenticated) return;
+    if (DateTime.now().difference(_lastActive) < idle) return;
+    _lastActive = DateTime.now();
+    try {
+      await _api.get('/me');
+    } on ApiException {
+      // Un 401 ya cerró sesión vía onUnauthorized; otros errores se ignoran.
+    }
+  }
 
   /// Limpia los datos cacheados de la sesión anterior (caja, resumen del día,
   /// carrito) para que al cambiar de usuario/empresa no se muestren stale.

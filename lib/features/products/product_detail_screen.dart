@@ -8,6 +8,7 @@ import '../../core/models.dart';
 import '../../core/providers.dart';
 import '../../core/upper_case.dart';
 import '../pos/pos_repository.dart';
+import 'product_edit_sheet.dart';
 
 /// Ficha de un producto: precio, stock (total y por almacén), origen, marca,
 /// categoría y modelos compatibles. Si [showAdd] es true, ofrece "Agregar al
@@ -187,6 +188,22 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       appBar: AppBar(
         title: Text(d?.name ?? widget.productName),
         actions: [
+          if (d != null && canEdit)
+            IconButton(
+              tooltip: 'Editar producto',
+              icon: const Icon(Icons.edit_outlined),
+              onPressed: () async {
+                final updated = await showModalBottomSheet<ProductDetail>(
+                  context: context,
+                  isScrollControlled: true,
+                  showDragHandle: true,
+                  builder: (_) => ProductEditSheet(product: d),
+                );
+                if (updated != null && mounted) {
+                  setState(() => _detail = updated);
+                }
+              },
+            ),
           if (d != null && canEdit && d.stockByWarehouse.isNotEmpty)
             IconButton(
               tooltip: 'Ajustar stock',
