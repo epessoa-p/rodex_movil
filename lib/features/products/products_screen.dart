@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -20,11 +22,15 @@ class ProductsScreen extends ConsumerStatefulWidget {
   /// Oculta el "Stock inicial" en el alta de producto (flujos de compra).
   final bool hideInitialStock;
 
+  /// Tab del hub "Inventario": sin AppBar propio.
+  final bool embedded;
+
   const ProductsScreen({
     super.key,
     this.onPick,
     this.requireStock = true,
     this.hideInitialStock = false,
+    this.embedded = false,
   });
 
   @override
@@ -33,20 +39,67 @@ class ProductsScreen extends ConsumerStatefulWidget {
 
 class _ProductsScreenState extends ConsumerState<ProductsScreen> {
   final _search = TextEditingController();
+  final _scroll = ScrollController();
   List<Product> _items = [];
   bool _loading = true;
+  bool _loadingMore = false;
+  bool _hasMore = false;
+  int _page = 1;
+  int _total = 0;
+  String _q = '';
   String? _error;
+  Timer? _debounce;
 
   @override
   void initState() {
     super.initState();
+    // Paginado: se cargan 30 y, al llegar al final de la lista, la siguiente
+    // página (evita bajar 500+ productos de golpe).
+    _scroll.addListener(_onScroll);
     _load('');
   }
 
   @override
   void dispose() {
+    _debounce?.cancel();
+    _scroll.dispose();
     _search.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_hasMore || _loadingMore || _loading) return;
+    if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 200) {
+      _loadMore();
+    }
+  }
+
+  /// Búsqueda al dejar de escribir (o con Enter).
+  void _onSearchChanged(String v) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 450), () {
+      if (mounted && v.trim() != _q) _load(v);
+    });
+  }
+
+  Future<void> _loadMore() async {
+    setState(() => _loadingMore = true);
+    try {
+      final res = await ref
+          .read(posRepositoryProvider)
+          .productsPage(q: _q, page: _page + 1);
+      if (mounted) {
+        setState(() {
+          _items = [..._items, ...res.items];
+          _page = res.page;
+          _hasMore = res.hasMore;
+          _total = res.total;
+          _loadingMore = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loadingMore = false);
+    }
   }
 
   /// Selección directa desde la lista (POS/compra): agrega el producto sin abrir
@@ -94,15 +147,21 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
   }
 
   Future<void> _load(String q) async {
+    _debounce?.cancel();
+    _q = q.trim();
     setState(() => _loading = true);
     try {
-      final items = await ref.read(posRepositoryProvider).products(q: q);
+      final res = await ref.read(posRepositoryProvider).productsPage(q: _q);
       if (mounted) {
         setState(() {
-          _items = items;
+          _items = res.items;
+          _page = res.page;
+          _hasMore = res.hasMore;
+          _total = res.total;
           _loading = false;
           _error = null;
         });
+        if (_scroll.hasClients) _scroll.jumpTo(0);
       }
     } catch (e) {
       if (mounted) {
@@ -120,7 +179,9 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     final canCreate =
         ref.watch(authControllerProvider).me?.can('products.create') ?? false;
     return Scaffold(
-      appBar: AppBar(title: Text(picking ? 'Agregar producto' : 'Productos')),
+      appBar: widget.embedded
+          ? null
+          : AppBar(title: Text(picking ? 'Agregar producto' : 'Productos')),
       floatingActionButton: canCreate
           ? FloatingActionButton.extended(
               heroTag: 'fab-products',
@@ -147,9 +208,22 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                 ),
               ),
               textInputAction: TextInputAction.search,
+              onChanged: _onSearchChanged,
               onSubmitted: _load,
             ),
           ),
+          if (!_loading && _error == null && _items.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '${_items.length} de $_total producto${_total == 1 ? '' : 's'}'
+                  '${_q.isNotEmpty ? ' para «$_q»' : ''}',
+                  style: const TextStyle(color: Colors.black54, fontSize: 12),
+                ),
+              ),
+            ),
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
@@ -158,9 +232,23 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                 : _items.isEmpty
                 ? const Center(child: Text('Sin productos.'))
                 : ListView.separated(
-                    itemCount: _items.length,
+                    controller: _scroll,
+                    // +1: pie con "cargando más…" mientras haya páginas.
+                    itemCount: _items.length + (_hasMore ? 1 : 0),
                     separatorBuilder: (_, _) => const Divider(height: 1),
                     itemBuilder: (context, i) {
+                      if (i >= _items.length) {
+                        return const Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Center(
+                            child: SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ),
+                        );
+                      }
                       final p = _items[i];
                       final low = p.currentStock <= 0;
                       return ListTile(

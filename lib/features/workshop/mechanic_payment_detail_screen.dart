@@ -8,6 +8,7 @@ import '../../core/company_logo.dart';
 import '../../core/format.dart';
 import '../../core/providers.dart';
 import '../../core/upper_case.dart';
+import '../payments/widgets/cash_available_hint.dart';
 import '../pos/pos_repository.dart';
 import '../treasury/treasury_repository.dart';
 import 'mechanic_payment_pdf.dart';
@@ -561,6 +562,8 @@ class _PaySheetState extends ConsumerState<_PaySheet> {
                 selected: {_source},
                 onSelectionChanged: (s) => setState(() => _source = s.first),
               ),
+            if (_source == 'cash')
+              CashAvailableHint(amountController: _amount),
             if (_source == 'treasury') ...[
               const SizedBox(height: 12),
               if (_accounts.isEmpty)

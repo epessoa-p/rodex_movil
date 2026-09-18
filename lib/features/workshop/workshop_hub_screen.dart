@@ -5,12 +5,13 @@ import '../../core/models.dart';
 import '../../core/providers.dart';
 import '../agenda/agenda_screen.dart';
 import 'mechanics_screen.dart';
+import 'services_screen.dart';
 import 'work_orders_screen.dart';
 
 /// Tabs del hub "Taller". El orden es el de la barra inferior.
-enum WorkshopTab { orders, agenda, mechanics }
+enum WorkshopTab { orders, agenda, services, mechanics }
 
-/// Hub "Taller": OTs · Agenda · Mecánicos en tabs inferiores (mismo patrón que
+/// Hub "Taller": OTs · Agenda · Servicios · Mecánicos en tabs inferiores (mismo patrón que
 /// Compras y Pagos). Cada tab se gatea por su permiso; si queda uno solo se
 /// muestra sin barra. Las pantallas se reutilizan en modo `embedded`.
 class WorkshopHubScreen extends ConsumerStatefulWidget {
@@ -49,6 +50,14 @@ class _WorkshopHubScreenState extends ConsumerState<WorkshopHubScreen> {
         Icons.calendar_month_outlined,
         Icons.calendar_month,
         AgendaScreen(embedded: true),
+      ),
+    if (me.can('services.view'))
+      const _Tab(
+        WorkshopTab.services,
+        'Servicios',
+        Icons.home_repair_service_outlined,
+        Icons.home_repair_service,
+        ServicesScreen(embedded: true),
       ),
     if (me.can('mechanics.view'))
       const _Tab(

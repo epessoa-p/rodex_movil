@@ -13,6 +13,17 @@ import 'package:rodex_movil/features/products/products_screen.dart';
 class _BigPosRepository extends PosRepository {
   _BigPosRepository() : super(ApiClient());
 
+  // El listado pagina: el fake envuelve products() en una sola página.
+  @override
+  Future<ProductPage> productsPage({
+    String q = '',
+    int page = 1,
+    int perPage = 30,
+  }) async {
+    final items = await products(q: q);
+    return ProductPage(items: items, page: 1, lastPage: 1, total: items.length);
+  }
+
   @override
   Future<List<Product>> products({String q = ''}) async => List.generate(
     50,

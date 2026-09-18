@@ -16,7 +16,7 @@ class IncomeStatementScreen extends ConsumerStatefulWidget {
       _IncomeStatementScreenState();
 }
 
-enum _Preset { thisMonth, lastMonth, all, custom }
+enum _Preset { thisWeek, lastWeek, thisMonth, lastMonth, all, custom }
 
 /// "yyyy-mm-dd" → "dd/mm/yyyy".
 String _dmy(String iso) {
@@ -39,7 +39,18 @@ class _IncomeStatementScreenState extends ConsumerState<IncomeStatementScreen> {
     final now = DateTime.now();
     setState(() {
       _preset = p;
+      // Semana de lunes a domingo (la actual termina hoy).
+      final today = DateTime(now.year, now.month, now.day);
+      final monday = today.subtract(Duration(days: today.weekday - 1));
       switch (p) {
+        case _Preset.thisWeek:
+          _from = monday;
+          _to = today;
+          break;
+        case _Preset.lastWeek:
+          _from = monday.subtract(const Duration(days: 7));
+          _to = monday.subtract(const Duration(days: 1));
+          break;
         case _Preset.thisMonth:
           _from = DateTime(now.year, now.month, 1);
           _to = now;
@@ -98,44 +109,36 @@ class _IncomeStatementScreenState extends ConsumerState<IncomeStatementScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-            child: Row(
-              children: [
-                Expanded(
-                  child: SegmentedButton<_Preset>(
-                    segments: const [
-                      ButtonSegment(
-                        value: _Preset.thisMonth,
-                        label: Text('Este mes'),
-                      ),
-                      ButtonSegment(
-                        value: _Preset.lastMonth,
-                        label: Text('Mes ant.'),
-                      ),
-                      ButtonSegment(value: _Preset.all, label: Text('Todo')),
-                      ButtonSegment(
-                        value: _Preset.custom,
-                        label: Text('Rango'),
-                      ),
-                    ],
-                    selected: {_preset},
-                    showSelectedIcon: false,
-                    style: const ButtonStyle(
-                      visualDensity: VisualDensity.compact,
-                      padding: WidgetStatePropertyAll(
-                        EdgeInsets.symmetric(horizontal: 8),
+            // Seis presets: fila desplazable de chips (no caben como segmentos).
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (final e in const {
+                    _Preset.thisWeek: 'Esta semana',
+                    _Preset.lastWeek: 'Semana ant.',
+                    _Preset.thisMonth: 'Este mes',
+                    _Preset.lastMonth: 'Mes ant.',
+                    _Preset.all: 'Todo',
+                    _Preset.custom: 'Rango',
+                  }.entries)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: ChoiceChip(
+                        label: Text(e.value),
+                        selected: _preset == e.key,
+                        visualDensity: VisualDensity.compact,
+                        onSelected: (_) {
+                          if (e.key == _Preset.custom) {
+                            _pickRange();
+                          } else {
+                            _applyPreset(e.key);
+                          }
+                        },
                       ),
                     ),
-                    onSelectionChanged: (s) {
-                      final p = s.first;
-                      if (p == _Preset.custom) {
-                        _pickRange();
-                      } else {
-                        _applyPreset(p);
-                      }
-                    },
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           Padding(

@@ -10,9 +10,29 @@ class PosRepository {
   final ApiClient _api;
   PosRepository(this._api);
 
-  Future<List<Product>> products({String q = ''}) async {
-    final data = await _api.get('/products', query: {'q': q});
-    return _list(data).map((e) => Product.fromJson(e)).toList();
+  Future<List<Product>> products({String q = ''}) async =>
+      (await productsPage(q: q)).items;
+
+  /// Página de productos (30 por defecto); `hasMore` para cargar la siguiente.
+  Future<ProductPage> productsPage({
+    String q = '',
+    int page = 1,
+    int perPage = 30,
+  }) async {
+    final data = await _api.get(
+      '/products',
+      query: {'q': q, 'page': page, 'per_page': perPage},
+    );
+    final meta = ((data as Map<String, dynamic>)['meta'] as Map<String, dynamic>?) ?? {};
+    final items = _list(data).map((e) => Product.fromJson(e)).toList();
+    final current = (meta['current_page'] as int?) ?? page;
+    final last = (meta['last_page'] as int?) ?? current;
+    return ProductPage(
+      items: items,
+      page: current,
+      lastPage: last,
+      total: (meta['total'] as int?) ?? items.length,
+    );
   }
 
   /// Catálogos para el alta rápida de producto (categorías, marcas, almacenes).
@@ -289,6 +309,21 @@ class PosRepository {
 }
 
 /// Catálogos para el alta rápida de producto.
+/// Una página del listado de productos.
+class ProductPage {
+  final List<Product> items;
+  final int page;
+  final int lastPage;
+  final int total;
+  const ProductPage({
+    required this.items,
+    required this.page,
+    required this.lastPage,
+    required this.total,
+  });
+  bool get hasMore => page < lastPage;
+}
+
 class ProductCatalogs {
   final List<IdName> categories;
   final List<IdName> brands;

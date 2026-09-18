@@ -9,6 +9,8 @@ import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
 import '../../core/upper_case.dart';
+import '../inventory/catalog_picker_field.dart';
+import '../inventory/catalogs_repository.dart';
 import '../pos/pos_repository.dart';
 
 /// Alta rápida de producto desde el móvil. Devuelve el `Product` creado
@@ -157,6 +159,25 @@ class _NewProductScreenState extends ConsumerState<NewProductScreen> {
 
   void _removePhoto() => setState(() => _photo = null);
 
+  /// Agrega al catálogo local la opción recién creada desde el selector.
+  void _addOption({IdName? categories, IdName? brands}) {
+    final c = _catalogs;
+    if (c == null) return;
+    setState(() {
+      _catalogs = ProductCatalogs(
+        categories:
+            categories != null &&
+                !c.categories.any((o) => o.id == categories.id)
+            ? [...c.categories, categories]
+            : c.categories,
+        brands: brands != null && !c.brands.any((o) => o.id == brands.id)
+            ? [...c.brands, brands]
+            : c.brands,
+        warehouses: c.warehouses,
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final cat = _catalogs;
@@ -200,20 +221,31 @@ class _NewProductScreenState extends ConsumerState<NewProductScreen> {
                 ),
                 _field(_barcode, 'Código de barras'),
                 _field(_unit, 'Unidad'),
-                if (cat != null && cat.categories.isNotEmpty)
-                  _dropdown(
-                    'Categoría',
-                    _categoryId,
-                    cat.categories,
-                    (v) => setState(() => _categoryId = v),
+                // Categoría / Marca: buscar escribiendo; si no existe, se crea.
+                if (cat != null) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: CatalogPickerField(
+                      label: 'Categoría',
+                      type: CatalogType.categories,
+                      options: cat.categories,
+                      value: _categoryId,
+                      onChanged: (v) => setState(() => _categoryId = v?.id),
+                      onCreated: (o) => _addOption(categories: o),
+                    ),
                   ),
-                if (cat != null && cat.brands.isNotEmpty)
-                  _dropdown(
-                    'Marca',
-                    _brandId,
-                    cat.brands,
-                    (v) => setState(() => _brandId = v),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: CatalogPickerField(
+                      label: 'Marca',
+                      type: CatalogType.brands,
+                      options: cat.brands,
+                      value: _brandId,
+                      onChanged: (v) => setState(() => _brandId = v?.id),
+                      onCreated: (o) => _addOption(brands: o),
+                    ),
                   ),
+                ],
                 if (!widget.hideInitialStock) ...[
                   const Divider(height: 28),
                   const Text(

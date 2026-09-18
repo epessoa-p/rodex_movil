@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/company_logo_avatar.dart';
 import '../../core/providers.dart';
 import '../payments/payments_screen.dart' show canSeePayments;
 
@@ -36,9 +37,11 @@ class AppDrawer extends ConsumerWidget {
               color: Theme.of(context).colorScheme.surfaceContainerHighest,
               child: Row(
                 children: [
-                  CircleAvatar(
+                  // Logo de la empresa (mismo tamaño que el avatar); inicial si no hay.
+                  CompanyLogoAvatar(
+                    logoUrl: me.company?.logoUrl,
                     radius: 24,
-                    child: Text(initial, style: const TextStyle(fontSize: 20)),
+                    fallback: Text(initial, style: const TextStyle(fontSize: 20)),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -93,7 +96,7 @@ class AppDrawer extends ConsumerWidget {
                   _item(
                     context,
                     Icons.inventory_2_outlined,
-                    'Productos',
+                    'Inventario',
                     '/products',
                     show: me.planAllows('inventory') || me.can('products.view'),
                   ),

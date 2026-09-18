@@ -6,6 +6,8 @@ import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
 import '../../core/upper_case.dart';
+import '../inventory/catalog_picker_field.dart';
+import '../inventory/catalogs_repository.dart';
 import '../pos/pos_repository.dart';
 
 /// Hoja de edición del producto: datos básicos y comerciales (nombre, precio,
@@ -58,6 +60,25 @@ class _ProductEditSheetState extends ConsumerState<ProductEditSheet> {
     } on ApiException {
       // sin catálogos: se edita el resto igual
     }
+  }
+
+  /// Agrega al catálogo local la opción recién creada desde el selector.
+  void _addOption({IdName? categories, IdName? brands}) {
+    final c = _catalogs;
+    if (c == null) return;
+    setState(() {
+      _catalogs = ProductCatalogs(
+        categories:
+            categories != null &&
+                !c.categories.any((o) => o.id == categories.id)
+            ? [...c.categories, categories]
+            : c.categories,
+        brands: brands != null && !c.brands.any((o) => o.id == brands.id)
+            ? [...c.brands, brands]
+            : c.brands,
+        warehouses: c.warehouses,
+      );
+    });
   }
 
   @override
@@ -213,29 +234,24 @@ class _ProductEditSheetState extends ConsumerState<ProductEditSheet> {
               ],
             ),
             const SizedBox(height: 10),
+            // Categoría / Marca: buscar escribiendo; si no existe, se crea.
             if (cats != null) ...[
-              DropdownButtonFormField<int?>(
-                initialValue: _categoryId,
-                isExpanded: true,
-                decoration: dec('Categoría'),
-                items: [
-                  const DropdownMenuItem(value: null, child: Text('—')),
-                  for (final o in cats.categories)
-                    DropdownMenuItem(value: o.id, child: Text(o.name)),
-                ],
-                onChanged: (v) => setState(() => _categoryId = v),
+              CatalogPickerField(
+                label: 'Categoría',
+                type: CatalogType.categories,
+                options: cats.categories,
+                value: _categoryId,
+                onChanged: (v) => setState(() => _categoryId = v?.id),
+                onCreated: (o) => _addOption(categories: o),
               ),
               const SizedBox(height: 10),
-              DropdownButtonFormField<int?>(
-                initialValue: _brandId,
-                isExpanded: true,
-                decoration: dec('Marca'),
-                items: [
-                  const DropdownMenuItem(value: null, child: Text('—')),
-                  for (final o in cats.brands)
-                    DropdownMenuItem(value: o.id, child: Text(o.name)),
-                ],
-                onChanged: (v) => setState(() => _brandId = v),
+              CatalogPickerField(
+                label: 'Marca',
+                type: CatalogType.brands,
+                options: cats.brands,
+                value: _brandId,
+                onChanged: (v) => setState(() => _brandId = v?.id),
+                onCreated: (o) => _addOption(brands: o),
               ),
               const SizedBox(height: 10),
             ],

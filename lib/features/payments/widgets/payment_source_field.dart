@@ -5,6 +5,7 @@ import '../../../core/api_client.dart';
 import '../../../core/format.dart';
 import '../../../core/providers.dart';
 import '../../treasury/treasury_repository.dart';
+import 'cash_available_hint.dart';
 
 /// Origen del pago elegido: 'cash' (caja abierta) o 'treasury' + cuenta.
 class PaymentSource {
@@ -23,7 +24,14 @@ class PaymentSource {
 /// Notifica el origen elegido por [onChanged] (null = tesorería sin cuenta).
 class PaymentSourceField extends ConsumerStatefulWidget {
   final ValueChanged<PaymentSource?> onChanged;
-  const PaymentSourceField({super.key, required this.onChanged});
+
+  /// Campo de monto de la hoja: para avisar si supera lo disponible en caja.
+  final TextEditingController? amountController;
+  const PaymentSourceField({
+    super.key,
+    required this.onChanged,
+    this.amountController,
+  });
 
   @override
   ConsumerState<PaymentSourceField> createState() => _PaymentSourceFieldState();
@@ -78,9 +86,15 @@ class _PaymentSourceFieldState extends ConsumerState<PaymentSourceField> {
   @override
   Widget build(BuildContext context) {
     if (!_canTreasury) {
-      return const Text(
-        'Saldrá como gasto de tu caja abierta.',
-        style: TextStyle(color: Colors.black54, fontSize: 12),
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Saldrá como gasto de tu caja abierta.',
+            style: TextStyle(color: Colors.black54, fontSize: 12),
+          ),
+          CashAvailableHint(amountController: widget.amountController),
+        ],
       );
     }
 
@@ -144,6 +158,9 @@ class _PaymentSourceFieldState extends ConsumerState<PaymentSourceField> {
               : 'Saldrá como gasto de tu caja abierta.',
           style: const TextStyle(color: Colors.black54, fontSize: 12),
         ),
+        // Cuánto hay en caja ahora (solo cuando se paga desde caja).
+        if (_source == 'cash')
+          CashAvailableHint(amountController: widget.amountController),
       ],
     );
   }

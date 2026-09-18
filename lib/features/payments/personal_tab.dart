@@ -296,7 +296,10 @@ class _PayrollSheetState extends ConsumerState<_PayrollSheet> {
               ),
             ],
             const SizedBox(height: 12),
-            PaymentSourceField(onChanged: (s) => setState(() => _source = s)),
+            PaymentSourceField(
+              amountController: _amount,
+              onChanged: (s) => setState(() => _source = s),
+            ),
             const SizedBox(height: 12),
             TextField(
               textCapitalization: TextCapitalization.characters,

@@ -116,7 +116,7 @@ class HomeScreen extends ConsumerWidget {
                 if (me.planAllows('inventory') || me.can('products.view'))
                   _ActionTile(
                     icon: Icons.inventory_2_outlined,
-                    label: 'Productos',
+                    label: 'Inventario',
                     color: Colors.indigo,
                     onTap: () => context.push('/products'),
                   ),

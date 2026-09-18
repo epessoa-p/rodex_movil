@@ -16,7 +16,7 @@ import '../features/pos/pos_screen.dart';
 import '../features/pos/sales_history_screen.dart';
 import '../features/purchases/direct_purchase_screen.dart';
 import '../features/purchases/receptions_screen.dart';
-import '../features/products/products_screen.dart';
+import '../features/inventory/inventory_hub_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/dashboard/analytics_screen.dart';
 import '../features/reports/income_statement_screen.dart';
@@ -62,7 +62,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/purchases/direct',
         builder: (_, _) => const DirectPurchaseScreen(),
       ),
-      GoRoute(path: '/products', builder: (_, _) => const ProductsScreen()),
+      // Hub Inventario (Productos · Categorías · Marcas · Modelos · Orígenes).
+      GoRoute(path: '/products', builder: (_, _) => const InventoryHubScreen()),
       GoRoute(path: '/clients', builder: (_, _) => const ClientsScreen()),
       GoRoute(path: '/cash', builder: (_, _) => const CashScreen()),
       GoRoute(

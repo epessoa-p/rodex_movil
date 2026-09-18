@@ -439,7 +439,10 @@ class _ExpenseSheetState extends ConsumerState<_ExpenseSheet> {
               ),
             ],
             const SizedBox(height: 12),
-            PaymentSourceField(onChanged: (v) => setState(() => _source = v)),
+            PaymentSourceField(
+              amountController: _amount,
+              onChanged: (v) => setState(() => _source = v),
+            ),
             const SizedBox(height: 12),
             TextField(
               textCapitalization: TextCapitalization.characters,
