@@ -23,14 +23,27 @@ class PosRepository {
       '/products',
       query: {'q': q, 'page': page, 'per_page': perPage},
     );
-    final meta = ((data as Map<String, dynamic>)['meta'] as Map<String, dynamic>?) ?? {};
+    final meta = (data as Map<String, dynamic>)['meta'] as Map<String, dynamic>?;
     final items = _list(data).map((e) => Product.fromJson(e)).toList();
-    final current = (meta['current_page'] as int?) ?? page;
-    final last = (meta['last_page'] as int?) ?? current;
+
+    // Backend sin paginar (sin `meta`): devuelve todo de una vez. Se pagina
+    // aquí para que la lista respete igual el tope de 30 por página.
+    if (meta == null) {
+      final total = items.length;
+      final start = ((page - 1) * perPage).clamp(0, total);
+      final end = (start + perPage).clamp(0, total);
+      return ProductPage(
+        items: items.sublist(start, end),
+        page: page,
+        lastPage: total == 0 ? 1 : (total / perPage).ceil(),
+        total: total,
+      );
+    }
+
     return ProductPage(
       items: items,
-      page: current,
-      lastPage: last,
+      page: (meta['current_page'] as int?) ?? page,
+      lastPage: (meta['last_page'] as int?) ?? page,
       total: (meta['total'] as int?) ?? items.length,
     );
   }
