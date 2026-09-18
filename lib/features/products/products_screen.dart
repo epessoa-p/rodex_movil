@@ -42,9 +42,8 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
   final _scroll = ScrollController();
   List<Product> _items = [];
   bool _loading = true;
-  bool _loadingMore = false;
-  bool _hasMore = false;
   int _page = 1;
+  int _lastPage = 1;
   int _total = 0;
   String _q = '';
   String? _error;
@@ -53,9 +52,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
   @override
   void initState() {
     super.initState();
-    // Paginado: se cargan 30 y, al llegar al final de la lista, la siguiente
-    // página (evita bajar 500+ productos de golpe).
-    _scroll.addListener(_onScroll);
+    // Paginado de 30 por página con paginador al pie (anterior / siguiente).
     _load('');
   }
 
@@ -67,13 +64,6 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     super.dispose();
   }
 
-  void _onScroll() {
-    if (!_hasMore || _loadingMore || _loading) return;
-    if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 200) {
-      _loadMore();
-    }
-  }
-
   /// Búsqueda al dejar de escribir (o con Enter).
   void _onSearchChanged(String v) {
     _debounce?.cancel();
@@ -82,25 +72,8 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     });
   }
 
-  Future<void> _loadMore() async {
-    setState(() => _loadingMore = true);
-    try {
-      final res = await ref
-          .read(posRepositoryProvider)
-          .productsPage(q: _q, page: _page + 1);
-      if (mounted) {
-        setState(() {
-          _items = [..._items, ...res.items];
-          _page = res.page;
-          _hasMore = res.hasMore;
-          _total = res.total;
-          _loadingMore = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _loadingMore = false);
-    }
-  }
+  /// Va a la página [page] (reemplaza la lista y vuelve arriba).
+  Future<void> _goTo(int page) => _load(_q, page: page);
 
   /// Selección directa desde la lista (POS/compra): agrega el producto sin abrir
   /// la ficha. Respeta el requisito de stock del modo actual.
@@ -146,17 +119,19 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     }
   }
 
-  Future<void> _load(String q) async {
+  Future<void> _load(String q, {int page = 1}) async {
     _debounce?.cancel();
     _q = q.trim();
     setState(() => _loading = true);
     try {
-      final res = await ref.read(posRepositoryProvider).productsPage(q: _q);
+      final res = await ref
+          .read(posRepositoryProvider)
+          .productsPage(q: _q, page: page);
       if (mounted) {
         setState(() {
           _items = res.items;
           _page = res.page;
-          _hasMore = res.hasMore;
+          _lastPage = res.lastPage;
           _total = res.total;
           _loading = false;
           _error = null;
@@ -218,7 +193,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  '${_items.length} de $_total producto${_total == 1 ? '' : 's'}'
+                  '${_rangeLabel()} de $_total producto${_total == 1 ? '' : 's'}'
                   '${_q.isNotEmpty ? ' para «$_q»' : ''}',
                   style: const TextStyle(color: Colors.black54, fontSize: 12),
                 ),
@@ -233,22 +208,11 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                 ? const Center(child: Text('Sin productos.'))
                 : ListView.separated(
                     controller: _scroll,
-                    // +1: pie con "cargando más…" mientras haya páginas.
-                    itemCount: _items.length + (_hasMore ? 1 : 0),
+                    // Espacio final para que el FAB no tape el último ítem.
+                    padding: const EdgeInsets.only(bottom: 80),
+                    itemCount: _items.length,
                     separatorBuilder: (_, _) => const Divider(height: 1),
                     itemBuilder: (context, i) {
-                      if (i >= _items.length) {
-                        return const Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Center(
-                            child: SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          ),
-                        );
-                      }
                       final p = _items[i];
                       final low = p.currentStock <= 0;
                       return ListTile(
@@ -305,6 +269,81 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                   ),
           ),
         ],
+      ),
+      // Paginador como barra inferior: el FAB queda por encima y no lo tapa.
+      bottomNavigationBar: !_loading && _error == null && _lastPage > 1
+          ? _Pager(page: _page, lastPage: _lastPage, onChanged: _goTo)
+          : null,
+    );
+  }
+
+  String _rangeLabel() {
+    if (_items.isEmpty) return '0';
+    final start = (_page - 1) * 30 + 1;
+    return '$start–${start + _items.length - 1}';
+  }
+}
+
+/// Barra de paginación: « ‹ Página X de Y › ».
+class _Pager extends StatelessWidget {
+  final int page;
+  final int lastPage;
+  final ValueChanged<int> onChanged;
+  const _Pager({
+    required this.page,
+    required this.lastPage,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      elevation: 4,
+      color: Theme.of(context).colorScheme.surface,
+      child: SafeArea(
+        top: false,
+        // Compacto: a 360 dp caben los 4 botones + "Página X de Y"; el texto
+        // va en Expanded para que nunca desborde (ver rodex-debug-overflow-anr).
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          child: Row(
+            children: [
+              IconButton(
+                tooltip: 'Primera',
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.first_page),
+                onPressed: page > 1 ? () => onChanged(1) : null,
+              ),
+              IconButton(
+                tooltip: 'Anterior',
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.chevron_left),
+                onPressed: page > 1 ? () => onChanged(page - 1) : null,
+              ),
+              Expanded(
+                child: Text(
+                  'Página $page de $lastPage',
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Siguiente',
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.chevron_right),
+                onPressed: page < lastPage ? () => onChanged(page + 1) : null,
+              ),
+              IconButton(
+                tooltip: 'Última',
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.last_page),
+                onPressed: page < lastPage ? () => onChanged(lastPage) : null,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

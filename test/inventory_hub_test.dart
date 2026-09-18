@@ -118,17 +118,27 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Solo se cargó productos (30 de 75); los catálogos aún no.
+    // Solo se cargó productos (página 1 de 3); los catálogos aún no.
     expect(find.text('Inventario'), findsOneWidget);
-    expect(find.text('30 de 75 productos'), findsOneWidget);
+    expect(find.text('1–30 de 75 productos'), findsOneWidget);
+    expect(find.text('Página 1 de 3'), findsOneWidget);
+    expect(find.text('PRODUCTO 1'), findsOneWidget);
     expect(pos.pagesRequested, 1);
     expect(cats.listCalls, 0);
 
-    // Al bajar hasta el final se pide la página 2.
-    await tester.drag(find.byType(ListView).first, const Offset(0, -6000));
+    // Siguiente → página 2 reemplaza la lista.
+    await tester.tap(find.byTooltip('Siguiente'));
     await tester.pumpAndSettle();
-    expect(pos.pagesRequested, greaterThanOrEqualTo(2));
-    expect(find.textContaining('de 75 productos'), findsOneWidget);
+    expect(pos.pagesRequested, 2);
+    expect(find.text('Página 2 de 3'), findsOneWidget);
+    expect(find.text('31–60 de 75 productos'), findsOneWidget);
+    expect(find.text('PRODUCTO 31'), findsOneWidget);
+    expect(find.text('PRODUCTO 1'), findsNothing);
+
+    // Última → 61–75.
+    await tester.tap(find.byTooltip('Última'));
+    await tester.pumpAndSettle();
+    expect(find.text('61–75 de 75 productos'), findsOneWidget);
 
     // Abrir Categorías: recién ahí se carga ese catálogo.
     await tester.tap(find.text('Categorías'));

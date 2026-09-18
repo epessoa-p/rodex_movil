@@ -57,8 +57,7 @@ class _ServicesScreenState extends ConsumerState<ServicesScreen> {
             child: RefreshIndicator(
               onRefresh: () async => ref.invalidate(servicesCatalogProvider),
               child: async.when(
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
+                loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => ListView(
                   children: [
                     const SizedBox(height: 80),

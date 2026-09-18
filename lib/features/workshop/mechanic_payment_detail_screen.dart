@@ -562,8 +562,7 @@ class _PaySheetState extends ConsumerState<_PaySheet> {
                 selected: {_source},
                 onSelectionChanged: (s) => setState(() => _source = s.first),
               ),
-            if (_source == 'cash')
-              CashAvailableHint(amountController: _amount),
+            if (_source == 'cash') CashAvailableHint(amountController: _amount),
             if (_source == 'treasury') ...[
               const SizedBox(height: 12),
               if (_accounts.isEmpty)

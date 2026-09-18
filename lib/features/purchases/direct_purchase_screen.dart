@@ -7,6 +7,7 @@ import '../../core/format.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
 import '../../core/upper_case.dart';
+import '../payments/widgets/cash_available_hint.dart';
 import '../pos/pos_repository.dart';
 import '../products/products_screen.dart';
 import '../treasury/treasury_repository.dart';
@@ -246,6 +247,7 @@ class _DirectPurchaseScreenState extends ConsumerState<DirectPurchaseScreen> {
               padding: const EdgeInsets.all(16),
               children: [
                 _Note(source: _source),
+                if (!_canTreasury) CashAvailableHint(amount: _total),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int>(
                   initialValue: _supplierId,
@@ -301,6 +303,8 @@ class _DirectPurchaseScreenState extends ConsumerState<DirectPurchaseScreen> {
                     onSelectionChanged: (s) =>
                         setState(() => _source = s.first),
                   ),
+                  // Cuánto hay en caja vs. el total de la compra.
+                  if (_source == 'cash') CashAvailableHint(amount: _total),
                   if (_source == 'treasury') ...[
                     const SizedBox(height: 12),
                     if (_accounts.isEmpty)

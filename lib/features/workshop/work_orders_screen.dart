@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/format.dart';
+import 'quick_service_screen.dart';
 import 'reception_screen.dart';
 import 'work_order_detail_screen.dart';
 import 'workshop_repository.dart';
@@ -22,20 +23,63 @@ class WorkOrdersScreen extends ConsumerWidget {
     _ => Colors.grey,
   };
 
+  /// Hoja con las dos formas de abrir una OT.
+  Future<void> _openNewMenu(BuildContext context, WidgetRef ref) async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const CircleAvatar(child: Icon(Icons.two_wheeler)),
+              title: const Text('Nueva recepción'),
+              subtitle: const Text(
+                'Cliente y vehículo, fotos, diagnóstico; se cobra al entregar.',
+              ),
+              onTap: () => Navigator.pop(ctx, 'reception'),
+            ),
+            ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: Color(0xFFFFF3E0),
+                child: Icon(Icons.bolt, color: Colors.orange),
+              ),
+              title: const Text('Servicio rápido'),
+              subtitle: const Text(
+                'Trabajo al paso: elige servicios y cobra en un solo paso.',
+              ),
+              onTap: () => Navigator.pop(ctx, 'quick'),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (choice == null || !context.mounted) return;
+    if (choice == 'quick') {
+      await Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const QuickServiceScreen()));
+      ref.invalidate(workOrdersProvider);
+      return;
+    }
+    final created = await Navigator.of(
+      context,
+    ).push<bool>(MaterialPageRoute(builder: (_) => const ReceptionScreen()));
+    if (created == true) ref.invalidate(workOrdersProvider);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final orders = ref.watch(workOrdersProvider);
 
     return Scaffold(
       appBar: embedded ? null : AppBar(title: const Text('Órdenes de trabajo')),
+      // Dos acciones: recepción completa o servicio rápido (al paso).
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'fab-work-orders',
-        onPressed: () async {
-          final created = await Navigator.of(context).push<bool>(
-            MaterialPageRoute(builder: (_) => const ReceptionScreen()),
-          );
-          if (created == true) ref.invalidate(workOrdersProvider);
-        },
+        onPressed: () => _openNewMenu(context, ref),
         icon: const Icon(Icons.add),
         label: const Text('Nueva OT'),
       ),
@@ -89,7 +133,12 @@ class WorkOrdersScreen extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '${o.client ?? ''} · ${o.vehicle ?? ''}',
+                              [
+                                o.client ?? 'Cliente de paso',
+                                if (o.vehicle != null && o.vehicle!.isNotEmpty)
+                                  o.vehicle!,
+                                if (o.isQuick) '⚡ rápida',
+                              ].join(' · '),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),

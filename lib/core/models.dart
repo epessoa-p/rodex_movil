@@ -537,6 +537,9 @@ class WorkOrder {
   final List<WoPart> parts;
   final List<WoPhoto> photos;
 
+  /// Servicio rápido: creada, entregada y cobrada en un paso.
+  final bool isQuick;
+
   WorkOrder({
     required this.id,
     required this.code,
@@ -563,6 +566,7 @@ class WorkOrder {
     this.services = const [],
     this.parts = const [],
     this.photos = const [],
+    this.isQuick = false,
   });
 
   factory WorkOrder.fromJson(Map<String, dynamic> j) => WorkOrder(
@@ -597,6 +601,7 @@ class WorkOrder {
     photos: ((j['photos'] as List?) ?? [])
         .map((e) => WoPhoto.fromJson(e as Map<String, dynamic>))
         .toList(),
+    isQuick: (j['is_quick'] as bool?) ?? false,
   );
 }
 

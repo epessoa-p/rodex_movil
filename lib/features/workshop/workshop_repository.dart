@@ -77,6 +77,34 @@ class WorkshopRepository {
     return _list(data).map((e) => VehicleOption.fromJson(e)).toList();
   }
 
+  /// Servicio rápido: OT creada, entregada y cobrada en un paso (cliente y
+  /// vehículo opcionales). Requiere caja abierta (422 `cash_session_required`).
+  Future<WorkOrder> quickService({
+    required List<Map<String, dynamic>> services,
+    int? mechanicId,
+    int? clientId,
+    int? vehicleId,
+    String? quickVehicle,
+    String method = 'efectivo',
+    double discount = 0,
+    String? notes,
+  }) async {
+    final data = await _api.post(
+      '/work-orders/quick',
+      body: {
+        'services': services,
+        'mechanic_id': ?mechanicId,
+        'client_id': ?clientId,
+        'vehicle_id': ?vehicleId,
+        'quick_vehicle': ?quickVehicle,
+        'method': method,
+        'discount': discount,
+        'notes': ?notes,
+      },
+    );
+    return WorkOrder.fromJson((data as Map<String, dynamic>)['data']);
+  }
+
   Future<WorkOrder> createReception({
     required int clientId,
     int? vehicleId,
