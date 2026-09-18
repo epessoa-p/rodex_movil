@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/hub_nav_bar.dart';
 import '../../core/models.dart';
+import '../../core/module_colors.dart';
 import '../../core/providers.dart';
 import '../workshop/mechanic_payments_screen.dart';
 import 'expenses_tab.dart';
@@ -17,14 +19,6 @@ class PaymentsScreen extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<PaymentsScreen> createState() => _PaymentsScreenState();
-}
-
-class _Tab {
-  final String label;
-  final IconData icon;
-  final IconData selectedIcon;
-  final Widget body;
-  const _Tab(this.label, this.icon, this.selectedIcon, this.body);
 }
 
 /// Permisos que habilitan cada tab (también los usa el drawer para "Pagos").
@@ -46,29 +40,38 @@ bool canSeePayments(MeContext me) =>
 class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
   int _index = 0;
 
-  List<_Tab> _tabs(MeContext me) => [
+  List<HubTab> _tabs(MeContext me) => [
     if (canPayMechanics(me))
-      const _Tab(
-        'Mecánicos',
-        Icons.engineering_outlined,
-        Icons.engineering,
-        MechanicPaymentsTab(),
+      HubTab(
+        label: 'Mecánicos',
+        icon: Icons.engineering_outlined,
+        selectedIcon: Icons.engineering,
+        color: ModuleColors.workOrders,
+        build: () => const MechanicPaymentsTab(),
       ),
     if (canPaySuppliers(me))
-      const _Tab(
-        'Proveedores',
-        Icons.storefront_outlined,
-        Icons.storefront,
-        SuppliersPayableTab(),
+      HubTab(
+        label: 'Proveedores',
+        icon: Icons.storefront_outlined,
+        selectedIcon: Icons.storefront,
+        color: ModuleColors.purchases,
+        build: () => const SuppliersPayableTab(),
       ),
     if (canPayPersonal(me))
-      const _Tab('Personal', Icons.badge_outlined, Icons.badge, PersonalTab()),
+      HubTab(
+        label: 'Personal',
+        icon: Icons.badge_outlined,
+        selectedIcon: Icons.badge,
+        color: ModuleColors.personal,
+        build: () => const PersonalTab(),
+      ),
     if (canPayExpenses(me))
-      const _Tab(
-        'Gastos',
-        Icons.receipt_long_outlined,
-        Icons.receipt_long,
-        ExpensesTab(),
+      HubTab(
+        label: 'Gastos',
+        icon: Icons.receipt_long_outlined,
+        selectedIcon: Icons.receipt_long,
+        color: ModuleColors.expenses,
+        build: () => const ExpensesTab(),
       ),
   ];
 
@@ -92,21 +95,14 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
       appBar: AppBar(title: const Text('Pagos')),
       body: IndexedStack(
         index: index,
-        children: [for (final t in tabs) t.body],
+        children: [for (final t in tabs) t.build()],
       ),
       bottomNavigationBar: tabs.length < 2
           ? null
-          : NavigationBar(
+          : HubNavBar(
+              tabs: tabs,
               selectedIndex: index,
-              onDestinationSelected: (i) => setState(() => _index = i),
-              destinations: [
-                for (final t in tabs)
-                  NavigationDestination(
-                    icon: Icon(t.icon),
-                    selectedIcon: Icon(t.selectedIcon),
-                    label: t.label,
-                  ),
-              ],
+              onSelected: (i) => setState(() => _index = i),
             ),
     );
   }

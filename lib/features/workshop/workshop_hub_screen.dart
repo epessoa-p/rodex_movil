@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/hub_nav_bar.dart';
 import '../../core/models.dart';
+import '../../core/module_colors.dart';
 import '../../core/providers.dart';
 import '../agenda/agenda_screen.dart';
 import 'mechanics_screen.dart';
@@ -11,9 +13,10 @@ import 'work_orders_screen.dart';
 /// Tabs del hub "Taller". El orden es el de la barra inferior.
 enum WorkshopTab { orders, agenda, services, mechanics }
 
-/// Hub "Taller": OTs · Agenda · Servicios · Mecánicos en tabs inferiores (mismo patrón que
-/// Compras y Pagos). Cada tab se gatea por su permiso; si queda uno solo se
-/// muestra sin barra. Las pantallas se reutilizan en modo `embedded`.
+/// Hub "Taller": OTs · Agenda · Servicios · Mecánicos en tabs inferiores, cada
+/// uno con su color (mismo patrón que Compras, Pagos e Inventario). Cada tab
+/// se gatea por su permiso; si queda uno solo se muestra sin barra. Las
+/// pantallas se reutilizan en modo `embedded`.
 class WorkshopHubScreen extends ConsumerStatefulWidget {
   final WorkshopTab initialTab;
   const WorkshopHubScreen({super.key, this.initialTab = WorkshopTab.orders});
@@ -22,50 +25,53 @@ class WorkshopHubScreen extends ConsumerStatefulWidget {
   ConsumerState<WorkshopHubScreen> createState() => _WorkshopHubScreenState();
 }
 
-class _Tab {
-  final WorkshopTab key;
-  final String label;
-  final IconData icon;
-  final IconData selectedIcon;
-  final Widget body;
-  const _Tab(this.key, this.label, this.icon, this.selectedIcon, this.body);
-}
-
 class _WorkshopHubScreenState extends ConsumerState<WorkshopHubScreen> {
   int? _index; // null hasta resolver el tab inicial con los permisos
 
-  List<_Tab> _tabs(MeContext me) => [
+  List<(WorkshopTab, HubTab)> _tabs(MeContext me) => [
     if (me.can('workshop.view'))
-      const _Tab(
+      (
         WorkshopTab.orders,
-        'OTs',
-        Icons.build_circle_outlined,
-        Icons.build_circle,
-        WorkOrdersScreen(embedded: true),
+        HubTab(
+          label: 'OTs',
+          icon: Icons.build_circle_outlined,
+          selectedIcon: Icons.build_circle,
+          color: ModuleColors.workOrders,
+          build: () => const WorkOrdersScreen(embedded: true),
+        ),
       ),
     if (me.can('appointments.view'))
-      const _Tab(
+      (
         WorkshopTab.agenda,
-        'Agenda',
-        Icons.calendar_month_outlined,
-        Icons.calendar_month,
-        AgendaScreen(embedded: true),
+        HubTab(
+          label: 'Agenda',
+          icon: Icons.calendar_month_outlined,
+          selectedIcon: Icons.calendar_month,
+          color: ModuleColors.agenda,
+          build: () => const AgendaScreen(embedded: true),
+        ),
       ),
     if (me.can('services.view'))
-      const _Tab(
+      (
         WorkshopTab.services,
-        'Servicios',
-        Icons.home_repair_service_outlined,
-        Icons.home_repair_service,
-        ServicesScreen(embedded: true),
+        HubTab(
+          label: 'Servicios',
+          icon: Icons.home_repair_service_outlined,
+          selectedIcon: Icons.home_repair_service,
+          color: ModuleColors.services,
+          build: () => const ServicesScreen(embedded: true),
+        ),
       ),
     if (me.can('mechanics.view'))
-      const _Tab(
+      (
         WorkshopTab.mechanics,
-        'Mecánicos',
-        Icons.engineering_outlined,
-        Icons.engineering,
-        MechanicsScreen(embedded: true),
+        HubTab(
+          label: 'Mecánicos',
+          icon: Icons.engineering_outlined,
+          selectedIcon: Icons.engineering,
+          color: ModuleColors.mechanics,
+          build: () => const MechanicsScreen(embedded: true),
+        ),
       ),
   ];
 
@@ -76,15 +82,16 @@ class _WorkshopHubScreenState extends ConsumerState<WorkshopHubScreen> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final tabs = _tabs(me);
-    if (tabs.isEmpty) {
+    final entries = _tabs(me);
+    if (entries.isEmpty) {
       return Scaffold(
         appBar: AppBar(title: const Text('Taller')),
         body: const Center(child: Text('No tienes acceso a este módulo.')),
       );
     }
+    final tabs = [for (final e in entries) e.$2];
     // Tab inicial pedido por la ruta (si el usuario lo puede ver).
-    final initial = tabs.indexWhere((t) => t.key == widget.initialTab);
+    final initial = entries.indexWhere((e) => e.$1 == widget.initialTab);
     final index = (_index ?? (initial < 0 ? 0 : initial)).clamp(
       0,
       tabs.length - 1,
@@ -94,22 +101,15 @@ class _WorkshopHubScreenState extends ConsumerState<WorkshopHubScreen> {
       appBar: AppBar(title: const Text('Taller')),
       body: IndexedStack(
         index: index,
-        children: [for (final t in tabs) t.body],
+        children: [for (final t in tabs) t.build()],
       ),
       // NavigationBar exige al menos 2 destinos.
       bottomNavigationBar: tabs.length < 2
           ? null
-          : NavigationBar(
+          : HubNavBar(
+              tabs: tabs,
               selectedIndex: index,
-              onDestinationSelected: (i) => setState(() => _index = i),
-              destinations: [
-                for (final t in tabs)
-                  NavigationDestination(
-                    icon: Icon(t.icon),
-                    selectedIcon: Icon(t.selectedIcon),
-                    label: t.label,
-                  ),
-              ],
+              onSelected: (i) => setState(() => _index = i),
             ),
     );
   }

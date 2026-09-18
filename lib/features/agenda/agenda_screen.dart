@@ -6,6 +6,7 @@ import '../../core/api_client.dart';
 import '../../core/app_toast.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
+import '../../core/module_colors.dart';
 import '../workshop/reception_screen.dart';
 import 'agenda_repository.dart';
 import 'appointment_form_screen.dart';
@@ -139,6 +140,8 @@ class _AgendaScreenState extends ConsumerState<AgendaScreen> {
       floatingActionButton: canCreate
           ? FloatingActionButton.extended(
               heroTag: 'fab-agenda',
+              backgroundColor: ModuleColors.soft(ModuleColors.agenda),
+              foregroundColor: ModuleColors.onSoft(ModuleColors.agenda),
               onPressed: () => _openForm(),
               icon: const Icon(Icons.add),
               label: const Text('Nueva cita'),

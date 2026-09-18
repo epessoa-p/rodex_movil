@@ -67,7 +67,8 @@ class _CashAvailableHintState extends ConsumerState<CashAvailableHint> {
           return _box(
             color: Colors.red,
             icon: Icons.lock_outline,
-            text: 'No tienes una caja abierta: abre tu caja para pagar desde ella.',
+            text:
+                'No tienes una caja abierta: abre tu caja para pagar desde ella.',
           );
         }
         final available = s.expectedAmount;

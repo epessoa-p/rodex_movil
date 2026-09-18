@@ -110,7 +110,7 @@ Widget _app(_FakeWorkshop repo, Widget home) => ProviderScope(
 );
 
 void main() {
-  testWidgets('OTs: el FAB ofrece Nueva recepción y Servicio rápido', (
+  testWidgets('OTs: dos botones flotantes, Nueva OT y Servicio rápido', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(360, 640);
@@ -125,14 +125,14 @@ void main() {
     expect(find.textContaining('Cliente de paso'), findsOneWidget);
     expect(find.textContaining('⚡ rápida'), findsOneWidget);
 
-    await tester.tap(find.text('Nueva OT'));
-    await tester.pumpAndSettle();
-    expect(find.text('Nueva recepción'), findsOneWidget);
+    // Dos FAB con hero tags distintos (sin paso intermedio).
+    expect(find.text('Nueva OT'), findsOneWidget);
     expect(find.text('Servicio rápido'), findsOneWidget);
+    expect(find.byType(FloatingActionButton), findsNWidgets(2));
 
     await tester.tap(find.text('Servicio rápido'));
     await tester.pumpAndSettle();
-    // Abre la pantalla (título en la AppBar) con el aviso inicial.
+    // Abre la pantalla directamente (título en la AppBar) con el aviso inicial.
     expect(find.text('Servicio rápido'), findsOneWidget);
     expect(find.textContaining('Aún no hay servicios'), findsOneWidget);
     expect(tester.takeException(), isNull);

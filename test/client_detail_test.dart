@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rodex_movil/core/api_client.dart';
 import 'package:rodex_movil/core/models.dart';
+import 'package:rodex_movil/core/module_colors.dart';
 import 'package:rodex_movil/core/providers.dart';
 import 'package:rodex_movil/core/storage.dart';
 import 'package:rodex_movil/features/auth/auth_controller.dart';
@@ -152,6 +153,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('CAMBIO DE ACEITE'), findsOneWidget);
       expect(find.text('Programada'), findsOneWidget);
+      // El indicador toma el color del tab activo (Citas = agenda).
+      final bar = tester.widget<TabBar>(find.byType(TabBar));
+      expect(bar.indicatorColor, ModuleColors.agenda);
     },
   );
 

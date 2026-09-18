@@ -46,7 +46,9 @@ class WhatsApp {
     if (kIsWeb || !Platform.isAndroid) return false;
     try {
       // Dentro de cache/share_plus para que lo cubra el FileProvider de share_plus.
-      final dir = Directory('${(await getTemporaryDirectory()).path}/share_plus');
+      final dir = Directory(
+        '${(await getTemporaryDirectory()).path}/share_plus',
+      );
       await dir.create(recursive: true);
       final file = File('${dir.path}/$filename');
       await file.writeAsBytes(bytes, flush: true);

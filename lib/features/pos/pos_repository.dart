@@ -23,7 +23,8 @@ class PosRepository {
       '/products',
       query: {'q': q, 'page': page, 'per_page': perPage},
     );
-    final meta = (data as Map<String, dynamic>)['meta'] as Map<String, dynamic>?;
+    final meta =
+        (data as Map<String, dynamic>)['meta'] as Map<String, dynamic>?;
     final items = _list(data).map((e) => Product.fromJson(e)).toList();
 
     // Backend sin paginar (sin `meta`): devuelve todo de una vez. Se pagina

@@ -7,6 +7,7 @@ import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
+import '../../core/module_colors.dart';
 import '../pos/pos_repository.dart';
 import 'new_product_screen.dart';
 import 'product_detail_screen.dart';
@@ -160,6 +161,8 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
       floatingActionButton: canCreate
           ? FloatingActionButton.extended(
               heroTag: 'fab-products',
+              backgroundColor: ModuleColors.soft(ModuleColors.products),
+              foregroundColor: ModuleColors.onSoft(ModuleColors.products),
               onPressed: _newProduct,
               icon: const Icon(Icons.add),
               label: const Text('Nuevo'),

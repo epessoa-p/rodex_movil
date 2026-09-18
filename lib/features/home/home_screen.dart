@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
+import '../../core/module_colors.dart';
 import '../agenda/agenda_repository.dart';
 import '../pos/pos_repository.dart';
 import '../workshop/workshop_repository.dart';
@@ -110,42 +111,42 @@ class HomeScreen extends ConsumerWidget {
                   _ActionTile(
                     icon: Icons.point_of_sale,
                     label: 'Nueva venta',
-                    color: Colors.green,
+                    color: ModuleColors.sales,
                     onTap: () => context.push('/pos'),
                   ),
                 if (me.planAllows('inventory') || me.can('products.view'))
                   _ActionTile(
                     icon: Icons.inventory_2_outlined,
                     label: 'Inventario',
-                    color: Colors.indigo,
+                    color: ModuleColors.products,
                     onTap: () => context.push('/products'),
                   ),
                 if (me.planAllows('workshop') && me.can('workshop.view'))
                   _ActionTile(
                     icon: Icons.build_circle_outlined,
                     label: 'Órdenes de trabajo',
-                    color: Colors.deepPurple,
+                    color: ModuleColors.workOrders,
                     onTap: () => context.push('/workshop'),
                   ),
                 if (me.planAllows('workshop') && me.can('appointments.view'))
                   _ActionTile(
                     icon: Icons.calendar_month_outlined,
                     label: 'Agenda',
-                    color: Colors.pink,
+                    color: ModuleColors.agenda,
                     onTap: () => context.push('/agenda'),
                   ),
                 if (me.planAllows('purchases') && me.can('purchases.create'))
                   _ActionTile(
                     icon: Icons.shopping_bag_outlined,
                     label: 'Compra directa',
-                    color: Colors.brown,
+                    color: ModuleColors.purchases,
                     onTap: () => context.push('/purchases/direct'),
                   ),
                 if (me.planAllows('purchases') && me.can('treasury.view'))
                   _ActionTile(
                     icon: Icons.account_balance,
                     label: 'Tesorería',
-                    color: Colors.teal,
+                    color: ModuleColors.treasury,
                     onTap: () => context.push('/treasury'),
                   ),
               ],

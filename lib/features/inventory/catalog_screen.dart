@@ -6,6 +6,7 @@ import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/providers.dart';
 import '../../core/upper_case.dart';
+import '../../core/module_colors.dart';
 import 'catalogs_repository.dart';
 
 /// Tab genérico de catálogo (categorías, marcas, modelos, orígenes): listado
@@ -37,6 +38,8 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
       floatingActionButton: canCreate
           ? FloatingActionButton.extended(
               heroTag: 'fab-catalog-${type.path}',
+              backgroundColor: ModuleColors.soft(type.color),
+              foregroundColor: ModuleColors.onSoft(type.color),
               onPressed: () => _openForm(),
               icon: const Icon(Icons.add),
               label: Text(
@@ -99,7 +102,7 @@ class _CatalogScreenState extends ConsumerState<CatalogScreen> {
                     separatorBuilder: (_, _) => const SizedBox(height: 6),
                     itemBuilder: (_, i) {
                       final c = list[i];
-                      final color = c.active ? Colors.indigo : Colors.grey;
+                      final color = c.active ? type.color : Colors.grey;
                       return Card(
                         child: ListTile(
                           dense: true,

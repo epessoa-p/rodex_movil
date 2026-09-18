@@ -6,6 +6,7 @@ import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/providers.dart';
 import '../../core/upper_case.dart';
+import '../../core/module_colors.dart';
 import '../agenda/agenda_repository.dart';
 import 'services_repository.dart';
 
@@ -34,6 +35,8 @@ class _ServicesScreenState extends ConsumerState<ServicesScreen> {
       floatingActionButton: canCreate
           ? FloatingActionButton.extended(
               heroTag: 'fab-services',
+              backgroundColor: ModuleColors.soft(ModuleColors.services),
+              foregroundColor: ModuleColors.onSoft(ModuleColors.services),
               onPressed: () => _openForm(),
               icon: const Icon(Icons.add),
               label: const Text('Nuevo servicio'),
@@ -121,7 +124,7 @@ class _ServiceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = s.active ? Colors.teal : Colors.grey;
+    final color = s.active ? ModuleColors.services : Colors.grey;
     final extra = [
       if (s.estimatedTime != null && s.estimatedTime!.isNotEmpty)
         s.estimatedTime!,

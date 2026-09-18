@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
 import '../../core/format.dart';
+import '../../core/hub_nav_bar.dart';
 import '../../core/models.dart';
+import '../../core/module_colors.dart';
 import '../../core/providers.dart';
 import 'direct_purchase_detail_screen.dart';
 import 'direct_purchase_screen.dart';
@@ -22,38 +24,33 @@ class PurchasesScreen extends ConsumerStatefulWidget {
   ConsumerState<PurchasesScreen> createState() => _PurchasesScreenState();
 }
 
-class _Tab {
-  final String label;
-  final IconData icon;
-  final IconData selectedIcon;
-  final Widget body;
-  const _Tab(this.label, this.icon, this.selectedIcon, this.body);
-}
-
 class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
   int _index = 0;
 
-  List<_Tab> _tabs(MeContext me) => [
+  List<HubTab> _tabs(MeContext me) => [
     if (me.can('purchases.view'))
-      const _Tab(
-        'Compras',
-        Icons.shopping_bag_outlined,
-        Icons.shopping_bag,
-        _DirectPurchasesTab(),
+      HubTab(
+        label: 'Compras',
+        icon: Icons.shopping_bag_outlined,
+        selectedIcon: Icons.shopping_bag,
+        color: ModuleColors.purchases,
+        build: () => const _DirectPurchasesTab(),
       ),
     if (me.canAny(['purchase-orders.view', 'goods-receipts.view']))
-      const _Tab(
-        'OCs',
-        Icons.receipt_long_outlined,
-        Icons.receipt_long,
-        _OrdersTab(),
+      HubTab(
+        label: 'OCs',
+        icon: Icons.receipt_long_outlined,
+        selectedIcon: Icons.receipt_long,
+        color: ModuleColors.purchaseOrders,
+        build: () => const _OrdersTab(),
       ),
     if (me.can('suppliers.view'))
-      const _Tab(
-        'Proveedores',
-        Icons.storefront_outlined,
-        Icons.storefront,
-        SuppliersTab(),
+      HubTab(
+        label: 'Proveedores',
+        icon: Icons.storefront_outlined,
+        selectedIcon: Icons.storefront,
+        color: ModuleColors.suppliers,
+        build: () => const SuppliersTab(),
       ),
   ];
 
@@ -77,22 +74,15 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
       appBar: AppBar(title: const Text('Compras')),
       body: IndexedStack(
         index: index,
-        children: [for (final t in tabs) t.body],
+        children: [for (final t in tabs) t.build()],
       ),
       // NavigationBar exige al menos 2 destinos.
       bottomNavigationBar: tabs.length < 2
           ? null
-          : NavigationBar(
+          : HubNavBar(
+              tabs: tabs,
               selectedIndex: index,
-              onDestinationSelected: (i) => setState(() => _index = i),
-              destinations: [
-                for (final t in tabs)
-                  NavigationDestination(
-                    icon: Icon(t.icon),
-                    selectedIcon: Icon(t.selectedIcon),
-                    label: t.label,
-                  ),
-              ],
+              onSelected: (i) => setState(() => _index = i),
             ),
     );
   }
@@ -189,6 +179,8 @@ class _DirectPurchasesTabState extends ConsumerState<_DirectPurchasesTab> {
       floatingActionButton: canCreate
           ? FloatingActionButton.extended(
               heroTag: 'fab-purchases',
+              backgroundColor: ModuleColors.soft(ModuleColors.purchases),
+              foregroundColor: ModuleColors.onSoft(ModuleColors.purchases),
               onPressed: _create,
               icon: const Icon(Icons.add),
               label: const Text('Compra directa'),

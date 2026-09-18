@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/hub_nav_bar.dart';
 import '../../core/models.dart';
+import '../../core/module_colors.dart';
 import '../../core/providers.dart';
 import '../products/products_screen.dart';
 import 'catalog_screen.dart';
@@ -18,53 +20,54 @@ class InventoryHubScreen extends ConsumerStatefulWidget {
   ConsumerState<InventoryHubScreen> createState() => _InventoryHubScreenState();
 }
 
-class _Tab {
-  final String label;
-  final IconData icon;
-  final IconData selectedIcon;
-  final Widget Function() build;
-  const _Tab(this.label, this.icon, this.selectedIcon, this.build);
-}
-
 class _InventoryHubScreenState extends ConsumerState<InventoryHubScreen> {
   int _index = 0;
   final _visited = <int>{0};
 
-  List<_Tab> _tabs(MeContext me) => [
+  List<HubTab> _tabs(MeContext me) => [
     if (me.canAny(['products.view', 'pos.access', 'sales.view']))
-      _Tab(
-        'Productos',
-        Icons.inventory_2_outlined,
-        Icons.inventory_2,
-        () => const ProductsScreen(embedded: true),
+      HubTab(
+        label: 'Productos',
+        icon: Icons.inventory_2_outlined,
+        selectedIcon: Icons.inventory_2,
+        color: ModuleColors.products,
+        build: () => const ProductsScreen(embedded: true),
       ),
     if (me.can('product-categories.view'))
-      _Tab(
-        'Categorías',
-        Icons.category_outlined,
-        Icons.category,
-        () => const CatalogScreen(type: CatalogType.categories, embedded: true),
+      HubTab(
+        label: 'Categorías',
+        icon: Icons.category_outlined,
+        selectedIcon: Icons.category,
+        color: ModuleColors.categories,
+        build: () =>
+            const CatalogScreen(type: CatalogType.categories, embedded: true),
       ),
     if (me.can('product-brands.view'))
-      _Tab(
-        'Marcas',
-        Icons.sell_outlined,
-        Icons.sell,
-        () => const CatalogScreen(type: CatalogType.brands, embedded: true),
+      HubTab(
+        label: 'Marcas',
+        icon: Icons.sell_outlined,
+        selectedIcon: Icons.sell,
+        color: ModuleColors.brands,
+        build: () =>
+            const CatalogScreen(type: CatalogType.brands, embedded: true),
       ),
     if (me.can('moto-models.view'))
-      _Tab(
-        'Modelos',
-        Icons.two_wheeler_outlined,
-        Icons.two_wheeler,
-        () => const CatalogScreen(type: CatalogType.motoModels, embedded: true),
+      HubTab(
+        label: 'Modelos',
+        icon: Icons.two_wheeler_outlined,
+        selectedIcon: Icons.two_wheeler,
+        color: ModuleColors.models,
+        build: () =>
+            const CatalogScreen(type: CatalogType.motoModels, embedded: true),
       ),
     if (me.can('product-origins.view'))
-      _Tab(
-        'Orígenes',
-        Icons.public_outlined,
-        Icons.public,
-        () => const CatalogScreen(type: CatalogType.origins, embedded: true),
+      HubTab(
+        label: 'Orígenes',
+        icon: Icons.public_outlined,
+        selectedIcon: Icons.public,
+        color: ModuleColors.origins,
+        build: () =>
+            const CatalogScreen(type: CatalogType.origins, embedded: true),
       ),
   ];
 
@@ -96,21 +99,13 @@ class _InventoryHubScreenState extends ConsumerState<InventoryHubScreen> {
       ),
       bottomNavigationBar: tabs.length < 2
           ? null
-          : NavigationBar(
+          : HubNavBar(
+              tabs: tabs,
               selectedIndex: index,
-              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-              onDestinationSelected: (i) => setState(() {
+              onSelected: (i) => setState(() {
                 _index = i;
                 _visited.add(i);
               }),
-              destinations: [
-                for (final t in tabs)
-                  NavigationDestination(
-                    icon: Icon(t.icon),
-                    selectedIcon: Icon(t.selectedIcon),
-                    label: t.label,
-                  ),
-              ],
             ),
     );
   }

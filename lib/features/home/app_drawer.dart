@@ -41,7 +41,10 @@ class AppDrawer extends ConsumerWidget {
                   CompanyLogoAvatar(
                     logoUrl: me.company?.logoUrl,
                     radius: 24,
-                    fallback: Text(initial, style: const TextStyle(fontSize: 20)),
+                    fallback: Text(
+                      initial,
+                      style: const TextStyle(fontSize: 20),
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(

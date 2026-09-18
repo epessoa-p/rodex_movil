@@ -43,6 +43,8 @@ class CatalogPickerField extends ConsumerWidget {
       child: InputDecorator(
         decoration: InputDecoration(
           labelText: label,
+          // Vacío: la etiqueta baja y hace de placeholder (sin texto encima).
+          hintText: 'Buscar o crear…',
           border: const OutlineInputBorder(),
           suffixIcon: value == null
               ? const Icon(Icons.search)
@@ -54,8 +56,9 @@ class CatalogPickerField extends ConsumerWidget {
         ),
         isEmpty: current == null,
         child: Text(
-          current?.name ?? 'Buscar o crear…',
-          style: TextStyle(color: current == null ? Colors.black45 : null),
+          current?.name ?? '',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
       ),
     );

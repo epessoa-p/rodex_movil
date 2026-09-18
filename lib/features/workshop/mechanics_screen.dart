@@ -5,6 +5,7 @@ import '../../core/api_client.dart';
 import '../../core/app_toast.dart';
 import '../../core/providers.dart';
 import '../../core/upper_case.dart';
+import '../../core/module_colors.dart';
 import 'workshop_repository.dart';
 
 /// Administración de mecánicos: listado + alta/edición con todos los campos.
@@ -25,6 +26,8 @@ class MechanicsScreen extends ConsumerWidget {
       floatingActionButton: canCreate
           ? FloatingActionButton.extended(
               heroTag: 'fab-mechanics',
+              backgroundColor: ModuleColors.soft(ModuleColors.mechanics),
+              foregroundColor: ModuleColors.onSoft(ModuleColors.mechanics),
               onPressed: () => _openForm(context, ref),
               icon: const Icon(Icons.add),
               label: const Text('Nuevo mecánico'),
@@ -59,11 +62,11 @@ class MechanicsScreen extends ConsumerWidget {
                   child: ListTile(
                     leading: CircleAvatar(
                       backgroundColor:
-                          (m.active ? Colors.deepPurple : Colors.grey)
+                          (m.active ? ModuleColors.mechanics : Colors.grey)
                               .withValues(alpha: .15),
                       child: Icon(
                         Icons.engineering_outlined,
-                        color: m.active ? Colors.deepPurple : Colors.grey,
+                        color: m.active ? ModuleColors.mechanics : Colors.grey,
                       ),
                     ),
                     title: Text(

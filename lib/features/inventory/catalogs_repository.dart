@@ -1,6 +1,8 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
+import '../../core/module_colors.dart';
 import '../../core/providers.dart';
 
 /// Tipos de catálogo del hub Inventario (coinciden con la API `/catalogs/{type}`).
@@ -18,6 +20,15 @@ enum CatalogType {
 
   /// Módulo de permisos (`<module>.view/create/edit`).
   final String module;
+
+  /// Color distintivo del catálogo (tab del hub, avatares, FAB).
+  Color get color => switch (this) {
+    CatalogType.categories => ModuleColors.categories,
+    CatalogType.brands => ModuleColors.brands,
+    CatalogType.motoModels => ModuleColors.models,
+    CatalogType.motoBrands => ModuleColors.models,
+    CatalogType.origins => ModuleColors.origins,
+  };
 }
 
 /// Registro de un catálogo. Los campos extra dependen del tipo.

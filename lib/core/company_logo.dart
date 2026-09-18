@@ -68,7 +68,11 @@ Future<void> prefetchCompanyLogo(String? url) async {
 void clearCompanyLogoCache() => _memory.clear();
 
 bool _isPng(Uint8List b) =>
-    b.length > 8 && b[0] == 0x89 && b[1] == 0x50 && b[2] == 0x4E && b[3] == 0x47;
+    b.length > 8 &&
+    b[0] == 0x89 &&
+    b[1] == 0x50 &&
+    b[2] == 0x4E &&
+    b[3] == 0x47;
 
 Future<File?> _cacheFile(String url) async {
   if (kIsWeb) return null;

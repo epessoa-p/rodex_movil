@@ -13,6 +13,7 @@ import '../../core/models.dart';
 import '../../core/providers.dart';
 import '../../core/upper_case.dart';
 import '../../core/whatsapp.dart';
+import '../../core/module_colors.dart';
 import '../agenda/agenda_repository.dart';
 import '../products/products_screen.dart';
 import 'work_order_letter_pdf.dart';
@@ -110,6 +111,13 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
         quantity: picked.quantity,
       ),
     );
+    // Si el servicio era nuevo, el backend lo creó en el catálogo: refrescar
+    // la lista para que aparezca en la próxima búsqueda (esta u otra OT).
+    if (!catalog.any(
+      (s) => s.name.toLowerCase() == picked.name.toLowerCase(),
+    )) {
+      ref.invalidate(appointmentMetaProvider);
+    }
   }
 
   Future<void> _addPart() async {
@@ -1281,8 +1289,8 @@ class _HeaderAction {
 abstract final class _Accent {
   static const photos = Colors.indigo;
   static const diagnosis = Colors.blue;
-  static const services = Colors.deepPurple; // el de Taller
-  static const parts = Colors.brown; // el de repuestos/compras
+  static const services = ModuleColors.workOrders; // el de Taller
+  static const parts = ModuleColors.purchases; // el de repuestos/compras
   static const totals = Colors.green;
 
   /// Cabecera: el color del estado de la OT (mismos que el listado).

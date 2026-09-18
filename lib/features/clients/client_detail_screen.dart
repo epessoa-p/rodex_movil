@@ -7,6 +7,7 @@ import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/providers.dart';
 import '../../core/upper_case.dart';
+import '../../core/module_colors.dart';
 import '../workshop/work_order_detail_screen.dart';
 import 'clients_repository.dart';
 
@@ -63,8 +64,9 @@ class _Tab {
   final String label;
   final IconData icon;
   final int count;
+  final Color color;
   final Widget body;
-  const _Tab(this.label, this.icon, this.count, this.body);
+  const _Tab(this.label, this.icon, this.count, this.color, this.body);
 }
 
 class _Body extends StatelessWidget {
@@ -80,6 +82,7 @@ class _Body extends StatelessWidget {
           'Ventas',
           Icons.receipt_long_outlined,
           d.sales!.length,
+          ModuleColors.sales,
           _ActivityList(rows: d.sales!, empty: 'Sin ventas registradas.'),
         ),
       if (d.workOrders != null)
@@ -87,6 +90,7 @@ class _Body extends StatelessWidget {
           'OTs',
           Icons.build_circle_outlined,
           d.workOrders!.length,
+          ModuleColors.workOrders,
           _ActivityList(
             rows: d.workOrders!,
             empty: 'Sin órdenes de taller.',
@@ -102,6 +106,7 @@ class _Body extends StatelessWidget {
           'Vehículos',
           Icons.two_wheeler_outlined,
           d.vehicles!.length,
+          ModuleColors.vehicles,
           _VehiclesList(rows: d.vehicles!),
         ),
       if (d.appointments != null)
@@ -109,6 +114,7 @@ class _Body extends StatelessWidget {
           'Citas',
           Icons.calendar_month_outlined,
           d.appointments!.length,
+          ModuleColors.agenda,
           _ActivityList(rows: d.appointments!, empty: 'Sin citas registradas.'),
         ),
       if (d.rentals != null)
@@ -116,6 +122,7 @@ class _Body extends StatelessWidget {
           'Alquileres',
           Icons.key_outlined,
           d.rentals!.length,
+          ModuleColors.rentals,
           _ActivityList(rows: d.rentals!, empty: 'Sin alquileres.'),
         ),
     ];
@@ -128,41 +135,62 @@ class _Body extends StatelessWidget {
           if (tabs.isNotEmpty) ...[
             // Siempre desplazable: con ícono + texto + conteo, 3-4 tabs no
             // caben repartidos en 360 dp (desbordaban).
-            TabBar(
-              isScrollable: true,
-              tabAlignment: TabAlignment.start,
-              labelStyle: const TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
-              ),
-              tabs: [
-                for (final t in tabs)
-                  Tab(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(t.icon, size: 16),
-                        const SizedBox(width: 4),
-                        Text(t.label),
-                        const SizedBox(width: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 1,
+            // Cada tab con su color: el indicador y la etiqueta activa toman
+            // el color del tab actual; el ícono y el contador van siempre en
+            // el color del tab (se reconocen aunque no estén activos).
+            Builder(
+              builder: (ctx) {
+                final controller = DefaultTabController.of(ctx);
+                return AnimatedBuilder(
+                  animation: controller,
+                  builder: (_, _) {
+                    final active = tabs[controller.index].color;
+                    return TabBar(
+                      isScrollable: true,
+                      tabAlignment: TabAlignment.start,
+                      indicatorColor: active,
+                      labelColor: ModuleColors.onSoft(active),
+                      unselectedLabelColor: Colors.black54,
+                      labelStyle: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                      tabs: [
+                        for (final t in tabs)
+                          Tab(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(t.icon, size: 16, color: t.color),
+                                const SizedBox(width: 4),
+                                Text(t.label),
+                                const SizedBox(width: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 1,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: ModuleColors.soft(t.color),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    '${t.count}',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w700,
+                                      color: ModuleColors.onSoft(t.color),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: .06),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            '${t.count}',
-                            style: const TextStyle(fontSize: 11),
-                          ),
-                        ),
                       ],
-                    ),
-                  ),
-              ],
+                    );
+                  },
+                );
+              },
             ),
             Expanded(
               child: TabBarView(children: [for (final t in tabs) t.body]),
