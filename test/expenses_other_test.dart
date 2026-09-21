@@ -6,6 +6,7 @@ import 'package:rodex_movil/core/app_toast.dart';
 import 'package:rodex_movil/core/models.dart';
 import 'package:rodex_movil/core/providers.dart';
 import 'package:rodex_movil/core/storage.dart';
+import 'package:rodex_movil/core/theme.dart';
 import 'package:rodex_movil/features/auth/auth_controller.dart';
 import 'package:rodex_movil/features/payments/expenses_tab.dart';
 import 'package:rodex_movil/features/payments/payments_repository.dart';
@@ -48,7 +49,10 @@ void main() {
             ),
           ),
         ],
-        child: const MaterialApp(home: Scaffold(body: ExpensesTab())),
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: Scaffold(body: ExpensesTab()),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -96,7 +100,10 @@ void _treasuryTests() {
             ),
           ),
         ],
-        child: const MaterialApp(home: Scaffold(body: ExpensesTab())),
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: Scaffold(body: ExpensesTab()),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -141,7 +148,10 @@ void _payrollTests() {
               ),
             ),
           ],
-          child: const MaterialApp(home: Scaffold(body: PersonalTab())),
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            home: Scaffold(body: PersonalTab()),
+          ),
         ),
       );
       await tester.pumpAndSettle();
@@ -187,7 +197,10 @@ void _toastTests() {
               ),
             ),
           ],
-          child: const MaterialApp(home: Scaffold(body: ExpensesTab())),
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            home: Scaffold(body: ExpensesTab()),
+          ),
         ),
       );
       await tester.pumpAndSettle();

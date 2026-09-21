@@ -5,6 +5,7 @@ import 'package:rodex_movil/core/api_client.dart';
 import 'package:rodex_movil/core/models.dart';
 import 'package:rodex_movil/core/providers.dart';
 import 'package:rodex_movil/core/storage.dart';
+import 'package:rodex_movil/core/theme.dart';
 import 'package:rodex_movil/features/auth/auth_controller.dart';
 import 'package:rodex_movil/features/reports/reports_screen.dart';
 
@@ -32,7 +33,7 @@ Widget _app(List<String> perms, {List<String> features = const ['sales']}) =>
           (ref) => _FakeAuth(ref, perms, features),
         ),
       ],
-      child: const MaterialApp(home: ReportsScreen()),
+      child: MaterialApp(theme: AppTheme.light(), home: ReportsScreen()),
     );
 
 void main() {

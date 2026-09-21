@@ -5,6 +5,7 @@ import 'package:rodex_movil/core/api_client.dart';
 import 'package:rodex_movil/core/models.dart';
 import 'package:rodex_movil/core/providers.dart';
 import 'package:rodex_movil/core/storage.dart';
+import 'package:rodex_movil/core/theme.dart';
 import 'package:rodex_movil/features/agenda/agenda_repository.dart';
 import 'package:rodex_movil/features/agenda/appointment_form_screen.dart';
 import 'package:rodex_movil/features/auth/auth_controller.dart';
@@ -75,7 +76,10 @@ Widget _app(
       ),
     ),
   ],
-  child: MaterialApp(home: AppointmentFormScreen(date: DateTime(2026, 9, 15))),
+  child: MaterialApp(
+    theme: AppTheme.light(),
+    home: AppointmentFormScreen(date: DateTime(2026, 9, 15)),
+  ),
 );
 
 void main() {

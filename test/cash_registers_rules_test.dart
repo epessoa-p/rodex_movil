@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rodex_movil/core/theme.dart';
 import 'package:rodex_movil/core/api_client.dart';
 import 'package:rodex_movil/features/cash/cash_admin_repository.dart';
 import 'package:rodex_movil/features/cash/cash_registers_screen.dart';
@@ -71,7 +72,10 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [cashAdminRepositoryProvider.overrideWithValue(_FakeRepo())],
-        child: const MaterialApp(home: CashRegistersScreen()),
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: CashRegistersScreen(),
+        ),
       ),
     );
     await tester.pumpAndSettle();

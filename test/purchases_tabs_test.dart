@@ -5,6 +5,7 @@ import 'package:rodex_movil/core/api_client.dart';
 import 'package:rodex_movil/core/models.dart';
 import 'package:rodex_movil/core/providers.dart';
 import 'package:rodex_movil/core/storage.dart';
+import 'package:rodex_movil/core/theme.dart';
 import 'package:rodex_movil/features/auth/auth_controller.dart';
 import 'package:rodex_movil/features/purchases/purchases_repository.dart';
 import 'package:rodex_movil/features/purchases/receptions_screen.dart';
@@ -91,7 +92,7 @@ Widget _app(List<String> perms) => ProviderScope(
     purchasesRepositoryProvider.overrideWithValue(_FakeRepo()),
     authControllerProvider.overrideWith((ref) => _FakeAuth(ref, perms)),
   ],
-  child: const MaterialApp(home: PurchasesScreen()),
+  child: MaterialApp(theme: AppTheme.light(), home: PurchasesScreen()),
 );
 
 void main() {

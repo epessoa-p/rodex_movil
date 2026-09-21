@@ -6,6 +6,7 @@ import 'package:rodex_movil/core/models.dart';
 import 'package:rodex_movil/core/module_colors.dart';
 import 'package:rodex_movil/core/providers.dart';
 import 'package:rodex_movil/core/storage.dart';
+import 'package:rodex_movil/core/theme.dart';
 import 'package:rodex_movil/features/auth/auth_controller.dart';
 import 'package:rodex_movil/features/clients/client_detail_screen.dart';
 import 'package:rodex_movil/features/clients/clients_repository.dart';
@@ -121,7 +122,10 @@ Widget _app(_FakeRepo repo, List<String> perms) => ProviderScope(
     authControllerProvider.overrideWith((ref) => _FakeAuth(ref, perms)),
     clientsRepositoryProvider.overrideWithValue(repo),
   ],
-  child: const MaterialApp(home: ClientDetailScreen(clientId: 7)),
+  child: MaterialApp(
+    theme: AppTheme.light(),
+    home: ClientDetailScreen(clientId: 7),
+  ),
 );
 
 void main() {

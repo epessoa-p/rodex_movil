@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/company_logo_avatar.dart';
+import '../../core/module_colors.dart';
 import '../../core/providers.dart';
 import '../payments/payments_screen.dart' show canSeePayments;
 
@@ -85,6 +86,7 @@ class AppDrawer extends ConsumerWidget {
                     Icons.insights_outlined,
                     'Dashboard',
                     '/dashboard',
+                    color: ModuleColors.dashboard,
                     show: canDashboard,
                   ),
                   _item(
@@ -92,6 +94,7 @@ class AppDrawer extends ConsumerWidget {
                     Icons.receipt_long_outlined,
                     'Ventas',
                     '/sales',
+                    color: ModuleColors.sales,
                     show:
                         me.planAllows('sales') &&
                         me.canAny(['sales.view', 'pos.access']),
@@ -101,6 +104,7 @@ class AppDrawer extends ConsumerWidget {
                     Icons.inventory_2_outlined,
                     'Inventario',
                     '/products',
+                    color: ModuleColors.products,
                     show: me.planAllows('inventory') || me.can('products.view'),
                   ),
                   _item(
@@ -108,6 +112,7 @@ class AppDrawer extends ConsumerWidget {
                     Icons.people_alt_outlined,
                     'Clientes',
                     '/clients',
+                    color: ModuleColors.clients,
                     show: me.can('clients.view') || canSell,
                   ),
                   // Taller agrupa OTs / Agenda / Mecánicos (hub con tabs).
@@ -116,6 +121,7 @@ class AppDrawer extends ConsumerWidget {
                     Icons.build_circle_outlined,
                     'Taller',
                     '/workshop',
+                    color: ModuleColors.workOrders,
                     show:
                         me.planAllows('workshop') &&
                         me.canAny([
@@ -130,6 +136,7 @@ class AppDrawer extends ConsumerWidget {
                     Icons.payments_outlined,
                     'Pagos',
                     '/payments',
+                    color: ModuleColors.payments,
                     show: canSeePayments(me),
                   ),
                   // Compras agrupa los tabs Compras / OCs / Proveedores.
@@ -138,6 +145,7 @@ class AppDrawer extends ConsumerWidget {
                     Icons.shopping_bag_outlined,
                     'Compras',
                     '/purchases/receptions',
+                    color: ModuleColors.purchases,
                     show:
                         me.planAllows('purchases') &&
                         me.canAny([
@@ -154,6 +162,7 @@ class AppDrawer extends ConsumerWidget {
                     Icons.account_balance,
                     'Tesorería',
                     '/treasury',
+                    color: ModuleColors.treasury,
                     show: me.planAllows('purchases') && me.can('treasury.view'),
                   ),
                   const Divider(),
@@ -163,6 +172,7 @@ class AppDrawer extends ConsumerWidget {
                     Icons.bar_chart_outlined,
                     'Reportes',
                     '/reports',
+                    color: ModuleColors.reports,
                     show: canDashboard || me.can('income-statement.view'),
                   ),
                   // "Mi empresa" y "Cajas" viven ahora dentro de Ajustes.
@@ -171,6 +181,7 @@ class AppDrawer extends ConsumerWidget {
                     Icons.settings_outlined,
                     'Ajustes',
                     '/settings',
+                    color: ModuleColors.settings,
                   ),
                 ],
               ),
@@ -190,17 +201,29 @@ class AppDrawer extends ConsumerWidget {
     );
   }
 
+  /// Ítem del menú con el color de su módulo (mismo que su hub/tile): ícono
+  /// sobre un cuadro suave, como los accesos del Home.
   Widget _item(
     BuildContext context,
     IconData icon,
     String label,
     String route, {
+    required Color color,
     bool show = true,
   }) {
     if (!show) return const SizedBox.shrink();
     return ListTile(
-      leading: Icon(icon),
-      title: Text(label),
+      leading: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: ModuleColors.soft(color),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, size: 20, color: ModuleColors.onSoft(color)),
+      ),
+      title: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+      visualDensity: const VisualDensity(vertical: -1),
       onTap: () {
         Navigator.of(context).pop(); // cierra el drawer
         context.push(route);

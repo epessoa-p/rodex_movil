@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rodex_movil/core/api_client.dart';
 import 'package:rodex_movil/core/providers.dart';
 import 'package:rodex_movil/core/storage.dart';
+import 'package:rodex_movil/core/theme.dart';
 import 'package:rodex_movil/features/auth/auth_controller.dart';
 import 'package:rodex_movil/features/auth/login_screen.dart';
 
@@ -17,7 +18,7 @@ void main() {
             (ref) => AuthController(ApiClient(), SecureStore(), ref),
           ),
         ],
-        child: const MaterialApp(home: LoginScreen()),
+        child: MaterialApp(theme: AppTheme.light(), home: LoginScreen()),
       ),
     );
 

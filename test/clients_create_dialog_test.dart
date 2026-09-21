@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rodex_movil/core/theme.dart';
 import 'package:rodex_movil/core/api_client.dart';
 import 'package:rodex_movil/core/models.dart';
 import 'package:rodex_movil/features/clients/clients_screen.dart';
@@ -35,7 +36,10 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [posRepositoryProvider.overrideWithValue(repo)],
-          child: MaterialApp(home: ClientsScreen(onPick: (c) => picked = c)),
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            home: ClientsScreen(onPick: (c) => picked = c),
+          ),
         ),
       );
       await tester.pumpAndSettle();

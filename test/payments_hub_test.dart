@@ -5,6 +5,7 @@ import 'package:rodex_movil/core/api_client.dart';
 import 'package:rodex_movil/core/models.dart';
 import 'package:rodex_movil/core/providers.dart';
 import 'package:rodex_movil/core/storage.dart';
+import 'package:rodex_movil/core/theme.dart';
 import 'package:rodex_movil/features/auth/auth_controller.dart';
 import 'package:rodex_movil/features/payments/payments_repository.dart';
 import 'package:rodex_movil/features/payments/payments_screen.dart';
@@ -121,7 +122,7 @@ Widget _app(List<String> perms) => ProviderScope(
     expensesOverviewProvider.overrideWith((ref) async => _overview),
     mechanicPaymentsProvider.overrideWith((ref) async => []),
   ],
-  child: const MaterialApp(home: PaymentsScreen()),
+  child: MaterialApp(theme: AppTheme.light(), home: PaymentsScreen()),
 );
 
 void main() {

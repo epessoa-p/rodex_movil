@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rodex_movil/core/theme.dart';
 import 'package:rodex_movil/features/dashboard/dashboard_screen.dart';
 import 'package:rodex_movil/features/dashboard/overview_repository.dart';
 
@@ -56,7 +57,7 @@ Widget _app(Map<String, dynamic> payload) => ProviderScope(
       (ref) async => DashboardOverview.fromJson(payload),
     ),
   ],
-  child: const MaterialApp(home: DashboardScreen()),
+  child: MaterialApp(theme: AppTheme.light(), home: DashboardScreen()),
 );
 
 void main() {

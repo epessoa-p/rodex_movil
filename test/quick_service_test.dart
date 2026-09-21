@@ -5,6 +5,7 @@ import 'package:rodex_movil/core/api_client.dart';
 import 'package:rodex_movil/core/models.dart';
 import 'package:rodex_movil/core/providers.dart';
 import 'package:rodex_movil/core/storage.dart';
+import 'package:rodex_movil/core/theme.dart';
 import 'package:rodex_movil/features/agenda/agenda_repository.dart';
 import 'package:rodex_movil/features/auth/auth_controller.dart';
 import 'package:rodex_movil/features/pos/pos_repository.dart';
@@ -106,7 +107,9 @@ Widget _app(_FakeWorkshop repo, Widget home) => ProviderScope(
       ),
     ),
   ],
-  child: MaterialApp(home: home),
+  // Tema real de la app: su FilledButtonTheme (ancho mínimo infinito) fue lo
+  // que rompía esta pantalla en el celular y no en los tests.
+  child: MaterialApp(theme: AppTheme.light(), home: home),
 );
 
 void main() {

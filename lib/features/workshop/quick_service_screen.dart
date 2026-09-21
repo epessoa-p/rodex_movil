@@ -207,6 +207,12 @@ class _QuickServiceScreenState extends ConsumerState<QuickServiceScreen> {
                   ),
                 ),
                 FilledButton.tonalIcon(
+                  // El tema da a los FilledButton ancho mínimo infinito (botones
+                  // de formulario a lo ancho); dentro de un Row hay que acotarlo.
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(0, 40),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                  ),
                   onPressed: _saving ? null : _addService,
                   icon: const Icon(Icons.add, size: 18),
                   label: const Text('Agregar'),

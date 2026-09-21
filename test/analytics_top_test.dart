@@ -5,6 +5,7 @@ import 'package:rodex_movil/core/api_client.dart';
 import 'package:rodex_movil/core/models.dart';
 import 'package:rodex_movil/core/providers.dart';
 import 'package:rodex_movil/core/storage.dart';
+import 'package:rodex_movil/core/theme.dart';
 import 'package:rodex_movil/features/auth/auth_controller.dart';
 import 'package:rodex_movil/features/dashboard/analytics_screen.dart';
 import 'package:rodex_movil/features/dashboard/dashboard_repository.dart';
@@ -69,7 +70,7 @@ Widget _app() => ProviderScope(
       (ref, key) async => DashboardTop.fromJson(_payload(key.split('|')[1])),
     ),
   ],
-  child: const MaterialApp(home: AnalyticsScreen()),
+  child: MaterialApp(theme: AppTheme.light(), home: AnalyticsScreen()),
 );
 
 void main() {

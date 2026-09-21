@@ -5,6 +5,7 @@ import 'package:rodex_movil/core/api_client.dart';
 import 'package:rodex_movil/core/models.dart';
 import 'package:rodex_movil/core/providers.dart';
 import 'package:rodex_movil/core/storage.dart';
+import 'package:rodex_movil/core/theme.dart';
 import 'package:rodex_movil/features/auth/auth_controller.dart';
 import 'package:rodex_movil/features/pos/pos_repository.dart';
 import 'package:rodex_movil/features/pos/pos_screen.dart';
@@ -60,7 +61,7 @@ void main() {
             ),
           ),
         ],
-        child: const MaterialApp(home: PosScreen()),
+        child: MaterialApp(theme: AppTheme.light(), home: PosScreen()),
       ),
     );
     await tester.pumpAndSettle();

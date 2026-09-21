@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rodex_movil/core/theme.dart';
 import 'package:rodex_movil/features/reports/income_statement_repository.dart';
 import 'package:rodex_movil/features/reports/income_statement_screen.dart';
 
@@ -31,7 +32,10 @@ void main() {
                 : _report(key.split('|')[0], key.split('|')[1], 500);
           }),
         ],
-        child: const MaterialApp(home: IncomeStatementScreen()),
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: IncomeStatementScreen(),
+        ),
       ),
     );
     await tester.pumpAndSettle();

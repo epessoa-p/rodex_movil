@@ -28,6 +28,12 @@ abstract final class ModuleColors {
   static final expenses = Colors.red.shade700;
   static const treasury = Colors.teal;
 
+  // Menú principal (drawer y tiles)
+  static const dashboard = Colors.blueGrey;
+  static final payments = Colors.orange.shade800;
+  static const reports = Colors.blue;
+  static const settings = Colors.grey;
+
   // Clientes
   static final clients = Colors.cyan.shade800;
   static const vehicles = Colors.blueGrey;

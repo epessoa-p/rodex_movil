@@ -5,6 +5,7 @@ import 'package:rodex_movil/core/api_client.dart';
 import 'package:rodex_movil/core/models.dart';
 import 'package:rodex_movil/core/providers.dart';
 import 'package:rodex_movil/core/storage.dart';
+import 'package:rodex_movil/core/theme.dart';
 import 'package:rodex_movil/features/agenda/agenda_repository.dart';
 import 'package:rodex_movil/features/auth/auth_controller.dart';
 import 'package:rodex_movil/features/workshop/work_order_detail_screen.dart';
@@ -110,7 +111,10 @@ Widget _app(_FakeWorkshop repo) => ProviderScope(
       ),
     ),
   ],
-  child: const MaterialApp(home: WorkOrderDetailScreen(orderId: 5)),
+  child: MaterialApp(
+    theme: AppTheme.light(),
+    home: WorkOrderDetailScreen(orderId: 5),
+  ),
 );
 
 void main() {

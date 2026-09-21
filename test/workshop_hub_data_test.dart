@@ -5,6 +5,7 @@ import 'package:rodex_movil/core/api_client.dart';
 import 'package:rodex_movil/core/models.dart';
 import 'package:rodex_movil/core/providers.dart';
 import 'package:rodex_movil/core/storage.dart';
+import 'package:rodex_movil/core/theme.dart';
 import 'package:rodex_movil/features/agenda/agenda_repository.dart';
 import 'package:rodex_movil/features/auth/auth_controller.dart';
 import 'package:rodex_movil/features/workshop/workshop_hub_screen.dart';
@@ -118,7 +119,10 @@ void main() {
               ],
             ),
           ],
-          child: const MaterialApp(home: WorkshopHubScreen()),
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            home: WorkshopHubScreen(),
+          ),
         ),
       );
       await tester.pumpAndSettle();

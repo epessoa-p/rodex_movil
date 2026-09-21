@@ -69,9 +69,8 @@ void main() {
     expect(tester.takeException(), isNull);
 
     // Indicador y franja (encima de la barra) con el color del tab activo.
-    NavigationBarThemeData theme() => tester
-        .widget<NavigationBarTheme>(find.byType(NavigationBarTheme))
-        .data;
+    NavigationBarThemeData theme() =>
+        tester.widget<NavigationBarTheme>(find.byType(NavigationBarTheme)).data;
     expect(theme().indicatorColor, ModuleColors.soft(ModuleColors.products));
     expect(
       tester.widget<HubAccentBar>(find.byType(HubAccentBar)).color,
@@ -79,9 +78,7 @@ void main() {
     );
 
     // Cada ícono no activo va en su propio color (atenuado).
-    final catIcon = tester.widget<Icon>(
-      find.byIcon(Icons.category_outlined),
-    );
+    final catIcon = tester.widget<Icon>(find.byIcon(Icons.category_outlined));
     expect(catIcon.color, ModuleColors.categories.withValues(alpha: .75));
 
     // Al tocar Orígenes cambian indicador, etiqueta y franja a su color.
