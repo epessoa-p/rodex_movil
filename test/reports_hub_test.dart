@@ -46,7 +46,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Análisis'), findsOneWidget);
-    expect(find.text('Estado de resultados'), findsOneWidget);
+    expect(find.text('Finanzas'), findsOneWidget);
   });
 
   testWidgets('Solo estado de resultados: 1 recuadro', (tester) async {
@@ -54,7 +54,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Análisis'), findsNothing);
-    expect(find.text('Estado de resultados'), findsOneWidget);
+    expect(find.text('Finanzas'), findsOneWidget);
   });
 
   testWidgets(

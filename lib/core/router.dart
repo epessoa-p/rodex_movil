@@ -19,7 +19,9 @@ import '../features/purchases/receptions_screen.dart';
 import '../features/inventory/inventory_hub_screen.dart';
 import '../features/profile/profile_screen.dart';
 import '../features/dashboard/analytics_screen.dart';
-import '../features/reports/income_statement_screen.dart';
+import '../features/reports/accounts_report_screen.dart';
+import '../features/reports/finance_report_screen.dart';
+import '../features/reports/inventory_report_screen.dart';
 import '../features/reports/reports_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/treasury/treasury_screen.dart';
@@ -92,9 +94,22 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/company-profile',
         builder: (_, _) => const CompanyProfileScreen(),
       ),
+      // Finanzas (resultados · movimientos · cierres); /income-statement es alias.
+      GoRoute(
+        path: '/reports/finance',
+        builder: (_, _) => const FinanceReportScreen(),
+      ),
       GoRoute(
         path: '/income-statement',
-        builder: (_, _) => const IncomeStatementScreen(),
+        builder: (_, _) => const FinanceReportScreen(),
+      ),
+      GoRoute(
+        path: '/reports/accounts',
+        builder: (_, _) => const AccountsReportScreen(),
+      ),
+      GoRoute(
+        path: '/reports/inventory',
+        builder: (_, _) => const InventoryReportScreen(),
       ),
     ],
     redirect: (context, state) {
