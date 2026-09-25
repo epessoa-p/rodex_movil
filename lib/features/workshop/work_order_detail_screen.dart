@@ -18,6 +18,7 @@ import '../agenda/agenda_repository.dart';
 import '../products/products_screen.dart';
 import 'work_order_letter_pdf.dart';
 import 'service_pick_sheet.dart';
+import 'work_order_edit_sheet.dart';
 import 'work_order_pdf.dart';
 import 'workshop_repository.dart';
 
@@ -117,6 +118,66 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
       (s) => s.name.toLowerCase() == picked.name.toLowerCase(),
     )) {
       ref.invalidate(appointmentMetaProvider);
+    }
+  }
+
+  /// Edita los datos de la OT (solo en curso).
+  Future<void> _editOrder() async {
+    final o = _order;
+    if (o == null) return;
+    final updated = await showModalBottomSheet<WorkOrder>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => WorkOrderEditSheet(order: o),
+    );
+    if (updated != null && mounted) {
+      setState(() => _order = updated);
+      AppToast.success(context, 'Datos actualizados.');
+    }
+  }
+
+  /// Reabre una OT entregada para corregirla (anula el cobro y devuelve el
+  /// stock). El backend solo lo permite con la caja del cobro abierta.
+  Future<void> _reopenOrder() async {
+    final o = _order;
+    if (o == null) return;
+    if (!o.canReopen) {
+      AppToast.error(
+        context,
+        o.reopenBlockedReason ?? 'Esta orden ya no se puede corregir.',
+        title: 'No se puede reabrir',
+      );
+      return;
+    }
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Reabrir para corregir'),
+        content: Text(
+          'Se anulará el cobro de ${o.code} (sale de la caja) y los repuestos '
+          'volverán al stock.\n\nDespués podrás corregirla y cobrarla de nuevo.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Reabrir'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    await _run(() => _repo.reopenOrder(o.id));
+    if (mounted && _order?.status != 'entregada') {
+      AppToast.success(
+        context,
+        'Cobro anulado y stock devuelto: ya puedes corregirla.',
+        title: 'OT reabierta',
+      );
     }
   }
 
@@ -245,6 +306,20 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
       appBar: AppBar(
         title: Text(o.code),
         actions: [
+          if (!_closed)
+            IconButton(
+              tooltip: 'Editar datos',
+              icon: const Icon(Icons.edit_outlined),
+              onPressed: _busy ? null : _editOrder,
+            ),
+          if (o.status == 'entregada')
+            IconButton(
+              tooltip: o.canReopen
+                  ? 'Reabrir para corregir'
+                  : (o.reopenBlockedReason ?? 'No se puede reabrir'),
+              icon: const Icon(Icons.lock_reset),
+              onPressed: _busy ? null : _reopenOrder,
+            ),
           PopupMenuButton<String>(
             tooltip: 'Compartir',
             icon: const Icon(Icons.share_outlined),
@@ -1127,11 +1202,23 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
               ),
+              // Compacto y flexible: a 360 dp "Agregar servicio" desbordaba
+              // la fila (overflow por frame = ANR en debug).
               if (action != null)
-                TextButton.icon(
-                  onPressed: action.onPressed,
-                  icon: const Icon(Icons.add, size: 18),
-                  label: Text(action.label),
+                Flexible(
+                  child: TextButton.icon(
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    onPressed: action.onPressed,
+                    icon: const Icon(Icons.add, size: 18),
+                    label: Text(
+                      action.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 )
               else
                 const SizedBox(width: 8),

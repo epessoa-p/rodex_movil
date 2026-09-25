@@ -141,6 +141,14 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('61–75 de 75 productos'), findsOneWidget);
 
+    // La píldora abre el selector de página y permite saltar.
+    await tester.tap(find.text('Página 3 de 3'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ir a la página'), findsOneWidget);
+    await tester.tap(find.widgetWithText(ChoiceChip, '1'));
+    await tester.pumpAndSettle();
+    expect(find.text('1–30 de 75 productos'), findsOneWidget);
+
     // Abrir Categorías: recién ahí se carga ese catálogo.
     await tester.tap(find.text('Categorías'));
     await tester.pumpAndSettle();

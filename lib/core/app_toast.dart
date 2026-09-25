@@ -56,6 +56,7 @@ class AppToast {
     'personal_already_has_register_in_branch' => 'Ya tiene caja ahí',
     'register_has_records' => 'Caja no editable',
     'appointment_closed' => 'Cita completada',
+    'reopen_blocked' => 'No se puede reabrir',
     'permission_denied' => 'Sin permiso',
     'plan_module_forbidden' => 'Módulo no incluido en tu plan',
     'subscription_inactive' || 'subscription_grace_readonly' => 'Suscripción',

@@ -29,6 +29,31 @@ class _FakeAuth extends AuthController {
   }
 }
 
+class _FakePos extends PosRepository {
+  _FakePos() : super(ApiClient());
+
+  @override
+  Future<ProductPage> productsPage({
+    String q = '',
+    int page = 1,
+    int perPage = 30,
+  }) async => ProductPage(
+    page: 1,
+    lastPage: 1,
+    total: 1,
+    items: [
+      Product(
+        id: 7,
+        name: 'PASTILLA DE FRENO',
+        sku: 'FRE-001',
+        unit: 'Unidad',
+        price: 40,
+        currentStock: 12,
+      ),
+    ],
+  );
+}
+
 class _FakeWorkshop extends WorkshopRepository {
   _FakeWorkshop() : super(ApiClient());
   Map<String, dynamic>? sent;
@@ -58,6 +83,7 @@ class _FakeWorkshop extends WorkshopRepository {
   @override
   Future<WorkOrder> quickService({
     required List<Map<String, dynamic>> services,
+    List<Map<String, dynamic>> parts = const [],
     int? mechanicId,
     int? clientId,
     int? vehicleId,
@@ -68,6 +94,7 @@ class _FakeWorkshop extends WorkshopRepository {
   }) async {
     sent = {
       'services': services,
+      'parts': parts,
       'mechanic_id': mechanicId,
       'client_id': clientId,
       'quick_vehicle': quickVehicle,
@@ -99,6 +126,7 @@ Widget _app(_FakeWorkshop repo, Widget home) => ProviderScope(
   overrides: [
     authControllerProvider.overrideWith((ref) => _FakeAuth(ref)),
     workshopRepositoryProvider.overrideWithValue(repo),
+    posRepositoryProvider.overrideWithValue(_FakePos()),
     cashSessionProvider.overrideWith((ref) async => null),
     appointmentMetaProvider.overrideWith(
       (ref) async => AppointmentMeta(
@@ -160,18 +188,40 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.textContaining('No tienes una caja abierta'), findsOneWidget);
+    // Hay dos botones "Agregar": servicios (primero) y repuestos (segundo).
     await tester.scrollUntilVisible(
-      find.text('Agregar'),
+      find.text('Agregar').first,
       -200,
       scrollable: find.byType(Scrollable).first,
     );
 
-    await tester.tap(find.text('Agregar'));
+    await tester.tap(find.text('Agregar').first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('AJUSTE DE CADENA'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Agregar «AJUSTE DE CADENA»'));
     await tester.pumpAndSettle();
+
+    // Repuesto del inventario: el segundo botón "Agregar" (sección Repuestos).
+    await tester.scrollUntilVisible(
+      find.text('Repuestos'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Agregar').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('PASTILLA DE FRENO').first);
+    await tester.pumpAndSettle();
+    // Diálogo de cantidad/precio.
+    await tester.enterText(find.widgetWithText(TextField, 'Cantidad'), '2');
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Agregar'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('2 × Bs 40.00'), findsOneWidget);
 
     // Vehículo en texto libre y método QR.
     await tester.scrollUntilVisible(
@@ -192,11 +242,11 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.scrollUntilVisible(
-      find.text('Cobrar Bs 10.00 y cerrar'),
+      find.text('Cobrar Bs 90.00 y cerrar'),
       200,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.tap(find.text('Cobrar Bs 10.00 y cerrar'));
+    await tester.tap(find.text('Cobrar Bs 90.00 y cerrar'));
     await tester.pumpAndSettle();
 
     expect(repo.sent, isNotNull);

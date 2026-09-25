@@ -81,6 +81,7 @@ class WorkshopRepository {
   /// vehículo opcionales). Requiere caja abierta (422 `cash_session_required`).
   Future<WorkOrder> quickService({
     required List<Map<String, dynamic>> services,
+    List<Map<String, dynamic>> parts = const [],
     int? mechanicId,
     int? clientId,
     int? vehicleId,
@@ -93,6 +94,7 @@ class WorkshopRepository {
       '/work-orders/quick',
       body: {
         'services': services,
+        if (parts.isNotEmpty) 'parts': parts,
         'mechanic_id': ?mechanicId,
         'client_id': ?clientId,
         'vehicle_id': ?vehicleId,
@@ -102,6 +104,41 @@ class WorkshopRepository {
         'notes': ?notes,
       },
     );
+    return WorkOrder.fromJson((data as Map<String, dynamic>)['data']);
+  }
+
+  /// Edita los datos de una OT en curso (no toca líneas ni dinero).
+  Future<WorkOrder> updateOrder(
+    int id, {
+    int? clientId,
+    int? vehicleId,
+    String? quickVehicle,
+    int? mileage,
+    String? fuelLevel,
+    String? reportedIssue,
+    String? receivedItems,
+    String? notes,
+  }) async {
+    final data = await _api.put(
+      '/work-orders/$id',
+      body: {
+        'client_id': clientId,
+        'vehicle_id': vehicleId,
+        'quick_vehicle': quickVehicle,
+        'mileage': mileage,
+        'fuel_level': fuelLevel,
+        'reported_issue': reportedIssue,
+        'received_items': receivedItems,
+        'notes': notes,
+      },
+    );
+    return WorkOrder.fromJson((data as Map<String, dynamic>)['data']);
+  }
+
+  /// Reabre una OT entregada para corregirla (anula el cobro y devuelve el
+  /// stock). 422 `reopen_blocked` si su caja ya se cerró.
+  Future<WorkOrder> reopenOrder(int id) async {
+    final data = await _api.post('/work-orders/$id/reopen');
     return WorkOrder.fromJson((data as Map<String, dynamic>)['data']);
   }
 

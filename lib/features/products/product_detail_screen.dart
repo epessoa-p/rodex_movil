@@ -9,6 +9,7 @@ import '../../core/providers.dart';
 import '../../core/upper_case.dart';
 import '../pos/pos_repository.dart';
 import 'product_edit_sheet.dart';
+import 'product_photo.dart';
 
 /// Ficha de un producto: precio, stock (total y por almacén), origen, marca,
 /// categoría y modelos compatibles. Si [showAdd] es true, ofrece "Agregar al
@@ -38,6 +39,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   ProductDetail? _detail;
   bool _loading = true;
   Object? _error;
+  bool _photoBusy = false;
 
   @override
   void initState() {
@@ -179,6 +181,26 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     }
   }
 
+  /// Foto del producto desde la ficha (mismo atajo que el listado).
+  Future<void> _changePhoto(ProductDetail d) async {
+    if (_photoBusy) return;
+    final updated = await pickAndUpdateProductPhoto(
+      context,
+      ref,
+      productId: d.id,
+      productName: d.name,
+      hasPhoto: d.photos.isNotEmpty || d.imageUrl != null,
+      onUploadStart: () {
+        if (mounted) setState(() => _photoBusy = true);
+      },
+    );
+    if (!mounted) return;
+    setState(() {
+      _photoBusy = false;
+      if (updated != null) _detail = updated;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final d = _detail;
@@ -248,11 +270,40 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
   Widget _content(ProductDetail d) {
     final low = d.currentStock <= 0;
+    final canEditPhoto =
+        ref.watch(authControllerProvider).me?.can('products.edit') ?? false;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         if (d.photos.isNotEmpty) ...[
           _PhotoGallery(photos: d.photos),
+          if (canEditPhoto)
+            Center(
+              child: TextButton.icon(
+                onPressed: _photoBusy ? null : () => _changePhoto(d),
+                icon: const Icon(Icons.photo_camera_outlined, size: 18),
+                label: const Text('Cambiar foto'),
+              ),
+            ),
+          const SizedBox(height: 16),
+        ] else if (canEditPhoto) ...[
+          // Sin foto: invitación a agregarla de un toque.
+          Center(
+            child: InkWell(
+              onTap: _photoBusy ? null : () => _changePhoto(d),
+              borderRadius: BorderRadius.circular(16),
+              child: Column(
+                children: [
+                  ProductThumb(size: 96, showBadge: true, busy: _photoBusy),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Agregar foto',
+                    style: TextStyle(color: Colors.black54, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ),
           const SizedBox(height: 16),
         ],
         Text(

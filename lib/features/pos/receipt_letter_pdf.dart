@@ -6,7 +6,11 @@ import '../../core/format.dart';
 import '../../core/models.dart';
 import '../../core/pdf_letter.dart';
 
+// La API de ventas devuelve paid/partial/pending (las OTs, en español).
 const _payLabels = {
+  'pending': 'Pendiente',
+  'partial': 'Parcial',
+  'paid': 'Pagada',
   'pendiente': 'Pendiente',
   'parcial': 'Parcial',
   'pagada': 'Pagada',

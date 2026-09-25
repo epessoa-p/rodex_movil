@@ -7,11 +7,23 @@ import '../../pos/pos_repository.dart' show cashSessionProvider;
 /// "Cuánto hay en caja ahora": caja abierta del usuario y su efectivo
 /// disponible (apertura + ingresos − egresos). Si [amount] supera lo
 /// disponible, se marca en rojo. Sin caja abierta, avisa.
+///
+/// En un **cobro** (el dinero entra) el disponible no aporta: con
+/// [incoming] = true solo avisa si NO hay caja abierta (que es lo que
+/// impediría cobrar) y no muestra nada cuando sí la hay.
 class CashAvailableHint extends ConsumerStatefulWidget {
   /// Monto a pagar (fijo) o el controlador del campo de monto (se sigue en vivo).
   final double? amount;
   final TextEditingController? amountController;
-  const CashAvailableHint({super.key, this.amount, this.amountController});
+
+  /// Cobro (entra dinero): sin datos de saldo, solo el aviso de caja cerrada.
+  final bool incoming;
+  const CashAvailableHint({
+    super.key,
+    this.amount,
+    this.amountController,
+    this.incoming = false,
+  });
 
   @override
   ConsumerState<CashAvailableHint> createState() => _CashAvailableHintState();
@@ -44,33 +56,38 @@ class _CashAvailableHintState extends ConsumerState<CashAvailableHint> {
   Widget _body(double? amount) {
     final async = ref.watch(cashSessionProvider);
     return async.when(
-      loading: () => const Padding(
-        padding: EdgeInsets.symmetric(vertical: 6),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 14,
-              height: 14,
-              child: CircularProgressIndicator(strokeWidth: 2),
+      loading: () => widget.incoming
+          ? const SizedBox.shrink()
+          : const Padding(
+              padding: EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Consultando caja…',
+                    style: TextStyle(color: Colors.black54, fontSize: 12),
+                  ),
+                ],
+              ),
             ),
-            SizedBox(width: 8),
-            Text(
-              'Consultando caja…',
-              style: TextStyle(color: Colors.black54, fontSize: 12),
-            ),
-          ],
-        ),
-      ),
       error: (_, _) => const SizedBox.shrink(),
       data: (s) {
         if (s == null) {
           return _box(
             color: Colors.red,
             icon: Icons.lock_outline,
-            text:
-                'No tienes una caja abierta: abre tu caja para pagar desde ella.',
+            text: widget.incoming
+                ? 'No tienes una caja abierta: ábrela para poder cobrar.'
+                : 'No tienes una caja abierta: abre tu caja para pagar desde ella.',
           );
         }
+        // Cobro con caja abierta: no hace falta mostrar el saldo.
+        if (widget.incoming) return const SizedBox.shrink();
         final available = s.expectedAmount;
         final over = amount != null && amount > available + 0.009;
         final name = [

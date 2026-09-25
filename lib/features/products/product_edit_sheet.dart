@@ -9,6 +9,7 @@ import '../../core/upper_case.dart';
 import '../inventory/catalog_picker_field.dart';
 import '../inventory/catalogs_repository.dart';
 import '../pos/pos_repository.dart';
+import 'product_photo.dart';
 
 /// Hoja de edición del producto: datos básicos y comerciales (nombre, precio,
 /// costo, unidad, código de barras, categoría, marca, stock mínimo,
@@ -44,8 +45,10 @@ class _ProductEditSheetState extends ConsumerState<ProductEditSheet> {
   late int? _brandId = widget.product.brandId;
   late bool _active = widget.product.active;
 
+  late String? _imageUrl = widget.product.imageUrl;
   ProductCatalogs? _catalogs;
   bool _saving = false;
+  bool _photoBusy = false;
 
   @override
   void initState() {
@@ -78,6 +81,27 @@ class _ProductEditSheetState extends ConsumerState<ProductEditSheet> {
             : c.brands,
         warehouses: c.warehouses,
       );
+    });
+  }
+
+  /// Cambia la foto del producto. Se sube al momento (no espera al "Guardar")
+  /// para que también sirva como atajo desde el listado.
+  Future<void> _changePhoto() async {
+    if (_photoBusy) return;
+    final updated = await pickAndUpdateProductPhoto(
+      context,
+      ref,
+      productId: widget.product.id,
+      productName: widget.product.name,
+      hasPhoto: _imageUrl != null,
+      onUploadStart: () {
+        if (mounted) setState(() => _photoBusy = true);
+      },
+    );
+    if (!mounted) return;
+    setState(() {
+      _photoBusy = false;
+      if (updated != null) _imageUrl = updated.imageUrl;
     });
   }
 
@@ -178,6 +202,48 @@ class _ProductEditSheetState extends ConsumerState<ProductEditSheet> {
                     widget.product.sku!,
                     style: const TextStyle(fontSize: 12, color: Colors.black45),
                   ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                InkWell(
+                  onTap: _photoBusy ? null : _changePhoto,
+                  borderRadius: BorderRadius.circular(16),
+                  child: ProductThumb(
+                    imageUrl: _imageUrl,
+                    size: 64,
+                    showBadge: true,
+                    busy: _photoBusy,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextButton.icon(
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        onPressed: _photoBusy ? null : _changePhoto,
+                        icon: const Icon(Icons.photo_camera_outlined, size: 18),
+                        label: Text(
+                          _imageUrl == null ? 'Agregar foto' : 'Cambiar foto',
+                        ),
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.only(left: 8),
+                        child: Text(
+                          'La foto se guarda al elegirla.',
+                          style: TextStyle(fontSize: 11, color: Colors.black54),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 14),

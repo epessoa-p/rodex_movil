@@ -257,8 +257,48 @@ class _SaleTile extends StatelessWidget {
               dateLabel,
               style: const TextStyle(color: Colors.black54, fontSize: 12),
             ),
+          // Crédito con saldo: se ve de un vistazo cuánto falta cobrar.
+          if (sale.saleType == 'credit' || sale.balance > 0.009)
+            Padding(
+              padding: const EdgeInsets.only(top: 3),
+              child: Wrap(
+                spacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  if (sale.saleType == 'credit')
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 1,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withValues(alpha: .14),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        'Crédito',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.orange.shade900,
+                        ),
+                      ),
+                    ),
+                  if (sale.balance > 0.009)
+                    Text(
+                      'Saldo ${money(sale.balance)}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.red.shade700,
+                      ),
+                    ),
+                ],
+              ),
+            ),
         ],
       ),
+      isThreeLine: sale.saleType == 'credit' || sale.balance > 0.009,
       trailing: _PaymentBadge(status: sale.paymentStatus),
     );
   }
@@ -270,10 +310,11 @@ class _PaymentBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // La API de ventas devuelve paid/partial/pending; las OTs, en español.
     final (color, label) = switch (status) {
-      'pagada' => (Colors.green, 'Pagada'),
-      'parcial' => (Colors.orange, 'Parcial'),
-      'pendiente' => (Colors.red, 'Pendiente'),
+      'paid' || 'pagada' => (Colors.green, 'Pagada'),
+      'partial' || 'parcial' => (Colors.orange, 'Parcial'),
+      'pending' || 'pendiente' => (Colors.red, 'Pendiente'),
       _ => (Colors.grey, status.isEmpty ? '—' : status),
     };
     return Container(

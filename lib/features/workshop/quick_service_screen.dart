@@ -9,6 +9,7 @@ import '../../core/upper_case.dart';
 import '../agenda/agenda_repository.dart';
 import '../clients/clients_screen.dart';
 import '../payments/widgets/cash_available_hint.dart';
+import '../products/products_screen.dart';
 import 'service_pick_sheet.dart';
 import 'work_order_detail_screen.dart';
 import 'workshop_repository.dart';
@@ -30,8 +31,18 @@ class QuickServiceScreen extends ConsumerStatefulWidget {
   ConsumerState<QuickServiceScreen> createState() => _QuickServiceScreenState();
 }
 
+/// Repuesto elegido del inventario (se descuenta del stock al cobrar).
+class _PartPick {
+  final Product product;
+  final int quantity;
+  final double price;
+  const _PartPick(this.product, this.quantity, this.price);
+  double get subtotal => price * quantity;
+}
+
 class _QuickServiceScreenState extends ConsumerState<QuickServiceScreen> {
   final List<ServicePick> _lines = [];
+  final List<_PartPick> _parts = [];
   List<Mechanic> _mechanics = [];
   int? _mechanicId;
   Client? _client;
@@ -66,7 +77,9 @@ class _QuickServiceScreenState extends ConsumerState<QuickServiceScreen> {
     }
   }
 
-  double get _subtotal => _lines.fold(0, (s, l) => s + l.price * l.quantity);
+  double get _subtotal =>
+      _lines.fold<double>(0, (s, l) => s + l.price * l.quantity) +
+      _parts.fold<double>(0, (s, p) => s + p.subtotal);
   double get _discountValue =>
       double.tryParse(_discount.text.replaceAll(',', '.')) ?? 0;
   double get _total => (_subtotal - _discountValue).clamp(0, double.infinity);
@@ -86,6 +99,28 @@ class _QuickServiceScreenState extends ConsumerState<QuickServiceScreen> {
       builder: (_) => AddServiceSheet(catalog: catalog),
     );
     if (picked != null) setState(() => _lines.add(picked));
+  }
+
+  /// Elige un repuesto del inventario y pide cantidad/precio (como en la OT).
+  Future<void> _addPart() async {
+    Product? product;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ProductsScreen(
+          onPick: (p) {
+            product = p;
+            Navigator.pop(context);
+          },
+        ),
+      ),
+    );
+    if (product == null || !mounted) return;
+
+    final pick = await showDialog<_PartPick>(
+      context: context,
+      builder: (_) => _PartQtyDialog(product: product!),
+    );
+    if (pick != null && mounted) setState(() => _parts.add(pick));
   }
 
   Future<void> _pickClient() async {
@@ -114,8 +149,8 @@ class _QuickServiceScreenState extends ConsumerState<QuickServiceScreen> {
   }
 
   Future<void> _submit() async {
-    if (_lines.isEmpty) {
-      AppToast.error(context, 'Agrega al menos un servicio.');
+    if (_lines.isEmpty && _parts.isEmpty) {
+      AppToast.error(context, 'Agrega al menos un servicio o un repuesto.');
       return;
     }
     setState(() => _saving = true);
@@ -129,6 +164,14 @@ class _QuickServiceScreenState extends ConsumerState<QuickServiceScreen> {
                   'description': l.name,
                   'price': l.price,
                   'quantity': l.quantity,
+                },
+            ],
+            parts: [
+              for (final p in _parts)
+                {
+                  'product_id': p.product.id,
+                  'quantity': p.quantity,
+                  'unit_price': p.price,
                 },
             ],
             mechanicId: _mechanicId,
@@ -252,6 +295,72 @@ class _QuickServiceScreenState extends ConsumerState<QuickServiceScreen> {
                           onPressed: _saving
                               ? null
                               : () => setState(() => _lines.removeAt(i)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            const SizedBox(height: 14),
+
+            // ── Repuestos (descuentan stock al cobrar) ──
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'Repuestos',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                  ),
+                ),
+                FilledButton.tonalIcon(
+                  // Igual que "Agregar" de servicios: el tema da ancho mínimo
+                  // infinito a FilledButton y dentro de un Row hay que acotarlo.
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(0, 40),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                  ),
+                  onPressed: _saving ? null : _addPart,
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Agregar'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            if (_parts.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 10),
+                child: Text(
+                  'Sin repuestos. Agrega los que se usaron: se descuentan del stock al cobrar.',
+                  style: TextStyle(color: Colors.black54),
+                ),
+              )
+            else
+              for (var i = 0; i < _parts.length; i++)
+                Card(
+                  margin: const EdgeInsets.only(bottom: 6),
+                  child: ListTile(
+                    dense: true,
+                    title: Text(
+                      _parts[i].product.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: Text(
+                      '${_parts[i].quantity} × ${money(_parts[i].price)}',
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          money(_parts[i].subtotal),
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        IconButton(
+                          tooltip: 'Quitar',
+                          visualDensity: VisualDensity.compact,
+                          icon: const Icon(Icons.close, size: 18),
+                          onPressed: _saving
+                              ? null
+                              : () => setState(() => _parts.removeAt(i)),
                         ),
                       ],
                     ),
@@ -382,8 +491,9 @@ class _QuickServiceScreenState extends ConsumerState<QuickServiceScreen> {
                 border: OutlineInputBorder(),
               ),
             ),
-            // El cobro entra a la caja abierta del usuario.
-            const CashAvailableHint(),
+            // Cobro: el dinero entra, así que el saldo de caja no aporta;
+            // solo avisa si no hay caja abierta (sin ella no se puede cobrar).
+            const CashAvailableHint(incoming: true),
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -425,11 +535,86 @@ class _QuickServiceScreenState extends ConsumerState<QuickServiceScreen> {
                     )
                   : const Icon(Icons.bolt),
               label: Text('Cobrar ${money(_total)} y cerrar'),
-              onPressed: _saving || _lines.isEmpty ? null : _submit,
+              onPressed: _saving || (_lines.isEmpty && _parts.isEmpty)
+                  ? null
+                  : _submit,
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Cantidad y precio de un repuesto. Tiene sus propios controladores para que
+/// se liberen al cerrarse (liberarlos desde fuera rompe la animación de salida).
+class _PartQtyDialog extends StatefulWidget {
+  final Product product;
+  const _PartQtyDialog({required this.product});
+
+  @override
+  State<_PartQtyDialog> createState() => _PartQtyDialogState();
+}
+
+class _PartQtyDialogState extends State<_PartQtyDialog> {
+  late final _qty = TextEditingController(text: '1');
+  late final _price = TextEditingController(
+    text: widget.product.price.toStringAsFixed(2),
+  );
+
+  @override
+  void dispose() {
+    _qty.dispose();
+    _price.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final quantity = int.tryParse(_qty.text.trim()) ?? 1;
+    final price =
+        double.tryParse(_price.text.trim().replaceAll(',', '.')) ??
+        widget.product.price;
+    Navigator.pop(
+      context,
+      _PartPick(widget.product, quantity < 1 ? 1 : quantity, price),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.product.name),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Stock: ${qty(widget.product.currentStock)} ${widget.product.unit ?? ''}',
+            style: const TextStyle(color: Colors.black54, fontSize: 12),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _qty,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(labelText: 'Cantidad'),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _price,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              labelText: 'Precio unitario',
+              prefixText: '$currencySymbol ',
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        FilledButton(onPressed: _submit, child: const Text('Agregar')),
+      ],
     );
   }
 }

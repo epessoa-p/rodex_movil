@@ -189,6 +189,9 @@ class ProductDetail {
   final List<String> compatibleModels;
   final List<WarehouseStock> stockByWarehouse;
   final List<String> photos;
+
+  /// Foto principal (la que se ve en el listado).
+  final String? imageUrl;
   // Para el formulario de edición.
   final int? categoryId;
   final int? brandId;
@@ -212,6 +215,7 @@ class ProductDetail {
     required this.compatibleModels,
     required this.stockByWarehouse,
     this.photos = const [],
+    this.imageUrl,
     this.categoryId,
     this.brandId,
     this.cost = 0,
@@ -242,6 +246,9 @@ class ProductDetail {
         .map((e) => e.toString())
         .where((e) => e.isNotEmpty)
         .toList(),
+    imageUrl: (j['image_url'] as String?)?.isNotEmpty == true
+        ? j['image_url'] as String
+        : null,
     categoryId: j['category_id'] as int?,
     brandId: j['brand_id'] as int?,
     cost: _toDouble(j['cost']),
@@ -259,7 +266,7 @@ class ProductDetail {
     unit: unit,
     price: price,
     currentStock: currentStock,
-    imageUrl: photos.isNotEmpty ? photos.first : null,
+    imageUrl: imageUrl ?? (photos.isNotEmpty ? photos.first : null),
   );
 }
 
@@ -540,6 +547,10 @@ class WorkOrder {
   /// Servicio rápido: creada, entregada y cobrada en un paso.
   final bool isQuick;
 
+  /// Entregada pero corregible: su caja sigue abierta (el backend decide).
+  final bool canReopen;
+  final String? reopenBlockedReason;
+
   WorkOrder({
     required this.id,
     required this.code,
@@ -567,6 +578,8 @@ class WorkOrder {
     this.parts = const [],
     this.photos = const [],
     this.isQuick = false,
+    this.canReopen = false,
+    this.reopenBlockedReason,
   });
 
   factory WorkOrder.fromJson(Map<String, dynamic> j) => WorkOrder(
@@ -602,6 +615,8 @@ class WorkOrder {
         .map((e) => WoPhoto.fromJson(e as Map<String, dynamic>))
         .toList(),
     isQuick: (j['is_quick'] as bool?) ?? false,
+    canReopen: (j['can_reopen'] as bool?) ?? false,
+    reopenBlockedReason: j['reopen_blocked_reason'] as String?,
   );
 }
 

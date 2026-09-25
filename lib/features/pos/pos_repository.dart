@@ -147,6 +147,29 @@ class PosRepository {
     return ProductDetail.fromJson((data as Map<String, dynamic>)['data']);
   }
 
+  /// Sube (o reemplaza) la foto principal del producto. Multipart: el backend
+  /// borra la anterior. Devuelve la ficha con `imageUrl` ya actualizado.
+  Future<ProductDetail> updateProductPhoto(int id, String photoPath) async {
+    final form = FormData.fromMap(<String, dynamic>{});
+    form.files.add(
+      MapEntry(
+        'photo',
+        await MultipartFile.fromFile(
+          photoPath,
+          filename: photoPath.split(RegExp(r'[\/]')).last,
+        ),
+      ),
+    );
+    final data = await _api.post('/products/$id/photo', body: form);
+    return ProductDetail.fromJson((data as Map<String, dynamic>)['data']);
+  }
+
+  /// Quita la foto principal del producto.
+  Future<ProductDetail> removeProductPhoto(int id) async {
+    final data = await _api.delete('/products/$id/photo');
+    return ProductDetail.fromJson((data as Map<String, dynamic>)['data']);
+  }
+
   /// Ajuste rápido de stock: type = 'in' | 'out' | 'set'.
   Future<void> adjustStock({
     required int productId,

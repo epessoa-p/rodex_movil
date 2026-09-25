@@ -11,6 +11,7 @@ import '../../core/module_colors.dart';
 import '../pos/pos_repository.dart';
 import 'new_product_screen.dart';
 import 'product_detail_screen.dart';
+import 'product_photo.dart';
 
 /// Buscador de productos reutilizable. Si [onPick] está definido, al tocar un
 /// producto lo devuelve (para el POS); si no, es solo consulta.
@@ -49,6 +50,9 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
   String _q = '';
   String? _error;
   Timer? _debounce;
+
+  /// Producto cuya foto se está subiendo (para el spinner de esa fila).
+  int? _photoBusyId;
 
   @override
   void initState() {
@@ -120,6 +124,30 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     }
   }
 
+  /// Atajo del listado: tocar la miniatura cambia la foto sin abrir el
+  /// formulario (cámara, galería o quitar). Al volver se refresca solo esa fila.
+  Future<void> _changePhoto(Product p) async {
+    if (_photoBusyId != null) return;
+    final updated = await pickAndUpdateProductPhoto(
+      context,
+      ref,
+      productId: p.id,
+      productName: p.name,
+      hasPhoto: p.imageUrl != null,
+      onUploadStart: () {
+        if (mounted) setState(() => _photoBusyId = p.id);
+      },
+    );
+    if (!mounted) return;
+    setState(() {
+      _photoBusyId = null;
+      if (updated != null) {
+        final i = _items.indexWhere((e) => e.id == p.id);
+        if (i >= 0) _items[i] = updated.toProduct();
+      }
+    });
+  }
+
   Future<void> _load(String q, {int page = 1}) async {
     _debounce?.cancel();
     _q = q.trim();
@@ -152,8 +180,9 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
   @override
   Widget build(BuildContext context) {
     final picking = widget.onPick != null;
-    final canCreate =
-        ref.watch(authControllerProvider).me?.can('products.create') ?? false;
+    final me = ref.watch(authControllerProvider).me;
+    final canCreate = me?.can('products.create') ?? false;
+    final canEditPhoto = !picking && (me?.can('products.edit') ?? false);
     return Scaffold(
       appBar: widget.embedded
           ? null
@@ -218,7 +247,28 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                     itemBuilder: (context, i) {
                       final p = _items[i];
                       final low = p.currentStock <= 0;
+                      final busy = _photoBusyId == p.id;
                       return ListTile(
+                        leading: picking
+                            ? null
+                            : Tooltip(
+                                message: canEditPhoto
+                                    ? (p.imageUrl == null
+                                          ? 'Agregar foto'
+                                          : 'Cambiar foto')
+                                    : p.name,
+                                child: InkWell(
+                                  onTap: canEditPhoto && !busy
+                                      ? () => _changePhoto(p)
+                                      : null,
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: ProductThumb(
+                                    imageUrl: p.imageUrl,
+                                    showBadge: canEditPhoto,
+                                    busy: busy,
+                                  ),
+                                ),
+                              ),
                         title: Text(p.name),
                         subtitle: Text(
                           '${p.sku ?? ''}  ·  Stock: ${qty(p.currentStock)} ${p.unit ?? ''}',
@@ -287,7 +337,9 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
   }
 }
 
-/// Barra de paginación: « ‹ Página X de Y › ».
+/// Barra de paginación: progreso, ⏮ ‹ píldora "Página X de Y" › ⏭.
+/// La píldora abre un selector para saltar a cualquier página (útil con
+/// muchos productos). Toma el color del módulo Inventario.
 class _Pager extends StatelessWidget {
   final int page;
   final int lastPage;
@@ -298,54 +350,170 @@ class _Pager extends StatelessWidget {
     required this.onChanged,
   });
 
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      elevation: 4,
-      color: Theme.of(context).colorScheme.surface,
-      child: SafeArea(
-        top: false,
-        // Compacto: a 360 dp caben los 4 botones + "Página X de Y"; el texto
-        // va en Expanded para que nunca desborde (ver rodex-debug-overflow-anr).
+  static const _color = ModuleColors.products;
+
+  Future<void> _jump(BuildContext context) async {
+    final target = await showModalBottomSheet<int>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-          child: Row(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              IconButton(
-                tooltip: 'Primera',
-                visualDensity: VisualDensity.compact,
-                icon: const Icon(Icons.first_page),
-                onPressed: page > 1 ? () => onChanged(1) : null,
+              const Text(
+                'Ir a la página',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
               ),
-              IconButton(
-                tooltip: 'Anterior',
-                visualDensity: VisualDensity.compact,
-                icon: const Icon(Icons.chevron_left),
-                onPressed: page > 1 ? () => onChanged(page - 1) : null,
-              ),
-              Expanded(
-                child: Text(
-                  'Página $page de $lastPage',
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+              const SizedBox(height: 10),
+              // Rejilla de números: con pocas páginas entran todas de un vistazo.
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 320),
+                child: SingleChildScrollView(
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (var i = 1; i <= lastPage; i++)
+                        ChoiceChip(
+                          label: Text('$i'),
+                          selected: i == page,
+                          selectedColor: ModuleColors.soft(_color),
+                          labelStyle: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: i == page
+                                ? ModuleColors.onSoft(_color)
+                                : Colors.black87,
+                          ),
+                          onSelected: (_) => Navigator.pop(ctx, i),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-              IconButton(
-                tooltip: 'Siguiente',
-                visualDensity: VisualDensity.compact,
-                icon: const Icon(Icons.chevron_right),
-                onPressed: page < lastPage ? () => onChanged(page + 1) : null,
-              ),
-              IconButton(
-                tooltip: 'Última',
-                visualDensity: VisualDensity.compact,
-                icon: const Icon(Icons.last_page),
-                onPressed: page < lastPage ? () => onChanged(lastPage) : null,
               ),
             ],
           ),
+        ),
+      ),
+    );
+    if (target != null && target != page) onChanged(target);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final onColor = ModuleColors.onSoft(_color);
+    final first = page <= 1;
+    final last = page >= lastPage;
+
+    Widget arrow(
+      String tooltip,
+      IconData icon,
+      bool disabled,
+      VoidCallback onTap, {
+      bool filled = false,
+    }) => IconButton(
+      tooltip: tooltip,
+      visualDensity: VisualDensity.compact,
+      style: filled
+          ? IconButton.styleFrom(
+              backgroundColor: disabled
+                  ? Colors.black.withValues(alpha: .05)
+                  : ModuleColors.soft(_color),
+              foregroundColor: disabled ? Colors.black26 : onColor,
+              shape: const CircleBorder(),
+            )
+          : null,
+      color: disabled ? Colors.black26 : onColor.withValues(alpha: .8),
+      icon: Icon(icon, size: filled ? 22 : 20),
+      onPressed: disabled ? null : onTap,
+    );
+
+    return Material(
+      elevation: 6,
+      color: Theme.of(context).colorScheme.surface,
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Progreso: qué parte del listado se está viendo.
+            LinearProgressIndicator(
+              value: lastPage <= 0 ? 0 : page / lastPage,
+              minHeight: 3,
+              backgroundColor: ModuleColors.soft(_color),
+              color: _color,
+            ),
+            // Compacto: a 360 dp caben los 4 botones + la píldora; esta va en
+            // Expanded para que nunca desborde (ver rodex-debug-overflow-anr).
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              child: Row(
+                children: [
+                  arrow('Primera', Icons.first_page, first, () => onChanged(1)),
+                  arrow(
+                    'Anterior',
+                    Icons.chevron_left,
+                    first,
+                    () => onChanged(page - 1),
+                    filled: true,
+                  ),
+                  Expanded(
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: lastPage > 1 ? () => _jump(context) : null,
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 6),
+                        padding: const EdgeInsets.symmetric(vertical: 7),
+                        decoration: BoxDecoration(
+                          color: ModuleColors.soft(_color),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                'Página $page de $lastPage',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  color: onColor,
+                                ),
+                              ),
+                            ),
+                            if (lastPage > 1) ...[
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.unfold_more,
+                                size: 16,
+                                color: onColor.withValues(alpha: .7),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  arrow(
+                    'Siguiente',
+                    Icons.chevron_right,
+                    last,
+                    () => onChanged(page + 1),
+                    filled: true,
+                  ),
+                  arrow(
+                    'Última',
+                    Icons.last_page,
+                    last,
+                    () => onChanged(lastPage),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
