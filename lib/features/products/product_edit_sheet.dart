@@ -8,12 +8,14 @@ import '../../core/models.dart';
 import '../../core/upper_case.dart';
 import '../inventory/catalog_picker_field.dart';
 import '../inventory/catalogs_repository.dart';
+import '../inventory/moto_models_field.dart';
+import '../pos/barcode_capture_screen.dart';
 import '../pos/pos_repository.dart';
 import 'product_photo.dart';
 
-/// Hoja de edición del producto: datos básicos y comerciales (nombre, precio,
-/// costo, unidad, código de barras, categoría, marca, stock mínimo,
-/// descripción, activo). El stock NO se edita aquí: va por "Ajustar stock"
+/// Hoja de edición del producto: los mismos datos que el alta (nombre,
+/// precios de venta y compra, código de referencia, código de barras, unidad,
+/// categoría, marca, modelos compatibles, stock mínimo, descripción, activo). El stock NO se edita aquí: va por "Ajustar stock"
 /// (con kardex). Devuelve la ficha actualizada al guardar.
 class ProductEditSheet extends ConsumerStatefulWidget {
   final ProductDetail product;
@@ -32,6 +34,21 @@ class _ProductEditSheetState extends ConsumerState<ProductEditSheet> {
     text: widget.product.cost > 0 ? widget.product.cost.toStringAsFixed(2) : '',
   );
   late final _unit = TextEditingController(text: widget.product.unit ?? '');
+  late final _code = TextEditingController(text: widget.product.code ?? '');
+
+  /// Unidad elegida del catálogo (si la empresa tiene unidades cargadas).
+  late String? _unitChoice = widget.product.unit;
+
+  late List<CatalogItem> _models = [
+    for (final m in widget.product.motoModels)
+      CatalogItem(
+        id: m.id,
+        name: m.name,
+        brand: m.brand,
+        engineCc: m.engineCc,
+        year: m.year,
+      ),
+  ];
   late final _barcode = TextEditingController(
     text: widget.product.barcode ?? '',
   );
@@ -54,12 +71,33 @@ class _ProductEditSheetState extends ConsumerState<ProductEditSheet> {
   void initState() {
     super.initState();
     _loadCatalogs();
+    // Repinta para el aviso "compra mayor que venta".
+    _price.addListener(_refresh);
+    _cost.addListener(_refresh);
+  }
+
+  void _refresh() {
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _scanBarcode() async {
+    final code = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const BarcodeCaptureScreen()),
+    );
+    if (code != null && mounted) setState(() => _barcode.text = code);
   }
 
   Future<void> _loadCatalogs() async {
     try {
       final c = await ref.read(posRepositoryProvider).productFormData();
-      if (mounted) setState(() => _catalogs = c);
+      if (mounted) {
+        setState(() {
+          _catalogs = c;
+          if (_unitChoice == null || _unitChoice!.trim().isEmpty) {
+            _unitChoice = c.defaultUnit;
+          }
+        });
+      }
     } on ApiException {
       // sin catálogos: se edita el resto igual
     }
@@ -70,16 +108,15 @@ class _ProductEditSheetState extends ConsumerState<ProductEditSheet> {
     final c = _catalogs;
     if (c == null) return;
     setState(() {
-      _catalogs = ProductCatalogs(
+      _catalogs = c.copyWith(
         categories:
             categories != null &&
                 !c.categories.any((o) => o.id == categories.id)
             ? [...c.categories, categories]
-            : c.categories,
+            : null,
         brands: brands != null && !c.brands.any((o) => o.id == brands.id)
             ? [...c.brands, brands]
-            : c.brands,
-        warehouses: c.warehouses,
+            : null,
       );
     });
   }
@@ -113,6 +150,7 @@ class _ProductEditSheetState extends ConsumerState<ProductEditSheet> {
       _cost,
       _unit,
       _barcode,
+      _code,
       _minStock,
       _description,
     ]) {
@@ -153,8 +191,12 @@ class _ProductEditSheetState extends ConsumerState<ProductEditSheet> {
             name: _name.text.trim(),
             price: price,
             cost: _num(_cost),
-            unit: nz(_unit),
+            unit: (_catalogs?.units.isNotEmpty ?? false)
+                ? _unitChoice
+                : nz(_unit),
+            code: nz(_code),
             barcode: nz(_barcode),
+            motoModelIds: [for (final m in _models) m.id],
             description: nz(_description),
             minStock: int.tryParse(_minStock.text.trim()),
             categoryId: _categoryId,
@@ -170,6 +212,44 @@ class _ProductEditSheetState extends ConsumerState<ProductEditSheet> {
         AppToast.apiError(context, e);
       }
     }
+  }
+
+  bool get _costAbovePrice {
+    final price = _num(_price);
+    final cost = _num(_cost);
+    return price != null && cost != null && cost > price;
+  }
+
+  /// Unidad: del catálogo de la empresa (como en la web). Conserva la unidad
+  /// actual aunque ya no esté en el catálogo (dato viejo), para no cambiarla
+  /// sin querer. Sin catálogo, texto libre.
+  Widget _unitField(
+    ProductCatalogs? cats,
+    InputDecoration Function(String, {String? prefix}) dec,
+  ) {
+    final units = cats?.units ?? const <String>[];
+    if (units.isEmpty) {
+      return TextField(
+        controller: _unit,
+        textCapitalization: TextCapitalization.characters,
+        inputFormatters: upperCaseFormatters,
+        decoration: dec('Unidad de medida'),
+      );
+    }
+    final current = _unitChoice;
+    final options = {
+      if (current != null && current.isNotEmpty) current,
+      ...units,
+    }.toList();
+    return DropdownButtonFormField<String>(
+      initialValue: options.contains(current) ? current : options.first,
+      isExpanded: true,
+      decoration: dec('Unidad de medida'),
+      items: [
+        for (final u in options) DropdownMenuItem(value: u, child: Text(u)),
+      ],
+      onChanged: (v) => setState(() => _unitChoice = v),
+    );
   }
 
   @override
@@ -262,7 +342,10 @@ class _ProductEditSheetState extends ConsumerState<ProductEditSheet> {
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
-                    decoration: dec('Precio *', prefix: '$currencySymbol '),
+                    decoration: dec(
+                      'Precio de venta *',
+                      prefix: '$currencySymbol ',
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -272,33 +355,58 @@ class _ProductEditSheetState extends ConsumerState<ProductEditSheet> {
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
-                    decoration: dec('Costo', prefix: '$currencySymbol '),
+                    decoration: dec(
+                      'Precio de compra',
+                      prefix: '$currencySymbol ',
+                    ),
                   ),
                 ),
               ],
+            ),
+            if (_costAbovePrice)
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      size: 16,
+                      color: Colors.orange,
+                    ),
+                    SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'El precio de compra es mayor que el de venta. '
+                        '¿Los escribiste al revés?',
+                        style: TextStyle(fontSize: 12, color: Colors.orange),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _code,
+              textCapitalization: TextCapitalization.characters,
+              inputFormatters: upperCaseFormatters,
+              decoration: dec('Código de referencia'),
             ),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _barcode,
-                    textCapitalization: TextCapitalization.characters,
-                    inputFormatters: upperCaseFormatters,
-                    decoration: dec('Código de barras'),
-                  ),
+            TextField(
+              controller: _barcode,
+              textCapitalization: TextCapitalization.characters,
+              inputFormatters: upperCaseFormatters,
+              decoration: dec('Código de barras').copyWith(
+                suffixIcon: IconButton(
+                  tooltip: 'Escanear',
+                  icon: const Icon(Icons.qr_code_scanner),
+                  onPressed: _scanBarcode,
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TextField(
-                    controller: _unit,
-                    textCapitalization: TextCapitalization.characters,
-                    inputFormatters: upperCaseFormatters,
-                    decoration: dec('Unidad'),
-                  ),
-                ),
-              ],
+              ),
             ),
+            const SizedBox(height: 10),
+            _unitField(cats, dec),
             const SizedBox(height: 10),
             // Categoría / Marca: buscar escribiendo; si no existe, se crea.
             if (cats != null) ...[
@@ -321,6 +429,11 @@ class _ProductEditSheetState extends ConsumerState<ProductEditSheet> {
               ),
               const SizedBox(height: 10),
             ],
+            MotoModelsField(
+              value: _models,
+              onChanged: (v) => setState(() => _models = v),
+            ),
+            const SizedBox(height: 10),
             TextField(
               controller: _minStock,
               keyboardType: TextInputType.number,

@@ -60,6 +60,11 @@ class PosRepository {
       categories: opts('categories'),
       brands: opts('brands'),
       warehouses: opts('warehouses'),
+      units: ((d['units'] as List?) ?? [])
+          .map((e) => e.toString())
+          .where((e) => e.trim().isNotEmpty)
+          .toList(),
+      defaultUnit: (d['default_unit'] as String?) ?? 'Unidad',
     );
   }
 
@@ -76,6 +81,10 @@ class PosRepository {
     double? initialStock,
     int? warehouseId,
     String? photoPath,
+    String? code,
+    String? description,
+    int? minStock,
+    List<int> motoModelIds = const [],
   }) async {
     final fields = <String, dynamic>{
       'name': name,
@@ -83,15 +92,26 @@ class PosRepository {
       'cost': ?cost,
       'unit': ?unit,
       'barcode': ?barcode,
+      'code': ?code,
+      'description': ?description,
+      'min_stock': ?minStock,
       'category_id': ?categoryId,
       'brand_id': ?brandId,
       'initial_stock': ?initialStock,
       'warehouse_id': ?warehouseId,
     };
 
-    Object body = fields;
+    Object body = {
+      ...fields,
+      'moto_models': ?(motoModelIds.isEmpty ? null : motoModelIds),
+    };
     if (photoPath != null) {
       final form = FormData.fromMap(fields);
+      // Multipart: los arreglos van como `moto_models[]` repetido (PHP arma el
+      // array con los corchetes; sin ellos solo llegaría el último).
+      for (final id in motoModelIds) {
+        form.fields.add(MapEntry('moto_models[]', '$id'));
+      }
       form.files.add(
         MapEntry(
           'photo',
@@ -128,11 +148,16 @@ class PosRepository {
     int? categoryId,
     int? brandId,
     bool active = true,
+    String? code,
+    // null = no tocar los modelos; lista vacía = quitarlos todos.
+    List<int>? motoModelIds,
   }) async {
     final data = await _api.put(
       '/products/$id',
       body: {
         'name': name,
+        'code': code,
+        'moto_models': ?motoModelIds,
         'price': price,
         'cost': cost,
         'unit': unit,
@@ -365,11 +390,27 @@ class ProductCatalogs {
   final List<IdName> categories;
   final List<IdName> brands;
   final List<IdName> warehouses;
+
+  /// Unidades de medida de la empresa (mismo catálogo que la web).
+  final List<String> units;
+  final String defaultUnit;
+
   const ProductCatalogs({
     required this.categories,
     required this.brands,
     required this.warehouses,
+    this.units = const [],
+    this.defaultUnit = 'Unidad',
   });
+
+  ProductCatalogs copyWith({List<IdName>? categories, List<IdName>? brands}) =>
+      ProductCatalogs(
+        categories: categories ?? this.categories,
+        brands: brands ?? this.brands,
+        warehouses: warehouses,
+        units: units,
+        defaultUnit: defaultUnit,
+      );
 }
 
 /// Página de resultados del historial de ventas (para el scroll infinito).

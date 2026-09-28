@@ -174,6 +174,31 @@ class WarehouseStock {
 }
 
 /// Ficha completa de un producto (precio, stock por almacén, origen, modelos).
+/// Modelo de moto compatible con un producto (id + lo que se muestra).
+class MotoModelRef {
+  final int id;
+  final String name;
+  final String? brand;
+  final String? engineCc;
+  final int? year;
+
+  const MotoModelRef({
+    required this.id,
+    required this.name,
+    this.brand,
+    this.engineCc,
+    this.year,
+  });
+
+  factory MotoModelRef.fromJson(Map<String, dynamic> j) => MotoModelRef(
+    id: (j['id'] as num).toInt(),
+    name: (j['name'] ?? '') as String,
+    brand: j['brand'] as String?,
+    engineCc: j['engine_cc'] as String?,
+    year: (j['year'] as num?)?.toInt(),
+  );
+}
+
 class ProductDetail {
   final int id;
   final String name;
@@ -187,6 +212,9 @@ class ProductDetail {
   final String? brand;
   final String? origin;
   final List<String> compatibleModels;
+
+  /// Los mismos modelos con su id (para editarlos).
+  final List<MotoModelRef> motoModels;
   final List<WarehouseStock> stockByWarehouse;
   final List<String> photos;
 
@@ -213,6 +241,7 @@ class ProductDetail {
     this.brand,
     this.origin,
     required this.compatibleModels,
+    this.motoModels = const [],
     required this.stockByWarehouse,
     this.photos = const [],
     this.imageUrl,
@@ -238,6 +267,9 @@ class ProductDetail {
     origin: j['origin'] as String?,
     compatibleModels: ((j['compatible_models'] as List?) ?? [])
         .map((e) => e.toString())
+        .toList(),
+    motoModels: ((j['moto_models'] as List?) ?? [])
+        .map((e) => MotoModelRef.fromJson(e as Map<String, dynamic>))
         .toList(),
     stockByWarehouse: ((j['stock_by_warehouse'] as List?) ?? [])
         .map((e) => WarehouseStock.fromJson(e as Map<String, dynamic>))

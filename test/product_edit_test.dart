@@ -70,8 +70,17 @@ class _FakePos extends PosRepository {
     int? categoryId,
     int? brandId,
     bool active = true,
+    String? code,
+    List<int>? motoModelIds,
   }) async {
-    updates.add({'name': name, 'price': price, 'cost': cost, 'brand': brandId});
+    updates.add({
+      'name': name,
+      'price': price,
+      'cost': cost,
+      'brand': brandId,
+      'code': code,
+      'models': motoModelIds,
+    });
     return _detail(name: name, price: price);
   }
 }
@@ -108,7 +117,7 @@ void main() {
       // Precargado.
       expect(
         tester
-            .widget<TextField>(find.widgetWithText(TextField, 'Precio *'))
+            .widget<TextField>(find.widgetWithText(TextField, 'Precio de venta *'))
             .controller!
             .text,
         '45.00',
@@ -116,7 +125,7 @@ void main() {
       expect(find.text('LUBRICANTES'), findsOneWidget);
 
       await tester.enterText(
-        find.widgetWithText(TextField, 'Precio *'),
+        find.widgetWithText(TextField, 'Precio de venta *'),
         '52.5',
       );
       await tester.tap(find.text('Guardar'));
