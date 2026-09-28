@@ -4,13 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
+import '../../core/app_toast.dart';
 import '../../core/module_colors.dart';
 import '../../core/sheet_focus.dart';
+import '../../core/upper_case.dart';
 import 'catalogs_repository.dart';
 
 /// Campo "Modelos compatibles" del producto: muestra los elegidos como chips
 /// (con ✕ para quitar) y al tocarlo abre una hoja para marcar varios, con
 /// búsqueda por modelo o por marca ("HONDA" encuentra CG 150, XR 190…).
+/// Si lo buscado no existe, ofrece **crearlo** ahí mismo (con su marca de moto).
 class MotoModelsField extends StatelessWidget {
   final List<CatalogItem> value;
   final ValueChanged<List<CatalogItem>> onChanged;
@@ -92,6 +95,7 @@ class _MotoModelsSheetState extends ConsumerState<_MotoModelsSheet> {
   bool _loading = true;
   String? _error;
   Timer? _debounce;
+  String _q = '';
 
   @override
   void initState() {
@@ -131,8 +135,35 @@ class _MotoModelsSheetState extends ConsumerState<_MotoModelsSheet> {
   }
 
   void _onSearch(String v) {
+    setState(() => _q = v.trim());
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 350), () => _load(v));
+  }
+
+  /// ¿Lo escrito ya es un modelo de la lista? ("CG 150" o "HONDA CG 150").
+  bool get _exists {
+    final q = _q.toUpperCase();
+    return _items.any(
+      (m) => m.name.toUpperCase() == q || _label(m).toUpperCase() == q,
+    );
+  }
+
+  Future<void> _create() async {
+    final created = await showDialog<CatalogItem>(
+      context: context,
+      builder: (_) => _NewMotoModelDialog(typed: _q),
+    );
+    if (created == null || !mounted) return;
+    // Otras pantallas (Inventario → Modelos / Marcas) se refrescan solas.
+    ref.invalidate(catalogListProvider(CatalogType.motoModels));
+    ref.invalidate(catalogListProvider(CatalogType.motoBrands));
+    _search.clear();
+    setState(() {
+      _q = '';
+      _selected[created.id] = created;
+      _items = [created, ..._items.where((m) => m.id != created.id)];
+    });
+    AppToast.success(context, '${_label(created)} creado y agregado.');
   }
 
   void _toggle(CatalogItem m) => setState(() {
@@ -200,19 +231,30 @@ class _MotoModelsSheetState extends ConsumerState<_MotoModelsSheet> {
               ),
             ),
             const SizedBox(height: 8),
+            if (_q.isNotEmpty && !_loading && !_exists)
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: ModuleColors.soft(color),
+                  child: Icon(Icons.add, color: color),
+                ),
+                title: Text('Crear «${_q.toUpperCase()}»'),
+                subtitle: const Text('No está en la lista: agrégalo ahora'),
+                onTap: _create,
+              ),
             Expanded(
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : _error != null
                   ? Center(child: Text(_error!))
                   : list.isEmpty
-                  ? const Padding(
-                      padding: EdgeInsets.all(24),
+                  ? Padding(
+                      padding: const EdgeInsets.all(24),
                       child: Text(
-                        'No hay modelos con ese nombre.\n'
-                        'Puedes crearlos en Inventario → Modelos.',
+                        _q.isEmpty
+                            ? 'Todavía no hay modelos. Escribe uno arriba para crearlo.'
+                            : 'No hay modelos con ese nombre.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.black54),
+                        style: const TextStyle(color: Colors.black54),
                       ),
                     )
                   : ListView.builder(
@@ -268,6 +310,229 @@ class _MotoModelsSheetState extends ConsumerState<_MotoModelsSheet> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Alta rápida de un modelo de moto desde el selector. Si lo escrito empieza
+/// con una marca que ya existe ("HONDA CG 150"), la deja elegida y usa el resto
+/// como nombre. Si la marca no existe, se puede escribir y se crea también.
+/// Devuelve el modelo creado (o el existente si ya había uno igual).
+class _NewMotoModelDialog extends ConsumerStatefulWidget {
+  final String typed;
+  const _NewMotoModelDialog({required this.typed});
+
+  @override
+  ConsumerState<_NewMotoModelDialog> createState() =>
+      _NewMotoModelDialogState();
+}
+
+class _NewMotoModelDialogState extends ConsumerState<_NewMotoModelDialog> {
+  late final _name = TextEditingController(text: widget.typed.toUpperCase());
+  final _newBrand = TextEditingController();
+  final _cc = TextEditingController();
+
+  List<CatalogItem> _brands = [];
+  int? _brandId;
+  bool _otherBrand = false;
+  bool _loading = true;
+  bool _saving = false;
+
+  /// Valor del desplegable para "Otra marca…".
+  static const _other = -1;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBrands();
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _newBrand.dispose();
+    _cc.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadBrands() async {
+    try {
+      final all = await ref
+          .read(catalogsRepositoryProvider)
+          .list(CatalogType.motoBrands);
+      if (!mounted) return;
+      final brands = all.where((b) => b.active).toList();
+      // "HONDA CG 150" → marca HONDA + modelo "CG 150".
+      final typed = widget.typed.trim().toUpperCase();
+      int? guess;
+      var name = typed;
+      for (final b in brands) {
+        final bn = b.name.toUpperCase();
+        if (typed.startsWith('$bn ') && typed.length > bn.length + 1) {
+          guess = b.id;
+          name = typed.substring(bn.length + 1).trim();
+          break;
+        }
+      }
+      setState(() {
+        _brands = brands;
+        _brandId = guess;
+        _otherBrand = brands.isEmpty;
+        _name.text = name;
+        _loading = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _otherBrand = true;
+      });
+      AppToast.apiError(context, e);
+    }
+  }
+
+  Future<void> _save() async {
+    final name = _name.text.trim();
+    final newBrand = _newBrand.text.trim();
+    if (name.isEmpty) {
+      AppToast.error(context, 'Escribe el nombre del modelo.');
+      return;
+    }
+    if (!_otherBrand && _brandId == null) {
+      AppToast.error(context, 'Elige la marca de la moto.');
+      return;
+    }
+    if (_otherBrand && newBrand.isEmpty) {
+      AppToast.error(context, 'Escribe la marca de la moto.');
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      final repo = ref.read(catalogsRepositoryProvider);
+      var brandId = _brandId;
+      if (_otherBrand) {
+        // El backend reutiliza la marca si ya existía con ese nombre.
+        brandId = (await repo.create(
+          CatalogType.motoBrands,
+          name: newBrand,
+        )).id;
+      }
+      final model = await repo.create(
+        CatalogType.motoModels,
+        name: name,
+        extra: {
+          'moto_brand_id': brandId,
+          'engine_cc': _cc.text.trim().isEmpty ? null : _cc.text.trim(),
+        },
+      );
+      if (mounted) Navigator.pop(context, model);
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        AppToast.apiError(context, e);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const dec = OutlineInputBorder();
+    return AlertDialog(
+      title: const Text('Nuevo modelo'),
+      content: _loading
+          ? const SizedBox(
+              height: 80,
+              child: Center(child: CircularProgressIndicator()),
+            )
+          : SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (_brands.isNotEmpty)
+                    DropdownButtonFormField<int>(
+                      initialValue: _otherBrand ? _other : _brandId,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Marca de moto *',
+                        border: dec,
+                      ),
+                      items: [
+                        for (final b in _brands)
+                          DropdownMenuItem(value: b.id, child: Text(b.name)),
+                        const DropdownMenuItem(
+                          value: _other,
+                          child: Text('➕ Otra marca…'),
+                        ),
+                      ],
+                      onChanged: (v) => setState(() {
+                        _otherBrand = v == _other;
+                        _brandId = v == _other ? null : v;
+                      }),
+                    ),
+                  if (_otherBrand) ...[
+                    if (_brands.isNotEmpty) const SizedBox(height: 12),
+                    TextField(
+                      controller: _newBrand,
+                      textCapitalization: TextCapitalization.characters,
+                      inputFormatters: upperCaseFormatters,
+                      decoration: const InputDecoration(
+                        labelText: 'Marca nueva *',
+                        hintText: 'Ej. ZONGSHEN',
+                        border: dec,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _name,
+                    textCapitalization: TextCapitalization.characters,
+                    inputFormatters: upperCaseFormatters,
+                    decoration: const InputDecoration(
+                      labelText: 'Modelo *',
+                      hintText: 'Ej. CG 150',
+                      border: dec,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _cc,
+                    textCapitalization: TextCapitalization.characters,
+                    inputFormatters: upperCaseFormatters,
+                    decoration: const InputDecoration(
+                      labelText: 'Cilindrada (opcional)',
+                      hintText: 'Ej. 150',
+                      border: dec,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        // El tema da a FilledButton ancho mínimo infinito: dentro de las
+        // acciones (una fila) hay que acotarlo o la ventana sale en blanco.
+        FilledButton(
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(0, 40),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+          ),
+          onPressed: _saving || _loading ? null : _save,
+          child: _saving
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Text('Crear y agregar'),
+        ),
+      ],
     );
   }
 }
