@@ -58,6 +58,7 @@ class AppToast {
     'appointment_closed' => 'Cita completada',
     'reopen_blocked' => 'No se puede reabrir',
     'permission_denied' => 'Sin permiso',
+    'too_many_attempts' => 'Demasiados intentos',
     'plan_module_forbidden' => 'Módulo no incluido en tu plan',
     'subscription_inactive' || 'subscription_grace_readonly' => 'Suscripción',
     _ => 'No se pudo completar',

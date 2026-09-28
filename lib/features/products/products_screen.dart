@@ -8,6 +8,7 @@ import '../../core/format.dart';
 import '../../core/models.dart';
 import '../../core/providers.dart';
 import '../../core/module_colors.dart';
+import '../../core/image_disk_cache.dart';
 import '../pos/pos_repository.dart';
 import 'new_product_screen.dart';
 import 'product_detail_screen.dart';
@@ -54,11 +55,16 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
   /// Producto cuya foto se está subiendo (para el spinner de esa fila).
   int? _photoBusyId;
 
+  /// Fotos en el listado: se puede apagar donde la conexión es mala.
+  bool _showPhotos = true;
+
   @override
   void initState() {
     super.initState();
     // Paginado de 30 por página con paginador al pie (anterior / siguiente).
     _load('');
+    _loadPhotoPref();
+    pruneThumbCache();
   }
 
   @override
@@ -122,6 +128,26 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     } else {
       _load(_search.text);
     }
+  }
+
+  /// Preferencia guardada en el dispositivo (por defecto: con fotos).
+  Future<void> _loadPhotoPref() async {
+    try {
+      final show = await ref.read(secureStoreProvider).readShowProductPhotos();
+      if (mounted && show != _showPhotos) setState(() => _showPhotos = show);
+    } catch (_) {
+      // Sin almacenamiento disponible: se queda con el valor por defecto.
+    }
+  }
+
+  void _togglePhotos() {
+    final show = !_showPhotos;
+    setState(() => _showPhotos = show);
+    // Si no se puede guardar, el cambio vale para esta sesión igual.
+    ref
+        .read(secureStoreProvider)
+        .saveShowProductPhotos(show)
+        .catchError((_) {});
   }
 
   /// Atajo del listado: tocar la miniatura cambia la foto sin abrir el
@@ -200,23 +226,24 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(12),
-            child: TextField(
-              controller: _search,
-              decoration: InputDecoration(
-                hintText: 'Buscar por nombre, código o SKU',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.clear),
-                  onPressed: () {
-                    _search.clear();
-                    _load('');
-                  },
-                ),
-              ),
-              textInputAction: TextInputAction.search,
-              onChanged: _onSearchChanged,
-              onSubmitted: _load,
+            padding: const EdgeInsets.fromLTRB(12, 12, 4, 12),
+            child: Row(
+              children: [
+                Expanded(child: _searchField()),
+                if (!picking)
+                  IconButton(
+                    tooltip: _showPhotos ? 'Ocultar fotos' : 'Mostrar fotos',
+                    onPressed: _togglePhotos,
+                    icon: Icon(
+                      _showPhotos
+                          ? Icons.image_outlined
+                          : Icons.hide_image_outlined,
+                      color: _showPhotos
+                          ? ModuleColors.products
+                          : Colors.black38,
+                    ),
+                  ),
+              ],
             ),
           ),
           if (!_loading && _error == null && _items.isNotEmpty)
@@ -263,7 +290,12 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                                       : null,
                                   borderRadius: BorderRadius.circular(12),
                                   child: ProductThumb(
-                                    imageUrl: p.imageUrl,
+                                    // Apagadas: marcador, sin descargar nada,
+                                    // pero el atajo de la foto sigue vivo.
+                                    imageUrl: _showPhotos ? p.imageUrl : null,
+                                    // Aunque no se muestre, se distingue con
+                                    // color cuál tiene foto y cuál no.
+                                    hasPhoto: p.imageUrl != null,
                                     showBadge: canEditPhoto,
                                     busy: busy,
                                   ),
@@ -329,6 +361,24 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
           : null,
     );
   }
+
+  Widget _searchField() => TextField(
+    controller: _search,
+    decoration: InputDecoration(
+      hintText: 'Buscar por nombre, código o SKU',
+      prefixIcon: const Icon(Icons.search),
+      suffixIcon: IconButton(
+        icon: const Icon(Icons.clear),
+        onPressed: () {
+          _search.clear();
+          _load('');
+        },
+      ),
+    ),
+    textInputAction: TextInputAction.search,
+    onChanged: _onSearchChanged,
+    onSubmitted: _load,
+  );
 
   String _rangeLabel() {
     if (_items.isEmpty) return '0';

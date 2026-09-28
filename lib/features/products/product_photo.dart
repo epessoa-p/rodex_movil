@@ -1,19 +1,33 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/api_client.dart';
 import '../../core/app_toast.dart';
+import '../../core/image_disk_cache.dart';
 import '../../core/models.dart';
 import '../pos/pos_repository.dart';
 
+/// De dónde salen los bytes de una miniatura. En producción es la caché en
+/// disco; los tests lo sustituyen para no tocar la red.
+final thumbLoaderProvider = Provider<ThumbLoader>((ref) => loadThumb);
+
 /// Miniatura de la foto del producto. Si no hay foto muestra un marcador; con
 /// [showBadge] agrega el distintivo de cámara para invitar a tocarla.
-class ProductThumb extends StatelessWidget {
+///
+/// Los bytes pasan por la caché en disco ([loadThumb]): la segunda vez que se
+/// abre el listado no se descarga nada.
+class ProductThumb extends ConsumerStatefulWidget {
   final String? imageUrl;
   final double size;
   final bool showBadge;
   final bool busy;
+
+  /// Si el producto tiene foto. Se pasa aparte de [imageUrl] porque con las
+  /// fotos ocultas no hay imagen que pintar pero igual hay que distinguir
+  /// cuáles ya tienen y cuáles faltan.
+  final bool? hasPhoto;
 
   const ProductThumb({
     super.key,
@@ -21,16 +35,62 @@ class ProductThumb extends StatelessWidget {
     this.size = 44,
     this.showBadge = false,
     this.busy = false,
+    this.hasPhoto,
   });
 
   @override
+  ConsumerState<ProductThumb> createState() => _ProductThumbState();
+}
+
+class _ProductThumbState extends ConsumerState<ProductThumb> {
+  Uint8List? _bytes;
+  String? _loadedUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant ProductThumb old) {
+    super.didUpdateWidget(old);
+    if (old.imageUrl != widget.imageUrl) _load();
+  }
+
+  Future<void> _load() async {
+    final url = widget.imageUrl;
+    if (url == null || url.isEmpty) {
+      if (_bytes != null) setState(() => _bytes = null);
+      return;
+    }
+    if (url == _loadedUrl && _bytes != null) return;
+    _loadedUrl = url;
+    final bytes = await ref.read(thumbLoaderProvider)(url);
+    // Otra foto llegó primero (la fila se recicló al hacer scroll).
+    if (!mounted || _loadedUrl != url) return;
+    setState(() => _bytes = bytes);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final url = imageUrl;
+    final size = widget.size;
+    final showBadge = widget.showBadge;
+    final busy = widget.busy;
+    final bytes = _bytes;
     final radius = size / 4;
     final badge = size / 2.6;
+    final has = widget.hasPhoto ?? (widget.imageUrl != null);
+    // Rojo = sin foto (se ve de un vistazo cuáles faltan, también con las
+    // fotos ocultas); verde = ya tiene.
+    final mark = has ? Theme.of(context).colorScheme.primary : Colors.red;
 
-    Widget placeholder() =>
-        Icon(Icons.inventory_2_outlined, size: size / 2, color: Colors.black26);
+    Widget placeholder() => Icon(
+      // Con foto pero oculta: ícono de imagen. Sin foto: caja vacía.
+      has ? Icons.image_outlined : Icons.inventory_2_outlined,
+      size: size / 2,
+      color: has ? Colors.black38 : Colors.red.withValues(alpha: 0.35),
+    );
 
     return SizedBox(
       width: size + (showBadge ? 4 : 0),
@@ -42,27 +102,33 @@ class ProductThumb extends StatelessWidget {
             width: size,
             height: size,
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.06),
+              color: has
+                  ? Colors.black.withValues(alpha: 0.06)
+                  : Colors.red.withValues(alpha: 0.04),
               borderRadius: BorderRadius.circular(radius),
-              border: Border.all(color: Colors.black12),
+              border: Border.all(
+                color: has ? Colors.black12 : Colors.red.withValues(alpha: 0.5),
+                width: has ? 1 : 1.5,
+              ),
             ),
             clipBehavior: Clip.antiAlias,
             alignment: Alignment.center,
-            child: url == null
+            child: bytes == null
+                // Sin foto todavía (o no se pudo traer): marcador, sin
+                // indicador animado que distraiga en cada fila.
                 ? placeholder()
-                : Image.network(
-                    url,
+                : Image.memory(
+                    bytes,
                     fit: BoxFit.cover,
                     width: size,
                     height: size,
+                    gaplessPlayback: true,
                     // La miniatura se decodifica pequeña: no carga la foto
                     // completa en memoria por cada fila del listado.
-                    cacheWidth: (size * 3).round(),
+                    cacheWidth: (size * MediaQuery.devicePixelRatioOf(context))
+                        .round(),
+                    filterQuality: FilterQuality.low,
                     errorBuilder: (_, _, _) => placeholder(),
-                    // Sin indicador animado: el marcador se ve hasta que
-                    // llega el primer cuadro de la imagen.
-                    frameBuilder: (_, child, frame, wasSync) =>
-                        frame == null && !wasSync ? placeholder() : child,
                   ),
           ),
           if (busy)
@@ -91,12 +157,13 @@ class ProductThumb extends StatelessWidget {
                 width: badge,
                 height: badge,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary,
+                  color: mark,
                   shape: BoxShape.circle,
                   border: Border.all(color: Colors.white, width: 1.5),
                 ),
                 child: Icon(
-                  Icons.photo_camera,
+                  // Verde con cámara = tiene foto; rojo con "+" = falta.
+                  has ? Icons.photo_camera : Icons.add_a_photo,
                   size: badge * 0.55,
                   color: Colors.white,
                 ),

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
 import '../../core/company_logo.dart';
+import '../../core/image_disk_cache.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
 import '../../core/storage.dart';
@@ -101,6 +102,7 @@ class AuthController extends StateNotifier<AuthState> {
   /// carrito) para que al cambiar de usuario/empresa no se muestren stale.
   void _resetSessionData() {
     clearCompanyLogoCache();
+    clearThumbMemoryCache();
     _ref.invalidate(cashSessionProvider);
     _ref.invalidate(todaySummaryProvider);
     _ref.invalidate(workOrdersSummaryProvider);
