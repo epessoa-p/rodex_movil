@@ -5,10 +5,13 @@ import '../../core/api_client.dart';
 import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
+import '../../core/payment_methods.dart';
+import '../../core/providers.dart';
 import '../clients/clients_screen.dart';
 import '../products/products_screen.dart';
 import 'cart.dart';
 import 'pos_repository.dart';
+import 'quick_item_sheet.dart';
 import 'receipt_screen.dart';
 import 'scan_screen.dart';
 
@@ -23,6 +26,9 @@ class _PosScreenState extends ConsumerState<PosScreen> {
   Client? _client;
   bool _submitting = false;
   double _discount = 0;
+
+  /// Forma de pago elegida (efectivo por defecto).
+  String _method = 'efectivo';
   final _discountCtrl = TextEditingController();
 
   @override
@@ -46,6 +52,11 @@ class _PosScreenState extends ConsumerState<PosScreen> {
           onPick: (p) {
             ref.read(cartProvider.notifier).add(p);
             Navigator.pop(context);
+          },
+          // No está en el inventario: venderlo igual, con lo que ya escribió.
+          onQuickSale: (name) {
+            Navigator.pop(context);
+            showQuickItemSheet(context, initialName: name);
           },
         ),
       ),
@@ -148,8 +159,10 @@ class _PosScreenState extends ConsumerState<PosScreen> {
             clientId: _client?.id,
             items: cart.toItems(),
             discount: discount,
+            method: _method,
           );
       cart.clear();
+      _method = 'efectivo';
       _discount = 0;
       _discountCtrl.clear();
       ref.invalidate(cashSessionProvider);
@@ -216,6 +229,7 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                             subtitle: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
+                                if (l.direct) const _QuickBadge(),
                                 Text(
                                   '${money(l.product.price)} c/u  ·  ${money(l.subtotal)}',
                                 ),
@@ -283,7 +297,17 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                 submitting: _submitting,
                 onAdd: _addProduct,
                 onScan: _scan,
+                onQuick: () => showQuickItemSheet(context),
                 onCheckout: _checkout,
+                methods:
+                    ref
+                        .watch(authControllerProvider)
+                        .me
+                        ?.company
+                        ?.paymentMethods ??
+                    const ['efectivo'],
+                method: _method,
+                onMethod: (m) => setState(() => _method = m),
               ),
             ],
           );
@@ -331,6 +355,14 @@ class _CheckoutBar extends StatelessWidget {
   final VoidCallback onScan;
   final VoidCallback onCheckout;
 
+  /// Venta rápida: algo que no está en el inventario.
+  final VoidCallback onQuick;
+
+  /// Formas de pago de la empresa y la elegida (con una sola no se muestra nada).
+  final List<String> methods;
+  final String method;
+  final ValueChanged<String> onMethod;
+
   const _CheckoutBar({
     required this.subtotal,
     required this.lineDiscount,
@@ -342,11 +374,16 @@ class _CheckoutBar extends StatelessWidget {
     required this.onAdd,
     required this.onScan,
     required this.onCheckout,
+    required this.onQuick,
+    this.methods = const ['efectivo'],
+    this.method = 'efectivo',
+    required this.onMethod,
   });
 
   @override
   Widget build(BuildContext context) {
     final total = (subtotal - discount).clamp(0, subtotal).toDouble();
+    final choosing = methods.length > 1;
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -373,6 +410,20 @@ class _CheckoutBar extends StatelessWidget {
                     icon: const Icon(Icons.add),
                     label: const Text('Agregar'),
                     onPressed: onAdd,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(48),
+                      foregroundColor: Colors.amber.shade900,
+                      side: const BorderSide(color: kQuickSaleColor),
+                      backgroundColor: kQuickSaleColor.withValues(alpha: .08),
+                    ),
+                    icon: const Icon(Icons.bolt),
+                    label: const Text('Rápida'),
+                    onPressed: onQuick,
                   ),
                 ),
               ],
@@ -418,6 +469,17 @@ class _CheckoutBar extends StatelessWidget {
                 ),
               ],
             ),
+            if (choosing) ...[
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: PaymentMethodChips(
+                  methods: methods,
+                  value: method,
+                  onChanged: onMethod,
+                ),
+              ),
+            ],
             const SizedBox(height: 10),
             Row(
               children: [
@@ -450,8 +512,15 @@ class _CheckoutBar extends StatelessWidget {
                               color: Colors.white,
                             ),
                           )
-                        : const Icon(Icons.check),
-                    label: const Text('Cobrar'),
+                        : Icon(
+                            choosing ? paymentMethodIcon(method) : Icons.check,
+                          ),
+                    label: Text(
+                      choosing
+                          ? 'Cobrar · ${paymentMethodLabel(method)}'
+                          : 'Cobrar',
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     onPressed: canCheckout ? onCheckout : null,
                   ),
                 ),
@@ -488,6 +557,33 @@ class _NoCashSession extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Marca de la línea de venta rápida (no está en el inventario).
+class _QuickBadge extends StatelessWidget {
+  const _QuickBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.bolt, size: 14, color: Colors.amber.shade900),
+          const SizedBox(width: 2),
+          Text(
+            'Venta rápida',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: Colors.amber.shade900,
+            ),
+          ),
+        ],
       ),
     );
   }

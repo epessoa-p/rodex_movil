@@ -117,7 +117,9 @@ void main() {
       // Precargado.
       expect(
         tester
-            .widget<TextField>(find.widgetWithText(TextField, 'Precio de venta *'))
+            .widget<TextField>(
+              find.widgetWithText(TextField, 'Precio de venta *'),
+            )
             .controller!
             .text,
         '45.00',

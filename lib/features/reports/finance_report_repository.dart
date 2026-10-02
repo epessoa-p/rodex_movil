@@ -67,6 +67,9 @@ class CashClosure {
   final double? difference;
   final String? notes;
 
+  /// Lo cobrado por QR/transferencia/tarjeta (no está en el cajón).
+  final List<MethodAmount> otherMethods;
+
   CashClosure({
     required this.id,
     required this.status,
@@ -83,6 +86,7 @@ class CashClosure {
     this.closingAmount,
     this.difference,
     this.notes,
+    this.otherMethods = const [],
   });
 
   bool get isOpen => status == 'open';
@@ -107,6 +111,7 @@ class CashClosure {
     closingAmount: j['closing_amount'] == null ? null : _d(j['closing_amount']),
     difference: j['difference'] == null ? null : _d(j['difference']),
     notes: j['notes'] as String?,
+    otherMethods: MethodAmount.listFrom(j['other_methods']),
   );
 }
 

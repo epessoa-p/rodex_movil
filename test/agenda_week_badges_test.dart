@@ -89,15 +89,16 @@ void main() {
       expect(find.text('2'), findsWidgets);
       expect(find.text('3'), findsWidgets);
 
-      // El de hoy (2) va sobre fondo rojo; el otro (3) no.
-      Color bgOf(String n) {
-        final txt = find.text(n).evaluate().first;
-        final box = txt.findAncestorWidgetOfExactType<Container>()!;
-        return (box.decoration as BoxDecoration).color!;
-      }
+      // El de hoy (2) va sobre fondo rojo; el otro (3) no. Se miran TODOS los
+      // textos "2"/"3": la tira también muestra el número del día del mes, que
+      // los días 2 y 3 coincide con los numeritos (el test fallaba según la fecha).
+      Iterable<Color?> bgsOf(String n) => find.text(n).evaluate().map((e) {
+        final d = e.findAncestorWidgetOfExactType<Container>()?.decoration;
+        return d is BoxDecoration ? d.color : null;
+      });
 
-      expect(bgOf('2'), Colors.red);
-      expect(bgOf('3'), isNot(Colors.red));
+      expect(bgsOf('2'), contains(Colors.red));
+      expect(bgsOf('3'), isNot(contains(Colors.red)));
     },
   );
 }

@@ -312,11 +312,13 @@ class PosRepository {
     int? clientId,
     required List<Map<String, dynamic>> items,
     double discount = 0,
+    String method = 'efectivo',
   }) async {
     final data = await _api.post(
       '/sales',
       body: {
         'sale_type': 'cash',
+        'method': method,
         'client_id': ?clientId,
         'discount': discount,
         'items': items,

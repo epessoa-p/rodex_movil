@@ -1,5 +1,7 @@
 // Modelos de datos de la API.
 
+import 'payment_methods.dart';
+
 double _toDouble(dynamic v) =>
     v == null ? 0 : (v is num ? v.toDouble() : double.tryParse('$v') ?? 0);
 
@@ -16,6 +18,9 @@ class Company {
   /// Orden de los tabs del dashboard (ej. "ventas,taller,compras").
   final String dashboardOrder;
 
+  /// Formas de cobro que acepta la empresa (efectivo siempre, primero).
+  final List<String> paymentMethods;
+
   Company({
     required this.id,
     required this.name,
@@ -26,6 +31,7 @@ class Company {
     this.themePrimary,
     this.themeAccent,
     this.dashboardOrder = 'ventas,taller,compras',
+    this.paymentMethods = const ['efectivo'],
   });
 
   /// Módulos en el orden configurado (solo claves válidas).
@@ -49,6 +55,9 @@ class Company {
     dashboardOrder: (j['dashboard_order'] as String?)?.trim().isNotEmpty == true
         ? (j['dashboard_order'] as String).trim()
         : 'ventas,taller,compras',
+    paymentMethods: normalizePaymentMethods(
+      ((j['payment_methods'] as List?) ?? const []).map((e) => e.toString()),
+    ),
   );
 }
 
@@ -329,15 +338,51 @@ class Client {
   );
 }
 
+/// Monto de un medio de pago no-efectivo en la caja (QR, transferencia…).
+class MethodAmount {
+  final String method;
+  final String label;
+  final double amount;
+
+  const MethodAmount({
+    required this.method,
+    required this.label,
+    required this.amount,
+  });
+
+  factory MethodAmount.fromJson(Map<String, dynamic> j) => MethodAmount(
+    method: (j['method'] ?? '') as String,
+    label: (j['label'] ?? j['method'] ?? '') as String,
+    amount: _toDouble(j['amount']),
+  );
+
+  static List<MethodAmount> listFrom(dynamic raw) => ((raw as List?) ?? [])
+      .map((e) => MethodAmount.fromJson(e as Map<String, dynamic>))
+      .toList();
+}
+
 class CashSession {
   final int id;
   final String? cashRegister;
   final String? branch;
   final int? branchId;
   final double openingAmount;
+
+  /// Totales generales (todos los medios).
   final double totalIncome;
   final double totalExpense;
+
+  /// Solo efectivo: cuadran con [expectedAmount] (lo que debe haber en el cajón).
+  final double cashIncome;
+  final double cashExpense;
   final double expectedAmount;
+
+  /// Lo cobrado por QR/transferencia/tarjeta: no está en el cajón, va aparte.
+  final List<MethodAmount> otherMethods;
+
+  /// Disponible para pagar gastos: efectivo y, si la empresa lo permite,
+  /// también lo de los otros medios.
+  final double availableAmount;
 
   CashSession({
     required this.id,
@@ -348,7 +393,13 @@ class CashSession {
     required this.totalIncome,
     required this.totalExpense,
     required this.expectedAmount,
-  });
+    double? cashIncome,
+    double? cashExpense,
+    this.otherMethods = const [],
+    double? availableAmount,
+  }) : cashIncome = cashIncome ?? totalIncome,
+       cashExpense = cashExpense ?? totalExpense,
+       availableAmount = availableAmount ?? expectedAmount;
 
   factory CashSession.fromJson(Map<String, dynamic> j) => CashSession(
     id: j['id'] as int,
@@ -359,6 +410,17 @@ class CashSession {
     totalIncome: _toDouble(j['total_income']),
     totalExpense: _toDouble(j['total_expense']),
     expectedAmount: _toDouble(j['expected_amount']),
+    // Servidor sin estos campos (versión anterior): mismos totales de antes.
+    cashIncome: j.containsKey('cash_income')
+        ? _toDouble(j['cash_income'])
+        : null,
+    cashExpense: j.containsKey('cash_expense')
+        ? _toDouble(j['cash_expense'])
+        : null,
+    otherMethods: MethodAmount.listFrom(j['other_methods']),
+    availableAmount: j.containsKey('available_amount')
+        ? _toDouble(j['available_amount'])
+        : null,
   );
 }
 

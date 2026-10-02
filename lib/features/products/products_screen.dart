@@ -28,12 +28,17 @@ class ProductsScreen extends ConsumerStatefulWidget {
   /// Tab del hub "Inventario": sin AppBar propio.
   final bool embedded;
 
+  /// POS: si lo buscado no está en el inventario, ofrece venderlo como
+  /// "venta rápida" con ese nombre (lo abre quien llama).
+  final ValueChanged<String>? onQuickSale;
+
   const ProductsScreen({
     super.key,
     this.onPick,
     this.requireStock = true,
     this.hideInitialStock = false,
     this.embedded = false,
+    this.onQuickSale,
   });
 
   @override
@@ -264,7 +269,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                 : _error != null
                 ? Center(child: Text(_error!))
                 : _items.isEmpty
-                ? const Center(child: Text('Sin productos.'))
+                ? _emptyState()
                 : ListView.separated(
                     controller: _scroll,
                     // Espacio final para que el FAB no tape el último ítem.
@@ -379,6 +384,47 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     onChanged: _onSearchChanged,
     onSubmitted: _load,
   );
+
+  /// Sin resultados. En el POS, si buscó algo, ofrece la venta rápida.
+  Widget _emptyState() {
+    final quick = widget.onQuickSale;
+    if (quick == null || _q.isEmpty) {
+      return const Center(child: Text('Sin productos.'));
+    }
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.search_off, size: 40, color: Colors.black26),
+            const SizedBox(height: 8),
+            Text(
+              '«$_q» no está en el inventario.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Si lo tienes en físico, véndelo igual:',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.black54, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            FilledButton.tonalIcon(
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(0, 44),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+              ),
+              icon: const Icon(Icons.bolt),
+              label: const Text('Venta rápida'),
+              onPressed: () => quick(_q),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   String _rangeLabel() {
     if (_items.isEmpty) return '0';

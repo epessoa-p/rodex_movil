@@ -5,6 +5,7 @@ import '../../core/api_client.dart';
 import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
+import '../../core/payment_methods.dart';
 import '../../core/upper_case.dart';
 import '../pos/pos_repository.dart';
 
@@ -85,21 +86,23 @@ class _OpenSessionViewState extends ConsumerState<_OpenSessionView> {
                   const Divider(),
                   _row('Monto inicial', money(session.openingAmount)),
                   _row(
-                    'Ingresos',
-                    '+ ${money(session.totalIncome)}',
+                    'Ingresos en efectivo',
+                    '+ ${money(session.cashIncome)}',
                     color: Colors.green,
                   ),
                   _row(
-                    'Gastos',
-                    '- ${money(session.totalExpense)}',
+                    'Gastos en efectivo',
+                    '- ${money(session.cashExpense)}',
                     color: Colors.red,
                   ),
                   const Divider(),
                   _row(
-                    'Esperado en caja',
+                    'Esperado en el cajón',
                     money(session.expectedAmount),
                     bold: true,
                   ),
+                  if (session.otherMethods.isNotEmpty)
+                    _OtherMethodsBox(methods: session.otherMethods),
                 ],
               ),
             ),
@@ -148,7 +151,12 @@ class _OpenSessionViewState extends ConsumerState<_OpenSessionView> {
     child: Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(k, style: const TextStyle(color: Colors.black54)),
+        // Flexible: en el diálogo de cierre (más angosto) la etiqueta se
+        // acomoda en vez de desbordar la fila (overflow en debug = cuelgue).
+        Flexible(
+          child: Text(k, style: const TextStyle(color: Colors.black54)),
+        ),
+        const SizedBox(width: 8),
         Text(
           v,
           style: TextStyle(
@@ -267,7 +275,7 @@ class _OpenSessionViewState extends ConsumerState<_OpenSessionView> {
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _row('Esperado', money(session.expectedAmount)),
+                _row('Efectivo esperado', money(session.expectedAmount)),
                 const SizedBox(height: 8),
                 TextField(
                   controller: controller,
@@ -277,7 +285,7 @@ class _OpenSessionViewState extends ConsumerState<_OpenSessionView> {
                   ),
                   onChanged: (_) => setLocal(() {}),
                   decoration: InputDecoration(
-                    labelText: 'Monto contado en caja',
+                    labelText: 'Efectivo contado en el cajón',
                     prefixText: '$currencySymbol ',
                   ),
                 ),
@@ -290,6 +298,13 @@ class _OpenSessionViewState extends ConsumerState<_OpenSessionView> {
                       ? Colors.green
                       : (diff > 0 ? Colors.blue : Colors.red),
                 ),
+                if (session.otherMethods.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  _OtherMethodsBox(
+                    methods: session.otherMethods,
+                    title: 'No los cuentes: no están en el cajón',
+                  ),
+                ],
               ],
             ),
             actions: [
@@ -378,7 +393,11 @@ class _MovementsList extends StatelessWidget {
                         ? m.description!
                         : m.category,
                   ),
-                  subtitle: Text(m.category),
+                  subtitle: Text(
+                    isCashMethod(m.method)
+                        ? m.category
+                        : '${m.category} · ${paymentMethodLabel(m.method)}',
+                  ),
                   trailing: Text(
                     '${m.isExpense ? '-' : '+'} ${money(m.amount)}',
                     style: TextStyle(
@@ -518,6 +537,61 @@ class _OpenCashFormState extends ConsumerState<_OpenCashForm> {
               : _open,
         ),
       ],
+    );
+  }
+}
+
+/// Lo cobrado por QR/transferencia/tarjeta: queda en la sesión pero no está en
+/// el cajón, así que no entra en el esperado ni se cuenta al cerrar.
+class _OtherMethodsBox extends StatelessWidget {
+  final List<MethodAmount> methods;
+  final String title;
+  const _OtherMethodsBox({
+    required this.methods,
+    this.title = 'Otros medios — no se cuentan en el cajón',
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Colors.blue.shade700;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: .3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 4),
+          for (final m in methods)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Row(
+                children: [
+                  Icon(paymentMethodIcon(m.method), size: 16, color: color),
+                  const SizedBox(width: 6),
+                  Expanded(child: Text(m.label)),
+                  Text(
+                    money(m.amount),
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

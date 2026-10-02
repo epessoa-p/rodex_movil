@@ -88,7 +88,14 @@ class _CashAvailableHintState extends ConsumerState<CashAvailableHint> {
         }
         // Cobro con caja abierta: no hace falta mostrar el saldo.
         if (widget.incoming) return const SizedBox.shrink();
-        final available = s.expectedAmount;
+        // Efectivo y, si la empresa lo permite, también lo cobrado por QR/otros.
+        final available = s.availableAmount;
+        final others = s.otherMethods.where((o) => o.amount > 0.009).toList();
+        final breakdown =
+            available > s.expectedAmount + 0.009 && others.isNotEmpty
+            ? ' (Efectivo ${money(s.expectedAmount < 0 ? 0 : s.expectedAmount)}'
+                  '${others.map((o) => ' · ${o.label} ${money(o.amount)}').join()})'
+            : '';
         final over = amount != null && amount > available + 0.009;
         final name = [
           if (s.cashRegister != null && s.cashRegister!.isNotEmpty)
@@ -100,7 +107,7 @@ class _CashAvailableHintState extends ConsumerState<CashAvailableHint> {
           icon: over ? Icons.warning_amber_rounded : Icons.savings_outlined,
           text:
               '${name.isEmpty ? 'Caja abierta' : name}\n'
-              'Disponible en caja: ${money(available)}'
+              'Disponible en caja: ${money(available)}$breakdown'
               '${over ? ' · el monto supera lo disponible' : ''}',
         );
       },

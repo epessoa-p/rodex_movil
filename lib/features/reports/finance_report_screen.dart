@@ -675,16 +675,29 @@ class _ClosureCard extends StatelessWidget {
             const Divider(height: 16),
             row('Apertura', money(c.openingAmount)),
             row(
-              'Ingresos',
+              'Ingresos efectivo',
               '+${money(c.income)}',
               color: Colors.green.shade700,
             ),
-            row('Egresos', '−${money(c.expense)}', color: Colors.red.shade700),
-            row('Esperado', money(c.expectedAmount), bold: true),
+            row(
+              'Egresos efectivo',
+              '−${money(c.expense)}',
+              color: Colors.red.shade700,
+            ),
+            row('Esperado en el cajón', money(c.expectedAmount), bold: true),
             if (!c.isOpen) ...[
               row('Contado', money(c.closingAmount ?? 0), bold: true),
               row('Diferencia', diffLabel, color: diffColor, bold: true),
             ],
+            // QR/transferencia/tarjeta: aparte, no se cuentan en el cajón.
+            if (c.otherMethods.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'Otros medios: ${c.otherMethods.map((o) => '${o.label} ${money(o.amount)}').join(' · ')}',
+                  style: TextStyle(fontSize: 12, color: Colors.blue.shade700),
+                ),
+              ),
             if (c.notes != null && c.notes!.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 6),

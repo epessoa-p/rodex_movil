@@ -9,7 +9,15 @@ class CartLine {
   /// Descuento por línea (monto en la moneda), aplicado a este ítem.
   final double discount;
 
-  CartLine(this.product, this.quantity, {this.discount = 0});
+  /// Venta rápida: el producto no está en el inventario (solo nombre y precio).
+  final bool direct;
+
+  CartLine(
+    this.product,
+    this.quantity, {
+    this.discount = 0,
+    this.direct = false,
+  });
 
   /// Importe bruto de la línea (sin descuento).
   double get gross => product.price * quantity;
@@ -24,12 +32,33 @@ class CartLine {
     product,
     quantity ?? this.quantity,
     discount: discount ?? this.discount,
+    direct: direct,
   );
 }
 
 /// Carrito del POS (venta en construcción).
 class Cart extends StateNotifier<List<CartLine>> {
   Cart() : super(const []);
+
+  /// Ids negativos para las líneas de venta rápida (no chocan con productos).
+  int _directSeq = 0;
+
+  /// Venta rápida: algo que está en físico pero no en el inventario. Se vende
+  /// con este nombre y precio; si el nombre coincide con un producto
+  /// registrado, el servidor descuenta su stock (igual que el POS web).
+  void addDirect({
+    required String name,
+    required double price,
+    double quantity = 1,
+  }) {
+    final product = Product(
+      id: -(++_directSeq),
+      name: name,
+      price: price,
+      currentStock: 0,
+    );
+    state = [...state, CartLine(product, quantity, direct: true)];
+  }
 
   void add(Product product) {
     final idx = state.indexWhere((l) => l.product.id == product.id);
@@ -79,12 +108,21 @@ class Cart extends StateNotifier<List<CartLine>> {
 
   List<Map<String, dynamic>> toItems() => [
     for (final l in state)
-      {
-        'product_id': l.product.id,
-        'quantity': l.quantity,
-        'unit_price': l.product.price,
-        'discount': l.discount.clamp(0, l.gross),
-      },
+      if (l.direct)
+        {
+          'direct': 1,
+          'name': l.product.name,
+          'quantity': l.quantity,
+          'unit_price': l.product.price,
+          'discount': l.discount.clamp(0, l.gross),
+        }
+      else
+        {
+          'product_id': l.product.id,
+          'quantity': l.quantity,
+          'unit_price': l.product.price,
+          'discount': l.discount.clamp(0, l.gross),
+        },
   ];
 }
 

@@ -20,7 +20,12 @@ class _FakeAuth extends AuthController {
       me: MeContext(
         user: AppUser(id: 1, name: 'Tester'),
         isSuperAdmin: false,
-        company: Company(id: 1, name: 'VR MOTORS'),
+        // Empresa con QR habilitado (Mi empresa → Formas de pago).
+        company: Company(
+          id: 1,
+          name: 'VR MOTORS',
+          paymentMethods: const ['efectivo', 'qr'],
+        ),
         companies: [Company(id: 1, name: 'VR MOTORS')],
         permissions: const ['workshop.view', 'workshop.create'],
         planFeatures: const ['workshop'],

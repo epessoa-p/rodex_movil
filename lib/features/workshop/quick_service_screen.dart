@@ -5,6 +5,8 @@ import '../../core/api_client.dart';
 import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
+import '../../core/payment_methods.dart';
+import '../../core/providers.dart';
 import '../../core/upper_case.dart';
 import '../agenda/agenda_repository.dart';
 import '../clients/clients_screen.dart';
@@ -13,13 +15,6 @@ import '../products/products_screen.dart';
 import 'service_pick_sheet.dart';
 import 'work_order_detail_screen.dart';
 import 'workshop_repository.dart';
-
-const _methods = {
-  'efectivo': 'Efectivo',
-  'transferencia': 'Transferencia',
-  'tarjeta': 'Tarjeta',
-  'qr': 'QR',
-};
 
 /// Servicio rápido: para trabajos al paso (ajuste de cadena, cambio de
 /// aceite…). Elige servicios, cobra y listo: se crea la OT ya entregada y
@@ -458,16 +453,17 @@ class _QuickServiceScreenState extends ConsumerState<QuickServiceScreen> {
               style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
             ),
             const SizedBox(height: 8),
-            Wrap(
-              spacing: 6,
-              children: [
-                for (final e in _methods.entries)
-                  ChoiceChip(
-                    label: Text(e.value),
-                    selected: _method == e.key,
-                    onSelected: (_) => setState(() => _method = e.key),
-                  ),
-              ],
+            // Formas de pago de la empresa (con solo efectivo no se muestra nada).
+            PaymentMethodChips(
+              methods:
+                  ref
+                      .watch(authControllerProvider)
+                      .me
+                      ?.company
+                      ?.paymentMethods ??
+                  const ['efectivo'],
+              value: _method,
+              onChanged: (m) => setState(() => _method = m),
             ),
             const SizedBox(height: 10),
             TextField(

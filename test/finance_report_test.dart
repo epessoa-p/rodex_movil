@@ -46,7 +46,12 @@ class _FakeFinance extends FinanceReportRepository {
       'to': '2026-09-21',
       'summary': {'income': 1500, 'expense': 400, 'balance': 1100},
       'by_category': [
-        {'category': 'sale', 'label': 'Venta', 'type': 'income', 'amount': 1500},
+        {
+          'category': 'sale',
+          'label': 'Venta',
+          'type': 'income',
+          'amount': 1500,
+        },
         {
           'category': 'expense_operational',
           'label': 'Gasto operativo',
@@ -189,7 +194,12 @@ void main() {
     expect(find.text('Bs 1,500.00'), findsWidgets);
     expect(find.text('Venta V-00001 — ANA ROJAS'), findsOneWidget);
     expect(find.text('Gasto operativo'), findsWidgets);
-    expect(fin.calls.last['from'], '2026-09-01');
+    // Período por defecto = este mes (se calcula: no depender de la fecha).
+    final now = DateTime.now();
+    expect(
+      fin.calls.last['from'],
+      '${now.year}-${now.month.toString().padLeft(2, '0')}-01',
+    );
 
     // Filtro sucursal (chips desplazables) → vuelve a pedir con branch_id.
     await tester.drag(
