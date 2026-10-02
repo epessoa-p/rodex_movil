@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:printing/printing.dart';
@@ -868,6 +869,11 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
     }
   }
 
+  Future<void> _copyPhone(String phone) async {
+    await Clipboard.setData(ClipboardData(text: phone));
+    if (mounted) AppToast.success(context, 'Número $phone copiado.');
+  }
+
   Future<void> _call(WorkOrder o) async {
     final phone = o.clientPhone;
     if (phone == null || phone.trim().isEmpty) {
@@ -1059,6 +1065,40 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
               ),
             ],
           ),
+          // Teléfono visible; un toque lo copia (para pegarlo en otra app).
+          if ((o.clientPhone ?? '').trim().isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () => _copyPhone(o.clientPhone!.trim()),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.phone, size: 16, color: Colors.black54),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          o.clientPhone!.trim(),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: .5,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Icon(
+                        Icons.copy,
+                        size: 14,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           Text('Vehículo: ${o.vehicle ?? '-'}'),
           Row(
             children: [
