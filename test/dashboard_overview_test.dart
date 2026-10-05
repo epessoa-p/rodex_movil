@@ -77,7 +77,7 @@ void main() {
     expect(find.text('5 ventas'), findsOneWidget);
     expect(find.text('OTs hoy'), findsOneWidget);
     expect(find.text('12 activas'), findsOneWidget);
-    expect(find.text('Motos en taller'), findsOneWidget);
+    expect(find.text('Vehículos en taller'), findsOneWidget);
     expect(find.text('11'), findsOneWidget);
     expect(find.text('Citas hoy'), findsOneWidget);
     expect(find.text('Repuestos en stock'), findsOneWidget);

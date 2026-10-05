@@ -216,7 +216,7 @@ class _CatalogFormScreenState extends ConsumerState<CatalogFormScreen> {
       return;
     }
     if (type == CatalogType.motoModels && _motoBrandId == null) {
-      AppToast.error(context, 'Elige la marca de la moto.');
+      AppToast.error(context, 'Elige la marca del vehículo.');
       return;
     }
     final extra = <String, dynamic>{
@@ -398,7 +398,7 @@ class _MotoBrandPicker extends ConsumerWidget {
                 initialValue: active.any((b) => b.id == value) ? value : null,
                 isExpanded: true,
                 decoration: const InputDecoration(
-                  labelText: 'Marca de moto *',
+                  labelText: 'Marca de vehículo *',
                   border: OutlineInputBorder(),
                 ),
                 items: [
@@ -410,7 +410,7 @@ class _MotoBrandPicker extends ConsumerWidget {
             ),
             const SizedBox(width: 8),
             IconButton.filledTonal(
-              tooltip: 'Nueva marca de moto',
+              tooltip: 'Nueva marca de vehículo',
               icon: const Icon(Icons.add),
               onPressed: () async {
                 final saved = await Navigator.of(context).push<bool>(

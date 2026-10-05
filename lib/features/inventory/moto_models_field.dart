@@ -399,11 +399,11 @@ class _NewMotoModelDialogState extends ConsumerState<_NewMotoModelDialog> {
       return;
     }
     if (!_otherBrand && _brandId == null) {
-      AppToast.error(context, 'Elige la marca de la moto.');
+      AppToast.error(context, 'Elige la marca del vehículo.');
       return;
     }
     if (_otherBrand && newBrand.isEmpty) {
-      AppToast.error(context, 'Escribe la marca de la moto.');
+      AppToast.error(context, 'Escribe la marca del vehículo.');
       return;
     }
     setState(() => _saving = true);
@@ -454,7 +454,7 @@ class _NewMotoModelDialogState extends ConsumerState<_NewMotoModelDialog> {
                       initialValue: _otherBrand ? _other : _brandId,
                       isExpanded: true,
                       decoration: const InputDecoration(
-                        labelText: 'Marca de moto *',
+                        labelText: 'Marca de vehículo *',
                         border: dec,
                       ),
                       items: [
@@ -478,7 +478,7 @@ class _NewMotoModelDialogState extends ConsumerState<_NewMotoModelDialog> {
                       inputFormatters: upperCaseFormatters,
                       decoration: const InputDecoration(
                         labelText: 'Marca nueva *',
-                        hintText: 'Ej. ZONGSHEN',
+                        hintText: 'Ej. ZONGSHEN, TOYOTA',
                         border: dec,
                       ),
                     ),
@@ -490,7 +490,7 @@ class _NewMotoModelDialogState extends ConsumerState<_NewMotoModelDialog> {
                     inputFormatters: upperCaseFormatters,
                     decoration: const InputDecoration(
                       labelText: 'Modelo *',
-                      hintText: 'Ej. CG 150',
+                      hintText: 'Ej. CG 150, COROLLA',
                       border: dec,
                     ),
                   ),

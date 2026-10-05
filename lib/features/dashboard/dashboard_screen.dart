@@ -82,7 +82,7 @@ class _Body extends StatelessWidget {
               _Kpi(
                 icon: Icons.two_wheeler,
                 color: Colors.orange,
-                label: 'Motos en taller',
+                label: 'Vehículos en taller',
                 value: '${w.vehiclesInShop}',
                 detail: 'sin entregar',
               ),

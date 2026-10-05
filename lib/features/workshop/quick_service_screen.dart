@@ -441,7 +441,7 @@ class _QuickServiceScreenState extends ConsumerState<QuickServiceScreen> {
                 inputFormatters: upperCaseFormatters,
                 decoration: const InputDecoration(
                   labelText: 'Vehículo (texto libre, opcional)',
-                  hintText: 'Ej: CG 150 ROJA',
+                  hintText: 'Ej: CG 150 ROJA / COROLLA GRIS',
                   border: OutlineInputBorder(),
                 ),
               ),

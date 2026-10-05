@@ -164,7 +164,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repo.created, isEmpty);
-    expect(find.text('Elige la marca de la moto.'), findsOneWidget);
+    expect(find.text('Elige la marca del vehículo.'), findsOneWidget);
     expect(find.text('Nuevo modelo'), findsOneWidget); // sigue abierta
     await tester.pump(const Duration(seconds: 5));
   });

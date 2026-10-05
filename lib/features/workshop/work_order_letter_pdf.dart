@@ -42,7 +42,7 @@ Future<Uint8List> buildWorkOrderLetterPdf(
           L.field('Teléfono', o.clientPhone),
         ]),
         L.card('Vehículo', [
-          L.field('Moto', o.vehicle),
+          L.field('Vehículo', o.vehicle),
           L.field('Kilometraje', o.mileage != null ? '${o.mileage} km' : null),
           L.field('Combustible', o.fuelLevel),
         ]),
