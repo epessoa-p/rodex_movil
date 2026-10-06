@@ -80,11 +80,29 @@ class IncomeStatementView extends ConsumerWidget {
                         ),
                       ),
                     ),
-                  _section('Ingresos', r.income, r.totalIncome, Colors.green),
+                  _section(
+                    'Ingresos',
+                    r.income,
+                    r.totalIncome,
+                    Colors.green,
+                    cash: r.sources['income_cash'],
+                    treasury: r.sources['income_treasury'],
+                  ),
                   const SizedBox(height: 12),
-                  _section('Egresos', r.expense, r.totalExpense, Colors.red),
+                  _section(
+                    'Egresos',
+                    r.expense,
+                    r.totalExpense,
+                    Colors.red,
+                    cash: r.sources['expense_cash'],
+                    treasury: r.sources['expense_treasury'],
+                  ),
                   const SizedBox(height: 12),
                   _resultCard(r.net, period.isAll),
+                  if (r.capital > 0) ...[
+                    const SizedBox(height: 10),
+                    _capitalCard(r.capital),
+                  ],
                   const SizedBox(height: 20),
                 ],
               ),
@@ -99,8 +117,10 @@ class IncomeStatementView extends ConsumerWidget {
     String title,
     List<StatementLine> lines,
     double total,
-    Color color,
-  ) {
+    Color color, {
+    double? cash,
+    double? treasury,
+  }) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
@@ -136,18 +156,97 @@ class IncomeStatementView extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Total ${title.toLowerCase()}'),
+                // Expanded: con montos grandes la fila no desborda en 360 dp.
+                Expanded(child: Text('Total ${title.toLowerCase()}')),
+                const SizedBox(width: 8),
                 Text(
                   money(total),
                   style: TextStyle(fontWeight: FontWeight.w800, color: color),
                 ),
               ],
             ),
+            // De dónde sale: la pestaña Movimientos (por defecto) solo ve la caja.
+            if (cash != null && treasury != null && (cash > 0 || treasury > 0))
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.point_of_sale,
+                      size: 14,
+                      color: Colors.black45,
+                    ),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        'Caja ${money(cash)}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Icon(
+                      Icons.account_balance,
+                      size: 14,
+                      color: Colors.black45,
+                    ),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        'Tesorería ${money(treasury)}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
     );
   }
+
+  /// Aportes de capital: plata que puso el dueño. Se muestran aparte porque
+  /// no son ganancia (no suman a la utilidad).
+  Widget _capitalCard(double capital) => Card(
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      child: Row(
+        children: [
+          Icon(Icons.savings_outlined, color: Colors.blue.shade700),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Aportes de capital',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                Text(
+                  'Dinero que puso el dueño. No es ganancia: no entra en la utilidad.',
+                  style: TextStyle(fontSize: 12, color: Colors.black54),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            money(capital),
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              color: Colors.blue.shade700,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 
   Widget _resultCard(double net, bool all) {
     final positive = net >= 0;

@@ -39,8 +39,12 @@ class _FakeFinance extends FinanceReportRepository {
   final calls = <Map<String, dynamic>>[];
 
   @override
-  Future<CashReport> cash(ReportPeriod period, {int? branchId}) async {
-    calls.add({...period.query, 'branch_id': branchId});
+  Future<CashReport> cash(
+    ReportPeriod period, {
+    int? branchId,
+    String source = 'cash',
+  }) async {
+    calls.add({...period.query, 'branch_id': branchId, 'source': source});
     return CashReport.fromJson({
       'from': '2026-09-01',
       'to': '2026-09-21',
@@ -170,11 +174,23 @@ void main() {
             (ref, key) async => IncomeStatement.fromJson({
               'from': '2026-09-01',
               'to': '2026-09-21',
-              'income': [],
-              'expense': [],
-              'total_income': 0,
-              'total_expense': 0,
-              'net': 0,
+              'income': [
+                {'label': 'Ventas (mostrador)', 'amount': 2419.5},
+                {'label': 'Servicios / Taller (OT)', 'amount': 964},
+              ],
+              'expense': [
+                {'label': 'Pago a proveedor', 'amount': 825},
+              ],
+              'total_income': 3383.5,
+              'total_expense': 825,
+              'net': 2558.5,
+              'capital': 8500,
+              'sources': {
+                'income_cash': 3383.5,
+                'income_treasury': 0,
+                'expense_cash': 50,
+                'expense_treasury': 775,
+              },
             }),
           ),
         ],
@@ -186,7 +202,21 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Finanzas'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Resultado del período'),
+      150,
+      scrollable: find.byType(Scrollable).last,
+    );
     expect(find.text('Resultado del período'), findsOneWidget);
+    expect(find.text('Tesorería Bs 775.00'), findsOneWidget);
+    // El capital va aparte y no suma a la utilidad; se ve el origen de cada total.
+    expect(find.text('Bs 2,558.50'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Aportes de capital'),
+      150,
+      scrollable: find.byType(Scrollable).last,
+    );
+    expect(find.text('Bs 8,500.00'), findsOneWidget);
 
     // Movimientos: KPIs, categorías y lista agrupada por día.
     await tester.tap(find.text('Movimientos'));
@@ -194,6 +224,17 @@ void main() {
     expect(find.text('Bs 1,500.00'), findsWidgets);
     expect(find.text('Venta V-00001 — ANA ROJAS'), findsOneWidget);
     expect(find.text('Gasto operativo'), findsWidgets);
+    // Por defecto solo caja, con su aclaración; Tesorería y Todo piden con source.
+    expect(fin.calls.last['source'], 'cash');
+    expect(find.textContaining('Solo movimientos de caja'), findsOneWidget);
+    await tester.tap(find.text('Todo').last);
+    await tester.pumpAndSettle();
+    expect(fin.calls.last['source'], 'all');
+    await tester.tap(find.text('Tesorería').last);
+    await tester.pumpAndSettle();
+    expect(fin.calls.last['source'], 'treasury');
+    await tester.tap(find.text('Caja').last);
+    await tester.pumpAndSettle();
     // Período por defecto = este mes (se calcula: no depender de la fecha).
     final now = DateTime.now();
     expect(

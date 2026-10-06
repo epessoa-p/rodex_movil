@@ -169,10 +169,18 @@ class _MovementsTab extends ConsumerStatefulWidget {
 
 class _MovementsTabState extends ConsumerState<_MovementsTab> {
   String _kind = 'all'; // all | income | expense
+  String _source = 'cash'; // cash | treasury | all
+
+  static const _sourceNotes = {
+    'cash': 'Solo movimientos de caja: es lo que cuadra con los cierres.',
+    'treasury': 'Solo cuentas de Tesorería (banco): no son de una sucursal.',
+    'all':
+        'Caja + Tesorería: los mismos ingresos y egresos de Resultados (más los aportes de capital, que allá van aparte).',
+  };
 
   @override
   Widget build(BuildContext context) {
-    final key = cashReportKey(widget.period, widget.branchId);
+    final key = cashReportKey(widget.period, widget.branchId, source: _source);
     final async = ref.watch(cashReportProvider(key));
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(cashReportProvider(key)),
@@ -197,6 +205,40 @@ class _MovementsTabState extends ConsumerState<_MovementsTab> {
           return ListView(
             padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
             children: [
+              // De dónde salen los números (Resultados suma caja + tesorería).
+              SegmentedButton<String>(
+                showSelectedIcon: false,
+                style: const ButtonStyle(visualDensity: VisualDensity.compact),
+                segments: const [
+                  ButtonSegment(
+                    value: 'cash',
+                    icon: Icon(Icons.point_of_sale, size: 18),
+                    label: Text('Caja'),
+                  ),
+                  ButtonSegment(
+                    value: 'treasury',
+                    icon: Icon(Icons.account_balance, size: 18),
+                    label: Text('Tesorería'),
+                  ),
+                  ButtonSegment(value: 'all', label: Text('Todo')),
+                ],
+                selected: {_source},
+                onSelectionChanged: (s) => setState(() => _source = s.first),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(2, 6, 2, 8),
+                child: Text(
+                  r.treasurySkipped
+                      ? 'Con una sucursal elegida solo se ve la caja: la tesorería no es por sucursal.'
+                      : _sourceNotes[_source]!,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: r.treasurySkipped
+                        ? Colors.orange.shade800
+                        : Colors.black54,
+                  ),
+                ),
+              ),
               _Kpis(income: r.income, expense: r.expense, balance: r.balance),
               const SizedBox(height: 10),
               _Filters(
@@ -520,7 +562,9 @@ class _MovementTile extends StatelessWidget {
         radius: 16,
         backgroundColor: color.withValues(alpha: .12),
         child: Icon(
-          m.isIncome ? Icons.arrow_downward : Icons.arrow_upward,
+          m.source == 'treasury'
+              ? Icons.account_balance
+              : (m.isIncome ? Icons.arrow_downward : Icons.arrow_upward),
           size: 16,
           color: color,
         ),

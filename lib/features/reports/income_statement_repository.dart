@@ -24,6 +24,12 @@ class IncomeStatement {
   final double totalExpense;
   final double net;
 
+  /// Aportes de capital del período: no son ganancia (no entran en [net]).
+  final double capital;
+
+  /// Origen de los totales: income_cash, income_treasury, expense_cash, expense_treasury.
+  final Map<String, double> sources;
+
   IncomeStatement({
     required this.from,
     required this.to,
@@ -32,6 +38,8 @@ class IncomeStatement {
     required this.totalIncome,
     required this.totalExpense,
     required this.net,
+    this.capital = 0,
+    this.sources = const {},
   });
 
   factory IncomeStatement.fromJson(Map<String, dynamic> j) => IncomeStatement(
@@ -46,6 +54,11 @@ class IncomeStatement {
     totalIncome: (j['total_income'] as num?)?.toDouble() ?? 0,
     totalExpense: (j['total_expense'] as num?)?.toDouble() ?? 0,
     net: (j['net'] as num?)?.toDouble() ?? 0,
+    capital: (j['capital'] as num?)?.toDouble() ?? 0,
+    sources: {
+      for (final e in ((j['sources'] as Map?) ?? const {}).entries)
+        '${e.key}': (e.value as num?)?.toDouble() ?? 0,
+    },
   );
 }
 

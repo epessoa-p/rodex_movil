@@ -20,6 +20,9 @@ class CashMovementRow {
   final String? branch;
   final String? user;
 
+  /// cash | treasury
+  final String source;
+
   CashMovementRow({
     required this.id,
     this.date,
@@ -30,6 +33,7 @@ class CashMovementRow {
     this.method,
     this.register,
     this.branch,
+    this.source = 'cash',
     this.user,
   });
 
@@ -45,6 +49,7 @@ class CashMovementRow {
     method: j['method'] as String?,
     register: j['register'] as String?,
     branch: j['branch'] as String?,
+    source: (j['source'] ?? 'cash') as String,
     user: j['user'] as String?,
   );
 }
@@ -144,6 +149,9 @@ class CashReport {
   final List<CashClosure> closures;
   final List<IdName> branches;
 
+  /// Con una sucursal elegida, la tesorería (no es por sucursal) no se incluye.
+  final bool treasurySkipped;
+
   CashReport({
     required this.from,
     required this.to,
@@ -156,6 +164,7 @@ class CashReport {
     required this.totalCount,
     required this.closures,
     required this.branches,
+    this.treasurySkipped = false,
   });
 
   factory CashReport.fromJson(Map<String, dynamic> j) {
@@ -171,6 +180,7 @@ class CashReport {
       expense: _d(s['expense']),
       balance: _d(s['balance']),
       byCategory: list('by_category', CategoryTotal.fromJson),
+      treasurySkipped: (j['treasury_skipped_by_branch'] ?? false) as bool,
       movements: list('movements', CashMovementRow.fromJson),
       truncated: (j['truncated'] as bool?) ?? false,
       totalCount: (j['total_count'] as int?) ?? 0,
@@ -184,10 +194,14 @@ class FinanceReportRepository {
   final ApiClient _api;
   FinanceReportRepository(this._api);
 
-  Future<CashReport> cash(ReportPeriod period, {int? branchId}) async {
+  Future<CashReport> cash(
+    ReportPeriod period, {
+    int? branchId,
+    String source = 'cash',
+  }) async {
     final data = await _api.get(
       '/reports/cash',
-      query: {...period.query, 'branch_id': ?branchId},
+      query: {...period.query, 'branch_id': ?branchId, 'source': source},
     );
     return CashReport.fromJson((data as Map<String, dynamic>)['data']);
   }
@@ -213,10 +227,15 @@ final cashReportProvider = FutureProvider.family<CashReport, String>((
   final branchId = parts.length > 1 && parts[1].isNotEmpty
       ? int.tryParse(parts[1])
       : null;
+  final source = parts.length > 2 && parts[2].isNotEmpty ? parts[2] : 'cash';
   return ref
       .read(financeReportRepositoryProvider)
-      .cash(period, branchId: branchId);
+      .cash(period, branchId: branchId, source: source);
 });
 
-String cashReportKey(ReportPeriod period, int? branchId) =>
-    '${period.key}#${branchId ?? ''}';
+/// [source]: cash (por defecto: cierres y sucursales), treasury o all.
+String cashReportKey(
+  ReportPeriod period,
+  int? branchId, {
+  String source = 'cash',
+}) => '${period.key}#${branchId ?? ''}#$source';
