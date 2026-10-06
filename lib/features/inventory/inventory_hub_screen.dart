@@ -8,6 +8,7 @@ import '../../core/providers.dart';
 import '../products/products_screen.dart';
 import 'catalog_screen.dart';
 import 'catalogs_repository.dart';
+import 'public_catalog_screen.dart';
 
 /// Hub "Inventario": Productos · Categorías · Marcas · Modelos · Orígenes.
 /// A diferencia de otros hubs, cada tab se construye **la primera vez que se
@@ -87,7 +88,20 @@ class _InventoryHubScreenState extends ConsumerState<InventoryHubScreen> {
     final index = _index.clamp(0, tabs.length - 1);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Inventario')),
+      appBar: AppBar(
+        title: const Text('Inventario'),
+        actions: [
+          // Catálogo público por sucursal (enlace, QR y PDF), como en la web.
+          if (me.can('products.view'))
+            IconButton(
+              tooltip: 'Catálogo público',
+              icon: const Icon(Icons.qr_code_2),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const PublicCatalogScreen()),
+              ),
+            ),
+        ],
+      ),
       // IndexedStack conserva el estado de cada tab; los no visitados son
       // un placeholder vacío hasta que el usuario los abre.
       body: IndexedStack(

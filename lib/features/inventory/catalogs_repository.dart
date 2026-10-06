@@ -10,7 +10,12 @@ enum CatalogType {
   categories('categories', 'Categorías', 'Categoría', 'product-categories'),
   brands('brands', 'Marcas', 'Marca', 'product-brands'),
   motoModels('moto-models', 'Modelos', 'Modelo de vehículo', 'moto-models'),
-  motoBrands('moto-brands', 'Marcas de vehículo', 'Marca de vehículo', 'moto-brands'),
+  motoBrands(
+    'moto-brands',
+    'Marcas de vehículo',
+    'Marca de vehículo',
+    'moto-brands',
+  ),
   origins('origins', 'Orígenes', 'Origen', 'product-origins');
 
   const CatalogType(this.path, this.title, this.singular, this.module);
