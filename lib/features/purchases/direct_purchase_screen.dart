@@ -11,6 +11,7 @@ import '../payments/widgets/cash_available_hint.dart';
 import '../pos/pos_repository.dart';
 import '../products/products_screen.dart';
 import '../treasury/treasury_repository.dart';
+import 'purchase_discount_field.dart';
 import 'purchases_repository.dart';
 
 class _Line {
@@ -168,7 +169,12 @@ class _DirectPurchaseScreenState extends ConsumerState<DirectPurchaseScreen> {
     setState(() => _lines.add(_Line(picked!.id, picked!.name, q, c)));
   }
 
-  double get _total => _lines.fold(0, (s, l) => s + l.subtotal);
+  double get _subtotal => _lines.fold(0, (s, l) => s + l.subtotal);
+
+  /// Descuento del proveedor como lo escribió el usuario (% o monto).
+  SupplierDiscount _discountInput = const SupplierDiscount.none();
+  double get _discount => _discountInput.amountFor(_subtotal);
+  double get _total => _subtotal - _discount;
 
   Future<void> _save() async {
     if (_supplierId == null) return _snack('Elige un proveedor.');
@@ -197,6 +203,7 @@ class _DirectPurchaseScreenState extends ConsumerState<DirectPurchaseScreen> {
                   'unit_cost': l.unitCost,
                 },
             ],
+            discount: _discount,
             notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
           );
       // Refresca saldos de tesorería / caja tras el gasto.
@@ -396,24 +403,11 @@ class _DirectPurchaseScreenState extends ConsumerState<DirectPurchaseScreen> {
                 ),
 
                 const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Total a pagar',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    Text(
-                      money(_total),
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
+                // Descuento del proveedor: % / monto / total editable.
+                PurchaseDiscountField(
+                  subtotal: _subtotal,
+                  value: _discountInput,
+                  onChanged: (d) => setState(() => _discountInput = d),
                 ),
                 const SizedBox(height: 16),
                 FilledButton.icon(

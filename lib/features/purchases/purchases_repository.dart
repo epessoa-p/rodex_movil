@@ -148,6 +148,10 @@ class DirectPurchaseDetail {
   final String? date;
   final String? invoiceNumber;
   final String? notes;
+  final double subtotal;
+
+  /// Descuento del proveedor (0 = sin descuento).
+  final double discount;
   final double total;
   final double paidAmount;
   final String paymentStatus;
@@ -163,6 +167,8 @@ class DirectPurchaseDetail {
     this.date,
     this.invoiceNumber,
     this.notes,
+    this.subtotal = 0,
+    this.discount = 0,
     required this.total,
     required this.paidAmount,
     this.paymentStatus = 'pending',
@@ -184,6 +190,8 @@ class DirectPurchaseDetail {
         date: j['date'] as String?,
         invoiceNumber: j['invoice_number'] as String?,
         notes: j['notes'] as String?,
+        subtotal: (j['subtotal'] as num?)?.toDouble() ?? 0,
+        discount: (j['discount'] as num?)?.toDouble() ?? 0,
         total: (j['total'] as num?)?.toDouble() ?? 0,
         paidAmount: (j['paid_amount'] as num?)?.toDouble() ?? 0,
         paymentStatus: (j['payment_status'] ?? 'pending') as String,
@@ -245,11 +253,17 @@ class PoDetail {
   final List<PoItem> items;
   final List<WarehouseOption> warehouses;
 
+  /// Descuento del proveedor sobre la OC; cada recepción lleva su parte.
+  final double discount;
+  final double total;
+
   PoDetail({
     required this.id,
     required this.code,
     this.supplier,
     required this.status,
+    this.discount = 0,
+    this.total = 0,
     required this.items,
     required this.warehouses,
   });
@@ -259,6 +273,8 @@ class PoDetail {
     code: j['code'] as String,
     supplier: j['supplier'] as String?,
     status: (j['status'] ?? '') as String,
+    discount: (j['discount'] as num?)?.toDouble() ?? 0,
+    total: (j['total'] as num?)?.toDouble() ?? 0,
     items: ((j['items'] as List?) ?? [])
         .map((e) => PoItem.fromJson(e as Map<String, dynamic>))
         .toList(),
@@ -337,6 +353,7 @@ class PurchasesRepository {
     int? treasuryAccountId,
     String? invoiceNumber,
     String? notes,
+    double discount = 0,
   }) async {
     final data = await _api.post(
       '/purchases/direct',
@@ -346,6 +363,7 @@ class PurchasesRepository {
         'payment_source': paymentSource,
         'treasury_account_id': ?treasuryAccountId,
         'items': items,
+        if (discount > 0) 'discount': discount,
         'invoice_number': ?invoiceNumber,
         'notes': ?notes,
       },
@@ -360,12 +378,14 @@ class PurchasesRepository {
     required List<Map<String, dynamic>> items,
     String? expectedDate,
     String? notes,
+    double discount = 0,
   }) async {
     final data = await _api.post(
       '/purchase-orders',
       body: {
         'supplier_id': supplierId,
         'items': items,
+        if (discount > 0) 'discount': discount,
         'expected_date': ?expectedDate,
         'notes': ?notes,
       },

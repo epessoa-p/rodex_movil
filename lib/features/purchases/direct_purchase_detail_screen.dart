@@ -203,6 +203,14 @@ class _DirectPurchaseDetailScreenState
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
+                if (d.discount > 0) ...[
+                  _totalRow('Subtotal', d.subtotal),
+                  _totalRow(
+                    'Descuento del proveedor',
+                    -d.discount,
+                    color: Colors.green.shade700,
+                  ),
+                ],
                 _totalRow('Total', d.total, bold: true),
                 _totalRow('Pagado', d.paidAmount),
                 if (!d.isPaid)

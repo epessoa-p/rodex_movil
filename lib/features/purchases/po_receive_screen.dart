@@ -182,6 +182,31 @@ class _PoReceiveScreenState extends ConsumerState<PoReceiveScreen> {
           d.supplier ?? 'Sin proveedor',
           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
         ),
+        // El descuento de la OC se reparte en lo que se va recibiendo.
+        if (d.discount > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.sell_outlined,
+                  size: 16,
+                  color: Colors.green.shade700,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Descuento del proveedor: ${money(d.discount)}. '
+                    'Se aplica proporcional a lo que recibes.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.green.shade800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         const SizedBox(height: 12),
 
         if (readOnly) ...[
