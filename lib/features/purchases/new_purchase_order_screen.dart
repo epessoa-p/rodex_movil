@@ -21,8 +21,10 @@ class _PoLine {
 }
 
 /// Crear una orden de compra (proveedor + productos con cantidad y costo).
+/// Con [editing] edita esa OC (solo borrador o enviada, como en la web).
 class NewPurchaseOrderScreen extends ConsumerStatefulWidget {
-  const NewPurchaseOrderScreen({super.key});
+  final PoDetail? editing;
+  const NewPurchaseOrderScreen({super.key, this.editing});
 
   @override
   ConsumerState<NewPurchaseOrderScreen> createState() =>
@@ -35,6 +37,8 @@ class _NewPurchaseOrderScreenState
   int? _supplierId;
   final _notes = TextEditingController();
   final List<_PoLine> _lines = [];
+  // 'sent' = lista para recibir; 'draft' = borrador (aún no se recibe).
+  String _status = 'sent';
   bool _loading = true;
   bool _saving = false;
   Object? _error;
@@ -54,10 +58,38 @@ class _NewPurchaseOrderScreenState
   Future<void> _load() async {
     try {
       final s = await ref.read(purchasesRepositoryProvider).suppliers();
+      final e = widget.editing;
+      // El proveedor de la OC puede no estar en la lista (p. ej. inactivo):
+      // se agrega para que el desplegable no falle.
+      if (e?.supplierId != null && !s.any((x) => x.id == e!.supplierId)) {
+        s.insert(
+          0,
+          Supplier(id: e!.supplierId!, name: e.supplier ?? 'Proveedor'),
+        );
+      }
       if (mounted) {
         setState(() {
           _suppliers = s;
-          _supplierId = s.isNotEmpty ? s.first.id : null;
+          _supplierId = e?.supplierId ?? (s.isNotEmpty ? s.first.id : null);
+          if (e != null) {
+            _status = e.status == 'draft' ? 'draft' : 'sent';
+            _notes.text = e.notes ?? '';
+            _discountInput = e.discount > 0
+                ? SupplierDiscount.amount(e.discount)
+                : const SupplierDiscount.none();
+            _lines
+              ..clear()
+              ..addAll([
+                for (final it in e.items)
+                  if (it.productId != null)
+                    _PoLine(
+                      it.productId!,
+                      it.product ?? 'Producto',
+                      it.ordered,
+                      it.unitCost,
+                    ),
+              ]);
+          }
           _loading = false;
         });
       }
@@ -87,13 +119,39 @@ class _NewPurchaseOrderScreenState
       ),
     );
     if (picked == null || !mounted) return;
+    final r = await _askQtyCost(picked!.name);
+    if (r == null) return;
+    setState(() => _lines.add(_PoLine(picked!.id, picked!.name, r.$1, r.$2)));
+  }
 
-    final qtyCtrl = TextEditingController(text: '1');
-    final costCtrl = TextEditingController();
+  /// Tocar una línea: cambiar cantidad y costo.
+  Future<void> _editLine(int i) async {
+    final l = _lines[i];
+    final r = await _askQtyCost(l.name, quantity: l.quantity, cost: l.unitCost);
+    if (r == null) return;
+    setState(() {
+      l.quantity = r.$1;
+      l.unitCost = r.$2;
+    });
+  }
+
+  /// Diálogo de cantidad + costo. Devuelve null si se cancela o es inválido.
+  Future<(double, double)?> _askQtyCost(
+    String name, {
+    double? quantity,
+    double? cost,
+  }) async {
+    final qtyCtrl = TextEditingController(
+      text: quantity == null ? '1' : qty(quantity),
+    );
+    final costCtrl = TextEditingController(
+      text: cost == null || cost == 0 ? '' : cost.toStringAsFixed(2),
+    );
+    final editing = quantity != null;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(picked!.name, maxLines: 2, overflow: TextOverflow.ellipsis),
+        title: Text(name, maxLines: 2, overflow: TextOverflow.ellipsis),
         content: Row(
           children: [
             Expanded(
@@ -126,19 +184,19 @@ class _NewPurchaseOrderScreenState
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Agregar'),
+            child: Text(editing ? 'Guardar' : 'Agregar'),
           ),
         ],
       ),
     );
-    if (ok != true) return;
+    if (ok != true) return null;
     final q = double.tryParse(qtyCtrl.text.replaceAll(',', '.')) ?? 0;
     final c = double.tryParse(costCtrl.text.replaceAll(',', '.')) ?? 0;
     if (q <= 0) {
       _snack('Cantidad inválida.');
-      return;
+      return null;
     }
-    setState(() => _lines.add(_PoLine(picked!.id, picked!.name, q, c)));
+    return (q, c);
   }
 
   double get _subtotal => _lines.fold(0, (s, l) => s + l.subtotal);
@@ -158,21 +216,36 @@ class _NewPurchaseOrderScreenState
     }
     setState(() => _saving = true);
     try {
-      await ref
-          .read(purchasesRepositoryProvider)
-          .createPurchaseOrder(
-            supplierId: _supplierId!,
-            items: [
-              for (final l in _lines)
-                {
-                  'product_id': l.productId,
-                  'quantity': l.quantity.toInt(),
-                  'unit_cost': l.unitCost,
-                },
-            ],
-            discount: _discount,
-            notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
-          );
+      final repo = ref.read(purchasesRepositoryProvider);
+      final items = [
+        for (final l in _lines)
+          {
+            'product_id': l.productId,
+            'quantity': l.quantity.toInt(),
+            'unit_cost': l.unitCost,
+          },
+      ];
+      final notes = _notes.text.trim().isEmpty ? null : _notes.text.trim();
+      final e = widget.editing;
+      if (e != null) {
+        await repo.updatePurchaseOrder(
+          e.id,
+          supplierId: _supplierId!,
+          items: items,
+          status: _status,
+          expectedDate: e.expectedDate,
+          discount: _discount,
+          notes: notes,
+        );
+      } else {
+        await repo.createPurchaseOrder(
+          supplierId: _supplierId!,
+          items: items,
+          status: _status,
+          discount: _discount,
+          notes: notes,
+        );
+      }
       if (mounted) Navigator.pop(context, true);
     } on ApiException catch (e) {
       if (mounted) {
@@ -188,7 +261,13 @@ class _NewPurchaseOrderScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Nueva orden de compra')),
+      appBar: AppBar(
+        title: Text(
+          widget.editing == null
+              ? 'Nueva orden de compra'
+              : 'Editar ${widget.editing!.code}',
+        ),
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
@@ -224,6 +303,34 @@ class _NewPurchaseOrderScreenState
                   ],
                   onChanged: (v) => setState(() => _supplierId = v),
                 ),
+                const SizedBox(height: 12),
+                // Borrador: se arma con calma; Enviada: lista para recibir.
+                SegmentedButton<String>(
+                  showSelectedIcon: false,
+                  segments: const [
+                    ButtonSegment(
+                      value: 'draft',
+                      icon: Icon(Icons.edit_note, size: 18),
+                      label: Text('Borrador'),
+                    ),
+                    ButtonSegment(
+                      value: 'sent',
+                      icon: Icon(Icons.send_outlined, size: 18),
+                      label: Text('Enviada'),
+                    ),
+                  ],
+                  selected: {_status},
+                  onSelectionChanged: (s) => setState(() => _status = s.first),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 4, left: 2),
+                  child: Text(
+                    _status == 'draft'
+                        ? 'Borrador: todavía no se puede recibir.'
+                        : 'Enviada: lista para recibir la mercadería.',
+                    style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  ),
+                ),
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -252,6 +359,7 @@ class _NewPurchaseOrderScreenState
                     Card(
                       child: ListTile(
                         dense: true,
+                        onTap: () => _editLine(i),
                         title: Text(_lines[i].name),
                         subtitle: Text(
                           '${qty(_lines[i].quantity)} x ${money(_lines[i].unitCost)}',
@@ -309,7 +417,9 @@ class _NewPurchaseOrderScreenState
                           ),
                         )
                       : const Icon(Icons.check),
-                  label: const Text('Crear orden'),
+                  label: Text(
+                    widget.editing == null ? 'Crear orden' : 'Guardar cambios',
+                  ),
                   onPressed: _saving ? null : _save,
                 ),
               ],

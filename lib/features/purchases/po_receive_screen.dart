@@ -5,6 +5,7 @@ import '../../core/api_client.dart';
 import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/upper_case.dart';
+import 'new_purchase_order_screen.dart';
 import 'purchases_repository.dart';
 
 /// Detalle de una orden de compra y recepción de mercadería: por cada línea,
@@ -52,6 +53,17 @@ class _PoReceiveScreenState extends ConsumerState<PoReceiveScreen> {
           .read(purchasesRepositoryProvider)
           .orderDetail(widget.orderId);
       if (!mounted) return;
+      // Al recargar (tras editar), los controles viejos se liberan después
+      // del frame: los campos que los usan todavía están montados.
+      final old = _qty.values.toList();
+      _qty.clear();
+      if (old.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          for (final c in old) {
+            c.dispose();
+          }
+        });
+      }
       for (final it in d.items) {
         _qty[it.poItemId] = TextEditingController(
           text: it.pending > 0 ? qty(it.pending) : '',
@@ -123,6 +135,19 @@ class _PoReceiveScreenState extends ConsumerState<PoReceiveScreen> {
   // Validaciones y errores locales: toast rojo arriba (visible sobre hojas).
   void _snack(String m) => AppToast.error(context, m);
 
+  /// Borrador / enviada: abre el formulario de la OC para editarla.
+  Future<void> _edit() async {
+    final d = _detail;
+    if (d == null) return;
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => NewPurchaseOrderScreen(editing: d)),
+    );
+    if (saved != true || !mounted) return;
+    setState(() => _loading = true);
+    await _load();
+    if (mounted) AppToast.success(context, 'Orden ${widget.code} actualizada.');
+  }
+
   /// Recibida o anulada: se consulta pero ya no se le puede recibir nada
   /// (el backend también lo rechaza con 422).
   bool get _readOnly =>
@@ -135,6 +160,14 @@ class _PoReceiveScreenState extends ConsumerState<PoReceiveScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(readOnly ? 'OC ${widget.code}' : 'Recibir ${widget.code}'),
+        actions: [
+          if (d != null && d.editable)
+            IconButton(
+              tooltip: 'Editar orden',
+              icon: const Icon(Icons.edit_outlined),
+              onPressed: _edit,
+            ),
+        ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -352,6 +385,7 @@ class _StatusBanner extends StatelessWidget {
     final (label, color, icon) = switch (status) {
       'received' => ('Recibida completa', Colors.green, Icons.check_circle),
       'cancelled' => ('Anulada', Colors.red, Icons.cancel),
+      'draft' => ('Borrador', Colors.blueGrey, Icons.edit_note),
       _ => (status, Colors.grey, Icons.info_outline),
     };
     return Container(
@@ -367,7 +401,9 @@ class _StatusBanner extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              '$label · esta orden ya no admite recepciones.',
+              status == 'draft'
+                  ? '$label · edítala y márcala como Enviada para poder recibirla.'
+                  : '$label · esta orden ya no admite recepciones.',
               style: TextStyle(color: color, fontWeight: FontWeight.w600),
             ),
           ),

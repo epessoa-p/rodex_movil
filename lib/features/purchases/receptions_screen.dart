@@ -315,12 +315,13 @@ class _OrdersTabState extends ConsumerState<_OrdersTab> {
   /// Pendiente → pantalla de recibir; recibida/anulada → la misma pantalla en
   /// solo lectura (ella decide por el estado de la OC).
   Future<void> _open(PoSummary po) async {
-    final changed = await Navigator.of(context).push<bool>(
+    await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => PoReceiveScreen(orderId: po.id, code: po.code),
       ),
     );
-    if (changed == true) _load();
+    // Siempre: dentro se pudo recibir o editar la OC.
+    if (mounted) _load();
   }
 
   List<PoSummary> get _visible => _filter == _OrderFilter.pending
@@ -328,6 +329,7 @@ class _OrdersTabState extends ConsumerState<_OrdersTab> {
       : _items;
 
   static Color _colorFor(String status) => switch (status) {
+    'draft' => Colors.blueGrey,
     'sent' => Colors.blue,
     'partial' => Colors.orange,
     'received' => Colors.green,

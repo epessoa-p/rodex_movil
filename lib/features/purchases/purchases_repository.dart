@@ -8,7 +8,7 @@ class PoSummary {
   final int id;
   final String code;
   final String? supplier;
-  final String status; // sent | partial | received | cancelled
+  final String status; // draft | sent | partial | received | cancelled
   final String statusLabel;
   final String? date;
   final double total;
@@ -208,6 +208,9 @@ class DirectPurchaseDetail {
 /// Línea de una OC (con lo pendiente por recibir).
 class PoItem {
   final int poItemId;
+
+  /// Para editar la OC (null con un backend viejo).
+  final int? productId;
   final String? product;
   final String? unit;
   final double ordered;
@@ -217,6 +220,7 @@ class PoItem {
 
   PoItem({
     required this.poItemId,
+    this.productId,
     this.product,
     this.unit,
     required this.ordered,
@@ -227,6 +231,7 @@ class PoItem {
 
   factory PoItem.fromJson(Map<String, dynamic> j) => PoItem(
     poItemId: j['po_item_id'] as int,
+    productId: j['product_id'] as int?,
     product: j['product'] as String?,
     unit: j['unit'] as String?,
     ordered: (j['ordered'] as num?)?.toDouble() ?? 0,
@@ -249,9 +254,15 @@ class PoDetail {
   final int id;
   final String code;
   final String? supplier;
+  final int? supplierId;
   final String status;
+  final String? expectedDate;
+  final String? notes;
   final List<PoItem> items;
   final List<WarehouseOption> warehouses;
+
+  /// Borrador o enviada + permiso `purchase-orders.edit` (lo decide el backend).
+  final bool editable;
 
   /// Descuento del proveedor sobre la OC; cada recepción lleva su parte.
   final double discount;
@@ -261,7 +272,11 @@ class PoDetail {
     required this.id,
     required this.code,
     this.supplier,
+    this.supplierId,
     required this.status,
+    this.expectedDate,
+    this.notes,
+    this.editable = false,
     this.discount = 0,
     this.total = 0,
     required this.items,
@@ -272,7 +287,11 @@ class PoDetail {
     id: j['id'] as int,
     code: j['code'] as String,
     supplier: j['supplier'] as String?,
+    supplierId: j['supplier_id'] as int?,
     status: (j['status'] ?? '') as String,
+    expectedDate: j['expected_date'] as String?,
+    notes: j['notes'] as String?,
+    editable: (j['editable'] ?? false) as bool,
     discount: (j['discount'] as num?)?.toDouble() ?? 0,
     total: (j['total'] as num?)?.toDouble() ?? 0,
     items: ((j['items'] as List?) ?? [])
@@ -379,11 +398,13 @@ class PurchasesRepository {
     String? expectedDate,
     String? notes,
     double discount = 0,
+    String status = 'sent', // 'draft' | 'sent'
   }) async {
     final data = await _api.post(
       '/purchase-orders',
       body: {
         'supplier_id': supplierId,
+        'status': status,
         'items': items,
         if (discount > 0) 'discount': discount,
         'expected_date': ?expectedDate,
@@ -393,8 +414,33 @@ class PurchasesRepository {
     return PoSummary.fromJson((data as Map<String, dynamic>)['data']);
   }
 
+  /// Edita una OC en borrador o enviada (recrea sus líneas).
+  Future<PoSummary> updatePurchaseOrder(
+    int id, {
+    required int supplierId,
+    required List<Map<String, dynamic>> items,
+    required String status,
+    String? expectedDate,
+    String? notes,
+    double discount = 0,
+  }) async {
+    final data = await _api.put(
+      '/purchase-orders/$id',
+      body: {
+        'supplier_id': supplierId,
+        'status': status,
+        'items': items,
+        // Siempre: 0 quita un descuento que ya tenía.
+        'discount': discount,
+        'expected_date': expectedDate,
+        'notes': notes,
+      },
+    );
+    return PoSummary.fromJson((data as Map<String, dynamic>)['data']);
+  }
+
   /// Órdenes de compra. Por defecto solo las por recibir; con [all] devuelve
-  /// también las recibidas y anuladas (todo salvo borradores).
+  /// todas (borradores, recibidas y anuladas incluidas).
   Future<List<PoSummary>> orders({bool all = false}) async {
     final data = await _api.get(
       '/purchase-orders',
