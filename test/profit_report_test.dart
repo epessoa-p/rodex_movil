@@ -75,6 +75,23 @@ Map<String, dynamic> _json(ProfitQuery q) {
       },
     ],
     'estimated_lines': 1,
+    'transactions': [
+      for (var i = 25; i >= 1; i--)
+        {
+          'type': i.isEven ? 'ot' : 'sale',
+          'id': i,
+          'code': 'VEN-${i.toString().padLeft(3, '0')}',
+          'date': '2026-10-09 10:${i.toString().padLeft(2, '0')}',
+          'client': i == 25 ? null : 'CLIENTE CON UN NOMBRE MUY LARGO $i',
+          'revenue': 100.0 * i,
+          'cost': 60.0 * i,
+          'profit': 40.0 * i,
+          'margin': 40,
+          'quick': i == 3 ? 15 : 0,
+          'estimated': i == 1,
+        },
+    ],
+    'transactions_total': 40,
     'branches': [
       {'id': 1, 'name': 'Central'},
       {'id': 2, 'name': 'Norte'},
@@ -161,6 +178,36 @@ void main() {
     expect(find.byKey(const Key('merge_quick')), findsNothing);
     expect(profitText(t), contains('278.00'));
     expect(find.text('Comisión mecánicos (por pagar)'), findsOneWidget);
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('listado de ventas con su ganancia y scroll propio', (t) async {
+    await pump(t);
+    final list = find.byKey(const Key('profit_transactions'));
+    await t.scrollUntilVisible(
+      list,
+      300,
+      scrollable: find
+          .descendant(
+            of: find.byType(ListView).first,
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await t.pumpAndSettle();
+    expect(find.text('Las 25 más recientes de 40'), findsOneWidget);
+    expect(find.text('VEN-025'), findsOneWidget);
+    expect(find.text('VEN-001'), findsNothing);
+    // El recuadro se desplaza por dentro hasta la venta más antigua.
+    await t.scrollUntilVisible(
+      find.text('VEN-001'),
+      200,
+      scrollable: find
+          .descendant(of: list, matching: find.byType(Scrollable))
+          .first,
+    );
+    expect(find.text('VEN-001'), findsOneWidget);
+    expect(find.text('estimada'), findsOneWidget);
     expect(t.takeException(), isNull);
   });
 

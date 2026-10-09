@@ -51,6 +51,54 @@ class ProfitProduct {
   );
 }
 
+/// Una venta u OT del período con su ganancia.
+class ProfitTransaction {
+  final String type; // sale | ot
+  final int id;
+  final String code;
+  final String date; // yyyy-mm-dd HH:mm
+  final String? client;
+  final double revenue;
+  final double cost;
+  final double profit;
+  final double margin;
+
+  /// Venta rápida sin costo conocido que no se sumó.
+  final double quick;
+  final bool estimated;
+
+  ProfitTransaction({
+    required this.type,
+    required this.id,
+    required this.code,
+    required this.date,
+    this.client,
+    required this.revenue,
+    required this.cost,
+    required this.profit,
+    required this.margin,
+    this.quick = 0,
+    this.estimated = false,
+  });
+
+  bool get isOt => type == 'ot';
+
+  factory ProfitTransaction.fromJson(Map<String, dynamic> j) =>
+      ProfitTransaction(
+        type: (j['type'] ?? 'sale') as String,
+        id: (j['id'] as num?)?.toInt() ?? 0,
+        code: (j['code'] ?? '') as String,
+        date: (j['date'] ?? '') as String,
+        client: j['client'] as String?,
+        revenue: _d(j['revenue']),
+        cost: _d(j['cost']),
+        profit: _d(j['profit']),
+        margin: _d(j['margin']),
+        quick: _d(j['quick']),
+        estimated: (j['estimated'] ?? false) as bool,
+      );
+}
+
 /// Ganancias (precio − costo) de ventas y taller en un período.
 class ProfitReport {
   final String from;
@@ -94,6 +142,10 @@ class ProfitReport {
   final int estimatedLines;
   final List<IdName> branches;
 
+  /// Ventas y OTs (las más recientes, hasta 300) y cuántas hay en total.
+  final List<ProfitTransaction> transactions;
+  final int transactionsTotal;
+
   ProfitReport({
     required this.from,
     required this.to,
@@ -126,6 +178,8 @@ class ProfitReport {
     required this.lowMargin,
     required this.estimatedLines,
     this.branches = const [],
+    this.transactions = const [],
+    this.transactionsTotal = 0,
   });
 
   factory ProfitReport.fromJson(Map<String, dynamic> j) {
@@ -168,6 +222,8 @@ class ProfitReport {
       lowMargin: list('low_margin', ProfitProduct.fromJson),
       estimatedLines: (j['estimated_lines'] as num?)?.toInt() ?? 0,
       branches: list('branches', IdName.fromJson),
+      transactions: list('transactions', ProfitTransaction.fromJson),
+      transactionsTotal: (j['transactions_total'] as num?)?.toInt() ?? 0,
     );
   }
 }

@@ -80,6 +80,7 @@ class _ProfitReportScreenState extends ConsumerState<ProfitReportScreen> {
                     if (r.workshopEnabled) _workshopCard(r),
                     _byDayCard(r),
                     _productsCard(r),
+                    _transactionsCard(r),
                   ],
                 ),
               ),
@@ -253,6 +254,49 @@ class _ProfitReportScreenState extends ConsumerState<ProfitReportScreen> {
     ],
   );
 
+  /// Ganancia de cada venta / OT. Si la lista es larga, se desplaza dentro
+  /// del recuadro (alto máximo) sin alargar toda la pantalla.
+  Widget _transactionsCard(ProfitReport r) {
+    final tx = r.transactions;
+    final title = switch (_q.scope) {
+      ProfitScope.workshop => 'OTs entregadas',
+      ProfitScope.sales => 'Ventas',
+      ProfitScope.all => 'Ventas y OTs',
+    };
+    final countText = r.transactionsTotal > tx.length
+        ? 'Las ${tx.length} más recientes de ${r.transactionsTotal}'
+        : '${r.transactionsTotal} ${r.transactionsTotal == 1 ? 'registro' : 'registros'}';
+    return _Section(
+      icon: Icons.receipt_long_outlined,
+      color: Colors.indigo,
+      title: title,
+      trailing: tx.isEmpty ? null : countText,
+      children: [
+        if (tx.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              'Sin ventas ni OTs en el período.',
+              style: TextStyle(color: Colors.black54),
+            ),
+          )
+        else
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 380),
+            child: ListView.separated(
+              key: const Key('profit_transactions'),
+              shrinkWrap: true,
+              padding: EdgeInsets.zero,
+              physics: const ClampingScrollPhysics(),
+              itemCount: tx.length,
+              separatorBuilder: (_, _) => const Divider(height: 1),
+              itemBuilder: (_, i) => _TransactionRow(t: tx[i]),
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _productsCard(ProfitReport r) {
     final rows = _showLow ? r.lowMargin : r.topProducts;
     return _Section(
@@ -345,6 +389,95 @@ Color _marginColor(double m) => m < 0
     : m < 15
     ? Colors.orange.shade800
     : Colors.green.shade700;
+
+/// Fila de una venta / OT: código, fecha, cliente, vendido y ganancia.
+class _TransactionRow extends StatelessWidget {
+  final ProfitTransaction t;
+  const _TransactionRow({required this.t});
+
+  @override
+  Widget build(BuildContext context) {
+    final date = t.date.length >= 16
+        ? '${t.date.substring(8, 10)}/${t.date.substring(5, 7)} ${t.date.substring(11, 16)}'
+        : t.date;
+    Widget badge(String text, Color color) => Container(
+      margin: const EdgeInsets.only(left: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .12),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 10,
+          color: color,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        t.code.isEmpty ? (t.isOt ? 'OT' : 'Venta') : t.code,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    if (t.isOt) badge('OT', Colors.orange.shade800),
+                    if (t.estimated) badge('estimada', Colors.blueGrey),
+                  ],
+                ),
+                Text(
+                  '$date · ${t.client ?? 'Sin cliente'}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                ),
+                Text(
+                  'Vendido ${money(t.revenue)} · costo ${money(t.cost)}'
+                  '${t.quick > 0 ? ' · + ${money(t.quick)} rápida' : ''}',
+                  maxLines: 2,
+                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                money(t.profit),
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: t.profit < 0
+                      ? Colors.red.shade700
+                      : Colors.green.shade700,
+                ),
+              ),
+              if (t.revenue > 0)
+                Text(
+                  '${t.margin.toStringAsFixed(1)}%',
+                  style: TextStyle(fontSize: 12, color: _marginColor(t.margin)),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 /// Tarjeta principal: ganancia grande + ingresos, costo y margen.
 class _ProfitHero extends StatelessWidget {
@@ -507,17 +640,18 @@ class _Section extends StatelessWidget {
             children: [
               Icon(icon, size: 20, color: color),
               const SizedBox(width: 8),
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(width: 8),
+              // El texto de la derecha cede espacio (con …) si no cabe.
               Expanded(
                 child: Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-              if (trailing != null)
-                Text(
-                  trailing!,
+                  trailing ?? '',
+                  textAlign: TextAlign.end,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 12, color: Colors.black54),
                 ),
+              ),
             ],
           ),
           const SizedBox(height: 8),
