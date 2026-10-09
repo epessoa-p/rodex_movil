@@ -22,6 +22,7 @@ import '../features/dashboard/analytics_screen.dart';
 import '../features/reports/accounts_report_screen.dart';
 import '../features/reports/finance_report_screen.dart';
 import '../features/reports/inventory_report_screen.dart';
+import '../features/reports/profit_report_screen.dart';
 import '../features/reports/reports_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/treasury/treasury_screen.dart';
@@ -110,6 +111,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/reports/inventory',
         builder: (_, _) => const InventoryReportScreen(),
+      ),
+      GoRoute(
+        path: '/reports/profit',
+        builder: (_, _) => const ProfitReportScreen(),
       ),
     ],
     redirect: (context, state) {

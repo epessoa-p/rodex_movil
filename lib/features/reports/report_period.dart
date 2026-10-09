@@ -2,9 +2,18 @@ import 'package:flutter/material.dart';
 
 /// Presets de período de los reportes (Finanzas: resultados, movimientos y
 /// cierres). "Todo" deja el rango al backend (primer movimiento → hoy).
-enum ReportPreset { thisWeek, lastWeek, thisMonth, lastMonth, all, custom }
+enum ReportPreset {
+  today,
+  thisWeek,
+  lastWeek,
+  thisMonth,
+  lastMonth,
+  all,
+  custom,
+}
 
 const reportPresetLabels = {
+  ReportPreset.today: 'Hoy',
   ReportPreset.thisWeek: 'Esta semana',
   ReportPreset.lastWeek: 'Semana ant.',
   ReportPreset.thisMonth: 'Este mes',
@@ -36,6 +45,12 @@ class ReportPeriod {
           ? 'Desde el inicio  —  hoy'
           : 'Desde ${dmy(allFrom)}  —  hoy';
     }
+    // Un solo día: "hoy" o la fecha.
+    if (ymd(from) == ymd(to)) {
+      return preset == ReportPreset.today
+          ? 'Hoy, ${dmy(ymd(from))}'
+          : dmy(ymd(from));
+    }
     return '${ymd(from)}  —  ${ymd(to)}';
   }
 
@@ -44,6 +59,7 @@ class ReportPeriod {
     final today = DateTime(n.year, n.month, n.day);
     final monday = today.subtract(Duration(days: today.weekday - 1));
     return switch (p) {
+      ReportPreset.today => ReportPeriod(p, today, today),
       ReportPreset.thisWeek => ReportPeriod(p, monday, today),
       ReportPreset.lastWeek => ReportPeriod(
         p,

@@ -31,7 +31,18 @@ class ReportsScreen extends ConsumerWidget {
             me.canAny(['accounts-payable.view', 'purchases.view']));
     final canInventory = me.planAllows('inventory') && me.can('products.view');
 
+    // Ganancias: información del dueño, igual que Resultados.
+    final canProfit = me.can('income-statement.view');
+
     final tiles = <Widget>[
+      if (canProfit)
+        _ReportTile(
+          icon: Icons.trending_up,
+          label: 'Ganancias',
+          subtitle: 'Ventas y taller: precio − costo',
+          color: Colors.green.shade700,
+          onTap: () => context.push('/reports/profit'),
+        ),
       if (canAnalytics)
         _ReportTile(
           icon: Icons.insights_outlined,

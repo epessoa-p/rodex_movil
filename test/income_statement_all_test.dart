@@ -44,6 +44,9 @@ void main() {
     expect(requestedKeys.single, isNot(incomeStatementAllKey));
     expect(find.text('Resultado del período'), findsOneWidget);
 
+    // La fila de chips se desplaza: "Todo" puede quedar fuera de la vista.
+    await tester.ensureVisible(find.text('Todo'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Todo'));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
