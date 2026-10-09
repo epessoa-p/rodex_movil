@@ -24,6 +24,9 @@ Map<String, dynamic> _json(ProfitQuery q) {
       'commission': commission,
       'profit': profit,
       'margin': revenue > 0 ? profit / revenue * 100 : 0,
+      'credit_count': 2,
+      'credit_profit': 250,
+      'credit_pending': 240,
     },
     'sales': {
       'enabled': sales,
@@ -33,6 +36,7 @@ Map<String, dynamic> _json(ProfitQuery q) {
       'margin': 33.3,
       'count': 2,
       'returns_revenue': 90,
+      'interest': 20,
     },
     'workshop': {
       'enabled': shop,
@@ -89,6 +93,9 @@ Map<String, dynamic> _json(ProfitQuery q) {
           'margin': 40,
           'quick': i == 3 ? 15 : 0,
           'estimated': i == 1,
+          'credit': i == 22,
+          'balance': i == 22 ? 70 : 0,
+          'interest': i == 22 ? 20 : 0,
         },
     ],
     'transactions_total': 40,
@@ -177,6 +184,7 @@ void main() {
     expect(queries.last.scope, ProfitScope.workshop);
     expect(find.byKey(const Key('merge_quick')), findsNothing);
     expect(profitText(t), contains('278.00'));
+    await scrollTo(t, find.text('Comisión mecánicos (por pagar)'));
     expect(find.text('Comisión mecánicos (por pagar)'), findsOneWidget);
     expect(t.takeException(), isNull);
   });
@@ -208,6 +216,29 @@ void main() {
     );
     expect(find.text('VEN-001'), findsOneWidget);
     expect(find.text('estimada'), findsOneWidget);
+    expect(t.takeException(), isNull);
+  });
+
+  testWidgets('crédito: aviso de por cobrar, intereses y "Debe" en la fila', (
+    t,
+  ) async {
+    await pump(t);
+    await scrollTo(t, find.textContaining('por cobrar'));
+    expect(find.textContaining('Quedan Bs 240.00 por cobrar'), findsOneWidget);
+    await scrollTo(t, find.text('Incluye intereses de crédito'));
+    expect(find.text('+ Bs 20.00'), findsOneWidget);
+
+    final list = find.byKey(const Key('profit_transactions'));
+    await scrollTo(t, list);
+    await t.scrollUntilVisible(
+      find.text('Debe Bs 70.00'),
+      150,
+      scrollable: find
+          .descendant(of: list, matching: find.byType(Scrollable))
+          .first,
+    );
+    expect(find.text('Debe Bs 70.00'), findsOneWidget);
+    expect(find.text('Crédito'), findsWidgets);
     expect(t.takeException(), isNull);
   });
 

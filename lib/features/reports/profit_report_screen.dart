@@ -147,6 +147,16 @@ class _ProfitReportScreenState extends ConsumerState<ProfitReportScreen> {
             '${r.estimatedLines} ${r.estimatedLines == 1 ? 'línea es anterior' : 'líneas son anteriores'} '
             'a que se guardara el costo al vender: se usa el costo actual (ganancia estimada).',
       ),
+    if (r.creditProfit > 0)
+      _Notice(
+        color: Colors.blue,
+        icon: Icons.credit_card,
+        text:
+            '${money(r.creditProfit)} de la ganancia viene de '
+            '${r.creditCount == 1 ? '1 venta u OT' : '${r.creditCount} ventas u OTs'} a crédito '
+            '(se cuenta el día de la venta). '
+            '${r.creditPending > 0 ? 'Quedan ${money(r.creditPending)} por cobrar.' : 'Ya están cobradas.'}',
+      ),
     if (r.salesEnabled && r.quickCount > 0)
       _Notice(
         color: r.quickMerged ? Colors.orange : Colors.blueGrey,
@@ -168,6 +178,8 @@ class _ProfitReportScreenState extends ConsumerState<ProfitReportScreen> {
     trailing: '${r.salesCount} ${r.salesCount == 1 ? 'venta' : 'ventas'}',
     children: [
       _Line('Ingresos', money(r.salesRevenue)),
+      if (r.interest > 0)
+        _Line('Incluye intereses de crédito', '+ ${money(r.interest)}'),
       _Line('Costo de productos', '− ${money(r.salesCost)}', muted: true),
       if (r.returnsRevenue > 0)
         _Line(
@@ -435,6 +447,7 @@ class _TransactionRow extends StatelessWidget {
                       ),
                     ),
                     if (t.isOt) badge('OT', Colors.orange.shade800),
+                    if (t.credit) badge('Crédito', Colors.blue.shade700),
                     if (t.estimated) badge('estimada', Colors.blueGrey),
                   ],
                 ),
@@ -446,10 +459,20 @@ class _TransactionRow extends StatelessWidget {
                 ),
                 Text(
                   'Vendido ${money(t.revenue)} · costo ${money(t.cost)}'
+                  '${t.interest > 0 ? ' (incl. ${money(t.interest)} interés)' : ''}'
                   '${t.quick > 0 ? ' · + ${money(t.quick)} rápida' : ''}',
                   maxLines: 2,
                   style: const TextStyle(fontSize: 12, color: Colors.black54),
                 ),
+                if (t.balance > 0)
+                  Text(
+                    'Debe ${money(t.balance)}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.red.shade700,
+                    ),
+                  ),
               ],
             ),
           ),

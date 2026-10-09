@@ -67,6 +67,11 @@ class ProfitTransaction {
   final double quick;
   final bool estimated;
 
+  /// Venta / OT a crédito y lo que el cliente todavía debe (a hoy).
+  final bool credit;
+  final double balance;
+  final double interest;
+
   ProfitTransaction({
     required this.type,
     required this.id,
@@ -79,6 +84,9 @@ class ProfitTransaction {
     required this.margin,
     this.quick = 0,
     this.estimated = false,
+    this.credit = false,
+    this.balance = 0,
+    this.interest = 0,
   });
 
   bool get isOt => type == 'ot';
@@ -96,6 +104,9 @@ class ProfitTransaction {
         margin: _d(j['margin']),
         quick: _d(j['quick']),
         estimated: (j['estimated'] ?? false) as bool,
+        credit: (j['credit'] ?? false) as bool,
+        balance: _d(j['balance']),
+        interest: _d(j['interest']),
       );
 }
 
@@ -119,6 +130,14 @@ class ProfitReport {
   final double salesMargin;
   final int salesCount;
   final double returnsRevenue;
+
+  /// Intereses de ventas a crédito (suman a ingreso y ganancia).
+  final double interest;
+
+  /// Ganancia que viene de ventas / OTs a crédito y saldo por cobrar.
+  final int creditCount;
+  final double creditProfit;
+  final double creditPending;
 
   // Taller
   final bool workshopEnabled;
@@ -161,6 +180,10 @@ class ProfitReport {
     required this.salesMargin,
     required this.salesCount,
     required this.returnsRevenue,
+    this.interest = 0,
+    this.creditCount = 0,
+    this.creditProfit = 0,
+    this.creditPending = 0,
     required this.workshopEnabled,
     required this.labor,
     required this.parts,
@@ -205,6 +228,10 @@ class ProfitReport {
       salesMargin: _d(s['margin']),
       salesCount: (s['count'] as num?)?.toInt() ?? 0,
       returnsRevenue: _d(s['returns_revenue']),
+      interest: _d(s['interest']),
+      creditCount: (t['credit_count'] as num?)?.toInt() ?? 0,
+      creditProfit: _d(t['credit_profit']),
+      creditPending: _d(t['credit_pending']),
       workshopEnabled: (w['enabled'] ?? true) as bool,
       labor: _d(w['labor']),
       parts: _d(w['parts']),
