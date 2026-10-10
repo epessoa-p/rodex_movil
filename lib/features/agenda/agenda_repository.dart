@@ -189,6 +189,21 @@ class AgendaRepository {
     return AppointmentMeta.fromJson((data as Map<String, dynamic>)['data']);
   }
 
+  /// Cliente de la empresa con ese teléfono (o null). Se consulta antes de
+  /// guardar una cita con cliente rápido para preguntar si es la misma persona.
+  Future<IdName?> clientByPhone(String phone) async {
+    final data = await _api.get(
+      '/appointments/client-by-phone',
+      query: {'phone': phone},
+    );
+    final c = (data as Map<String, dynamic>)['data'];
+    if (c is! Map) return null;
+    return IdName(
+      id: (c['id'] as num).toInt(),
+      name: (c['full_name'] ?? '') as String,
+    );
+  }
+
   Future<Appointment> create(Map<String, dynamic> body) async {
     final data = await _api.post('/appointments', body: body);
     return Appointment.fromJson((data as Map<String, dynamic>)['data']);

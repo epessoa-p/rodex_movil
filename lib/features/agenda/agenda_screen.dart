@@ -9,6 +9,7 @@ import '../../core/providers.dart';
 import '../../core/module_colors.dart';
 import '../workshop/reception_screen.dart';
 import 'agenda_repository.dart';
+import 'appointment_durations.dart';
 import 'appointment_form_screen.dart';
 
 const _dow = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
@@ -1103,7 +1104,14 @@ class _ApptCard extends StatelessWidget {
                           appt.title,
                         if (appt.vehicleLabel != null) appt.vehicleLabel,
                         if (appt.mechanicName != null) appt.mechanicName,
-                        '${appt.durationMinutes} min',
+                        [
+                          formatDuration(appt.durationMinutes),
+                          ?multiDayEnd(
+                            appt.date,
+                            appt.time,
+                            appt.durationMinutes,
+                          ),
+                        ].join(' '),
                       ].whereType<String>().join(' · '),
                       style: const TextStyle(
                         fontSize: 12.5,

@@ -102,7 +102,7 @@ void main() {
         'Luis Paz',
       );
       await tester.enterText(
-        find.widgetWithText(TextField, 'Teléfono (opcional)'),
+        find.widgetWithText(TextField, 'Teléfono *'),
         '71234567',
       );
 
@@ -202,6 +202,11 @@ void main() {
       await tester.enterText(
         find.widgetWithText(TextField, 'Nombre del cliente *'),
         'Ana',
+      );
+      // El teléfono es obligatorio en modo rápido.
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Teléfono *'),
+        '69999999',
       );
       await tester.tap(find.text('Guardar cita'));
       await tester.pumpAndSettle();

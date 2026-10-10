@@ -10,6 +10,7 @@ import '../../core/upper_case.dart';
 import '../clients/clients_screen.dart';
 import '../workshop/workshop_repository.dart';
 import 'agenda_repository.dart';
+import 'appointment_durations.dart';
 
 /// Alta / edición de una cita. Cliente registrado (con vehículo) o rápido
 /// (nombre + teléfono), servicio, mecánico, fecha/hora, duración y notas.
@@ -197,6 +198,47 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
       return;
     }
 
+    if (!_registered && _phone.text.trim().isEmpty) {
+      AppToast.error(
+        context,
+        'Escribe el teléfono del cliente.',
+        title: 'Falta el teléfono',
+      );
+      return;
+    }
+
+    // Cliente rápido: si el teléfono ya es de otro cliente, preguntar antes.
+    int? useClientId;
+    var newClient = false;
+    if (!_registered) {
+      IdName? match;
+      try {
+        match = await ref
+            .read(agendaRepositoryProvider)
+            .clientByPhone(_phone.text.trim());
+      } catch (_) {
+        match =
+            null; // sin consulta (servidor viejo, sin red): decide el servidor
+      }
+      if (!mounted) return;
+      String norm(String s) =>
+          s.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+      if (match != null && norm(match.name) != norm(_name.text)) {
+        final choice = await showDialog<String>(
+          context: context,
+          builder: (ctx) => _PhoneTakenDialog(
+            existing: match!.name,
+            typed: _name.text.trim(),
+          ),
+        );
+        if (!mounted || choice == null) return;
+        if (choice == 'existing') {
+          useClientId = match.id;
+        } else {
+          newClient = true;
+        }
+      }
+    }
     final hh = _time.hour.toString().padLeft(2, '0');
     final mm = _time.minute.toString().padLeft(2, '0');
     final scheduledAt =
@@ -207,9 +249,13 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
       'duration_minutes': _duration,
       if (_registered) 'client_id': _clientId,
       if (_registered && _vehicleId != null) 'vehicle_id': _vehicleId,
-      if (!_registered) 'customer_name': _name.text.trim(),
-      if (!_registered && _phone.text.trim().isNotEmpty)
+      // Teléfono de un cliente existente → la cita queda a su nombre.
+      if (!_registered && useClientId != null) 'client_id': useClientId,
+      if (!_registered && useClientId == null) ...{
+        'customer_name': _name.text.trim(),
         'customer_phone': _phone.text.trim(),
+        if (newClient) 'new_client': true,
+      },
       // Siempre se manda (vacío = sin servicios) para que el backend sincronice.
       'service_ids': [for (final s in _services) s.id],
       if (_mechanicId != null) 'mechanic_id': _mechanicId,
@@ -326,8 +372,8 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
                 controller: _phone,
                 keyboardType: TextInputType.phone,
                 decoration: const InputDecoration(
-                  labelText: 'Teléfono (opcional)',
-                  helperText: 'Con nombre y teléfono se registra como cliente.',
+                  labelText: 'Teléfono *',
+                  helperText: 'Con el teléfono se registra como cliente.',
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -355,11 +401,17 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
                             style: TextStyle(fontWeight: FontWeight.w700),
                           ),
                         ),
-                        TextButton.icon(
-                          onPressed: () => _pickServices(meta.services),
-                          icon: const Icon(Icons.add, size: 18),
-                          label: Text(
-                            _services.isEmpty ? 'Agregar servicio' : 'Agregar',
+                        // Flexible: con letra grande el botón cede espacio (no desborda a 360 dp).
+                        Flexible(
+                          child: TextButton.icon(
+                            onPressed: () => _pickServices(meta.services),
+                            icon: const Icon(Icons.add, size: 18),
+                            label: Text(
+                              _services.isEmpty
+                                  ? 'Agregar servicio'
+                                  : 'Agregar',
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ),
                       ],
@@ -438,17 +490,20 @@ class _AppointmentFormScreenState extends ConsumerState<AppointmentFormScreen> {
             const SizedBox(height: 12),
             DropdownButtonFormField<int>(
               initialValue: _duration,
+              isExpanded: true,
               decoration: const InputDecoration(
                 labelText: 'Duración',
                 border: OutlineInputBorder(),
               ),
-              items: const [
-                DropdownMenuItem(value: 30, child: Text('30 min')),
-                DropdownMenuItem(value: 60, child: Text('1 hora')),
-                DropdownMenuItem(value: 90, child: Text('1 h 30 min')),
-                DropdownMenuItem(value: 120, child: Text('2 horas')),
-                DropdownMenuItem(value: 180, child: Text('3 horas')),
-                DropdownMenuItem(value: 240, child: Text('4 horas')),
+              items: [
+                for (final e in appointmentDurations.entries)
+                  DropdownMenuItem(value: e.key, child: Text(e.value)),
+                // Una duración guardada que no está en la lista se conserva.
+                if (!appointmentDurations.containsKey(_duration))
+                  DropdownMenuItem(
+                    value: _duration,
+                    child: Text(formatDuration(_duration)),
+                  ),
               ],
               onChanged: (v) => setState(() => _duration = v ?? 60),
             ),
@@ -783,6 +838,74 @@ class _NewServiceDialogState extends State<_NewServiceDialog> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Text('Crear'),
+        ),
+      ],
+    );
+  }
+}
+
+/// El teléfono del cliente rápido ya es de otro cliente: ¿usar ese o
+/// registrar uno nuevo con el nombre escrito? Devuelve 'existing' | 'new'.
+class _PhoneTakenDialog extends StatelessWidget {
+  final String existing;
+  final String typed;
+  const _PhoneTakenDialog({required this.existing, required this.typed});
+
+  @override
+  Widget build(BuildContext context) {
+    // Botones apilados a lo ancho (no en Row: FilledButton con ancho mínimo infinito).
+    final full = ButtonStyle(
+      minimumSize: const WidgetStatePropertyAll(Size.fromHeight(44)),
+    );
+    return AlertDialog(
+      icon: const Icon(Icons.phone_disabled_outlined),
+      title: const Text('Teléfono ya registrado'),
+      content: Text.rich(
+        TextSpan(
+          children: [
+            const TextSpan(text: 'Este teléfono es de '),
+            TextSpan(
+              text: existing,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const TextSpan(text: '. ¿La cita es para ese cliente, o '),
+            TextSpan(
+              text: typed,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const TextSpan(text: ' es otra persona?'),
+          ],
+        ),
+      ),
+      actionsOverflowDirection: VerticalDirection.down,
+      actions: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FilledButton.icon(
+              key: const Key('use_existing_client'),
+              style: full,
+              icon: const Icon(Icons.person_outline),
+              label: Text('Usar $existing', overflow: TextOverflow.ellipsis),
+              onPressed: () => Navigator.pop(context, 'existing'),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              key: const Key('register_new_client'),
+              style: full,
+              icon: const Icon(Icons.person_add_alt),
+              label: Text(
+                'Registrar a $typed como nuevo',
+                overflow: TextOverflow.ellipsis,
+              ),
+              onPressed: () => Navigator.pop(context, 'new'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cambiar teléfono'),
+            ),
+          ],
         ),
       ],
     );
