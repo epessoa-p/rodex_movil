@@ -10,7 +10,9 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/app_toast.dart';
+import '../../core/api_client.dart';
 import '../../core/providers.dart';
+import 'catalog_builder_sheet.dart';
 
 /// Enlace del catálogo público de una sucursal.
 class CatalogLink {
@@ -43,13 +45,36 @@ class CatalogLink {
       .replaceAll(RegExp(r'^-+|-+$'), '');
 }
 
-final catalogLinksProvider = FutureProvider.autoDispose<List<CatalogLink>>((
+/// Sucursales con su enlace + opciones del armador de catálogo.
+class CatalogData {
+  final List<CatalogLink> links;
+  final CatalogFilterOptions options;
+
+  /// Avisar si el PDF tendría más productos que esto.
+  final int warnAt;
+  const CatalogData({
+    required this.links,
+    this.options = const CatalogFilterOptions(),
+    this.warnAt = 500,
+  });
+}
+
+final catalogDataProvider = FutureProvider.autoDispose<CatalogData>((
   ref,
 ) async {
-  final data = await ref.read(apiClientProvider).get('/catalog/branches');
-  return ((data as Map<String, dynamic>)['data'] as List)
-      .map((e) => CatalogLink.fromJson(e as Map<String, dynamic>))
-      .toList();
+  final data =
+      await ref.read(apiClientProvider).get('/catalog/branches')
+          as Map<String, dynamic>;
+  return CatalogData(
+    links: (data['data'] as List)
+        .map((e) => CatalogLink.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    // Un backend viejo no manda filtros: el armador solo ofrece "disponibles".
+    options: CatalogFilterOptions.fromJson(
+      (data['filters'] as Map?)?.cast<String, dynamic>(),
+    ),
+    warnAt: (data['pdf_warn'] as num?)?.toInt() ?? 500,
+  );
 });
 
 /// Catálogo público por sucursal (como la web): QR, enlace para compartir,
@@ -59,11 +84,11 @@ class PublicCatalogScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final async = ref.watch(catalogLinksProvider);
+    final async = ref.watch(catalogDataProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Catálogo público')),
       body: RefreshIndicator(
-        onRefresh: () async => ref.invalidate(catalogLinksProvider),
+        onRefresh: () async => ref.invalidate(catalogDataProvider),
         child: async.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => ListView(
@@ -75,7 +100,7 @@ class PublicCatalogScreen extends ConsumerWidget {
               ),
             ],
           ),
-          data: (links) => ListView(
+          data: (d) => ListView(
             padding: const EdgeInsets.all(12),
             children: [
               const Padding(
@@ -87,7 +112,7 @@ class PublicCatalogScreen extends ConsumerWidget {
                   style: TextStyle(fontSize: 13, color: Colors.black54),
                 ),
               ),
-              if (links.isEmpty)
+              if (d.links.isEmpty)
                 const Padding(
                   padding: EdgeInsets.all(24),
                   child: Text(
@@ -97,7 +122,13 @@ class PublicCatalogScreen extends ConsumerWidget {
                   ),
                 )
               else
-                for (final l in links) _BranchCatalogCard(link: l),
+                for (final l in d.links)
+                  _BranchCatalogCard(
+                    link: l,
+                    options: d.options,
+                    warnAt: d.warnAt,
+                    api: ref.read(apiClientProvider),
+                  ),
             ],
           ),
         ),
@@ -108,7 +139,16 @@ class PublicCatalogScreen extends ConsumerWidget {
 
 class _BranchCatalogCard extends StatefulWidget {
   final CatalogLink link;
-  const _BranchCatalogCard({required this.link});
+  final CatalogFilterOptions options;
+  final int warnAt;
+  final ApiClient? api;
+
+  const _BranchCatalogCard({
+    required this.link,
+    this.options = const CatalogFilterOptions(),
+    this.warnAt = 500,
+    this.api,
+  });
 
   @override
   State<_BranchCatalogCard> createState() => _BranchCatalogCardState();
@@ -140,22 +180,23 @@ class _BranchCatalogCardState extends State<_BranchCatalogCard> {
     if (!ok && mounted) AppToast.error(context, 'No se pudo abrir el enlace.');
   }
 
-  /// Descarga el PDF y abre el menú para guardarlo o enviarlo.
-  Future<void> _pdf() async {
+  /// Descarga el PDF (de la selección, o todo) y abre el menú para guardarlo o enviarlo.
+  Future<void> _pdf([CatalogSelection sel = const CatalogSelection()]) async {
+    final url = sel.applyTo(l.pdfUrl);
     setState(() => _pdfLoading = true);
     try {
       final res = await Dio().get<List<int>>(
-        l.pdfUrl,
+        url,
         options: Options(responseType: ResponseType.bytes),
       );
       await Printing.sharePdf(
         bytes: Uint8List.fromList(res.data ?? const []),
-        filename: 'catalogo-${l.slug}.pdf',
+        filename: 'catalogo-${l.slug}${sel.isEmpty ? '' : '-seleccion'}.pdf',
       );
     } catch (_) {
       // Sin descarga directa: lo abre el navegador (que también lo baja).
       final ok = await launchUrl(
-        Uri.parse(l.pdfUrl),
+        Uri.parse(url),
         mode: LaunchMode.externalApplication,
       );
       if (!ok && mounted) {
@@ -164,6 +205,37 @@ class _BranchCatalogCardState extends State<_BranchCatalogCard> {
     } finally {
       if (mounted) setState(() => _pdfLoading = false);
     }
+  }
+
+  /// "Armar catálogo": elegir qué parte mandar (PDF o enlace) antes de bajar.
+  Future<void> _openBuilder() => showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (ctx) => CatalogBuilderSheet(
+      branchName: l.name,
+      options: widget.options,
+      warnAt: widget.warnAt,
+      count: _countRemote,
+      onPdf: (sel) async {
+        Navigator.pop(ctx);
+        await _pdf(sel);
+      },
+      onShare: (sel) => SharePlus.instance.share(
+        ShareParams(
+          text: 'Mira nuestro catálogo (${l.name}): ${sel.applyTo(l.url)}',
+          subject: 'Catálogo ${l.name}',
+        ),
+      ),
+    ),
+  );
+
+  Future<int> _countRemote(CatalogSelection sel) async {
+    final data = await widget.api!.get(
+      '/catalog/branches/${l.id}/count',
+      query: sel.query,
+    );
+    return ((data as Map)['data']['count'] as num).toInt();
   }
 
   /// QR en PNG (con el nombre de la sucursal) para guardar o enviar.
@@ -305,7 +377,7 @@ class _BranchCatalogCardState extends State<_BranchCatalogCard> {
                       ? spinner()
                       : const Icon(Icons.picture_as_pdf_outlined, size: 18),
                   label: const Text('PDF'),
-                  onPressed: _pdfLoading ? null : _pdf,
+                  onPressed: _pdfLoading ? null : _openBuilder,
                 ),
                 OutlinedButton.icon(
                   style: small,

@@ -31,7 +31,11 @@ void main() {
 
     await t.pumpWidget(
       ProviderScope(
-        overrides: [catalogLinksProvider.overrideWith((ref) async => links)],
+        overrides: [
+          catalogDataProvider.overrideWith(
+            (ref) async => CatalogData(links: links),
+          ),
+        ],
         child: MaterialApp(
           theme: AppTheme.light(),
           home: const PublicCatalogScreen(),
