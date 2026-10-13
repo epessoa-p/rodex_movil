@@ -5,6 +5,7 @@ import '../../core/api_client.dart';
 import '../../core/app_toast.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
+import '../../core/providers.dart';
 import '../../core/upper_case.dart';
 import '../inventory/catalog_picker_field.dart';
 import '../inventory/catalogs_repository.dart';
@@ -255,6 +256,9 @@ class _ProductEditSheetState extends ConsumerState<ProductEditSheet> {
   @override
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
+    // Cambiar precio/costo de un producto existente: permiso "Cambiar precios y costos".
+    final canPrices =
+        ref.watch(authControllerProvider).me?.can('products.prices') ?? false;
     InputDecoration dec(String label, {String? prefix}) => InputDecoration(
       labelText: label,
       prefixText: prefix,
@@ -338,31 +342,53 @@ class _ProductEditSheetState extends ConsumerState<ProductEditSheet> {
               children: [
                 Expanded(
                   child: TextField(
+                    key: const Key('edit_price'),
                     controller: _price,
+                    readOnly: !canPrices,
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
-                    decoration: dec(
-                      'Precio de venta *',
-                      prefix: '$currencySymbol ',
-                    ),
+                    decoration:
+                        dec(
+                          'Precio de venta *',
+                          prefix: '$currencySymbol ',
+                        ).copyWith(
+                          suffixIcon: canPrices
+                              ? null
+                              : const Icon(Icons.lock_outline, size: 18),
+                        ),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: TextField(
+                    key: const Key('edit_cost'),
                     controller: _cost,
+                    readOnly: !canPrices,
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
-                    decoration: dec(
-                      'Precio de compra',
-                      prefix: '$currencySymbol ',
-                    ),
+                    decoration:
+                        dec(
+                          'Precio de compra',
+                          prefix: '$currencySymbol ',
+                        ).copyWith(
+                          suffixIcon: canPrices
+                              ? null
+                              : const Icon(Icons.lock_outline, size: 18),
+                        ),
                   ),
                 ),
               ],
             ),
+            if (!canPrices)
+              const Padding(
+                padding: EdgeInsets.only(top: 6),
+                child: Text(
+                  'No tienes permiso para cambiar precios ni costos.',
+                  style: TextStyle(fontSize: 12, color: Colors.black54),
+                ),
+              ),
             if (_costAbovePrice)
               const Padding(
                 padding: EdgeInsets.only(top: 8),

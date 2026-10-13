@@ -18,7 +18,12 @@ class _FakeAuth extends AuthController {
         isSuperAdmin: false,
         company: Company(id: 1, name: 'VR MOTORS'),
         companies: [Company(id: 1, name: 'VR MOTORS')],
-        permissions: const ['products.view', 'products.edit'],
+        // Cambia el precio: necesita "Cambiar precios y costos".
+        permissions: const [
+          'products.view',
+          'products.edit',
+          'products.prices',
+        ],
         planFeatures: const ['inventory'],
       ),
     );
