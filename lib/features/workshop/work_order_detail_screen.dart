@@ -16,6 +16,7 @@ import '../../core/upper_case.dart';
 import '../../core/whatsapp.dart';
 import '../../core/module_colors.dart';
 import '../agenda/agenda_repository.dart';
+import '../clients/client_detail_screen.dart';
 import '../products/products_screen.dart';
 import 'work_order_letter_pdf.dart';
 import 'service_pick_sheet.dart';
@@ -1033,6 +1034,50 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
     ),
   );
 
+  /// Nombre del cliente; si está registrado (y se puede ver Clientes) es un
+  /// enlace a su ficha. "Cliente de paso" queda como texto.
+  Widget _clientName(WorkOrder o) {
+    final canOpen =
+        o.clientId != null &&
+        (ref.read(authControllerProvider).me?.can('clients.view') ?? false);
+    if (!canOpen) return Text('Cliente: ${o.client ?? '-'}');
+    final color = Theme.of(context).colorScheme.primary;
+    return InkWell(
+      key: const Key('open_client'),
+      borderRadius: BorderRadius.circular(6),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ClientDetailScreen(clientId: o.clientId!),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Text.rich(
+          TextSpan(
+            children: [
+              const TextSpan(text: 'Cliente: '),
+              TextSpan(
+                text: o.client ?? '-',
+                style: TextStyle(
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                  decoration: TextDecoration.underline,
+                  decorationColor: color,
+                ),
+              ),
+              WidgetSpan(
+                alignment: PlaceholderAlignment.middle,
+                child: Icon(Icons.chevron_right, size: 18, color: color),
+              ),
+            ],
+          ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+    );
+  }
+
   Widget _header(WorkOrder o) => _AccentCard(
     color: _Accent.status(o.status),
     child: Padding(
@@ -1050,7 +1095,7 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
           const SizedBox(height: 6),
           Row(
             children: [
-              Expanded(child: Text('Cliente: ${o.client ?? '-'}')),
+              Expanded(child: _clientName(o)),
               IconButton(
                 tooltip: 'WhatsApp',
                 visualDensity: VisualDensity.compact,

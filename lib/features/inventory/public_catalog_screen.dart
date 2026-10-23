@@ -52,10 +52,14 @@ class CatalogData {
 
   /// Avisar si el PDF tendría más productos que esto.
   final int warnAt;
+
+  /// Máximo de productos en el PDF con fotos.
+  final int photoMax;
   const CatalogData({
     required this.links,
     this.options = const CatalogFilterOptions(),
     this.warnAt = 500,
+    this.photoMax = 300,
   });
 }
 
@@ -74,6 +78,7 @@ final catalogDataProvider = FutureProvider.autoDispose<CatalogData>((
       (data['filters'] as Map?)?.cast<String, dynamic>(),
     ),
     warnAt: (data['pdf_warn'] as num?)?.toInt() ?? 500,
+    photoMax: (data['photo_max'] as num?)?.toInt() ?? 300,
   );
 });
 
@@ -127,6 +132,7 @@ class PublicCatalogScreen extends ConsumerWidget {
                     link: l,
                     options: d.options,
                     warnAt: d.warnAt,
+                    photoMax: d.photoMax,
                     api: ref.read(apiClientProvider),
                   ),
             ],
@@ -141,12 +147,14 @@ class _BranchCatalogCard extends StatefulWidget {
   final CatalogLink link;
   final CatalogFilterOptions options;
   final int warnAt;
+  final int photoMax;
   final ApiClient? api;
 
   const _BranchCatalogCard({
     required this.link,
     this.options = const CatalogFilterOptions(),
     this.warnAt = 500,
+    this.photoMax = 300,
     this.api,
   });
 
@@ -182,7 +190,7 @@ class _BranchCatalogCardState extends State<_BranchCatalogCard> {
 
   /// Descarga el PDF (de la selección, o todo) y abre el menú para guardarlo o enviarlo.
   Future<void> _pdf([CatalogSelection sel = const CatalogSelection()]) async {
-    final url = sel.applyTo(l.pdfUrl);
+    final url = sel.applyTo(l.pdfUrl, pdf: true);
     setState(() => _pdfLoading = true);
     try {
       final res = await Dio().get<List<int>>(
@@ -191,7 +199,8 @@ class _BranchCatalogCardState extends State<_BranchCatalogCard> {
       );
       await Printing.sharePdf(
         bytes: Uint8List.fromList(res.data ?? const []),
-        filename: 'catalogo-${l.slug}${sel.isEmpty ? '' : '-seleccion'}.pdf',
+        filename:
+            'catalogo-${l.slug}${sel.isEmpty ? '' : '-seleccion'}${sel.photos ? '-fotos' : ''}.pdf',
       );
     } catch (_) {
       // Sin descarga directa: lo abre el navegador (que también lo baja).
@@ -216,6 +225,7 @@ class _BranchCatalogCardState extends State<_BranchCatalogCard> {
       branchName: l.name,
       options: widget.options,
       warnAt: widget.warnAt,
+      photoMax: widget.photoMax,
       count: _countRemote,
       onPdf: (sel) async {
         Navigator.pop(ctx);

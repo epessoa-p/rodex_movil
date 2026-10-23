@@ -16,6 +16,22 @@ const _options = CatalogFilterOptions(
   ],
 );
 
+/// La lista de la hoja es perezosa: desplazarse hasta [f] antes de tocarlo.
+Future<void> _show(WidgetTester t, Finder f) async {
+  await t.scrollUntilVisible(
+    f,
+    80,
+    scrollable: find
+        .descendant(
+          of: find.byType(ListView),
+          matching: find.byType(Scrollable),
+        )
+        .first,
+  );
+  await t.ensureVisible(f);
+  await t.pumpAndSettle();
+}
+
 void main() {
   test('la selección arma la URL del catálogo', () {
     const url = 'https://rodex.bo/catalogo/sucursal/tok1/pdf';
@@ -71,6 +87,8 @@ void main() {
       expect(t.takeException(), isNull);
 
       // Elegir Cascos + Aceites y el modelo CG.
+      await _show(t, find.text('CASCOS'));
+      await _show(t, find.text('CASCOS'));
       await t.tap(find.text('CASCOS'));
       await t.tap(find.text('ACEITES'));
       await t.pump();
@@ -115,6 +133,8 @@ void main() {
             )
             .first,
       );
+      await t.ensureVisible(find.byKey(const Key('only_stock')));
+      await t.pumpAndSettle();
       await t.tap(find.byKey(const Key('only_stock')));
       await t.pump(const Duration(milliseconds: 400));
       await t.pumpAndSettle();
@@ -126,6 +146,68 @@ void main() {
       expect(t.takeException(), isNull);
     },
   );
+
+  test('fotos: solo en la URL del PDF y exigen un filtro', () {
+    const url = 'https://rodex.bo/catalogo/sucursal/tok1/pdf';
+    const s = CatalogSelection(categories: {1}, photos: true);
+    expect(s.applyTo(url, pdf: true), '$url?cat=1&fotos=1');
+    expect(s.applyTo(url), '$url?cat=1');
+    expect(
+      const CatalogSelection(
+        photos: true,
+        onlyInStock: true,
+      ).photoBlock(10, 300),
+      contains('al menos una categoría'),
+    );
+    expect(s.photoBlock(400, 300), contains('máximo es 300'));
+    expect(s.photoBlock(40, 300), isNull);
+  });
+
+  testWidgets('PDF con fotos sin filtro: avisa y no descarga', (t) async {
+    t.view.physicalSize = const Size(360, 640);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.reset);
+    CatalogSelection? pdfSel;
+    await t.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        home: Scaffold(
+          body: CatalogBuilderSheet(
+            branchName: 'Central',
+            options: _options,
+            count: (s) async => s.narrows ? 40 : 1176,
+            onPdf: (s) async => pdfSel = s,
+            onShare: (_) async {},
+          ),
+        ),
+      ),
+    );
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('with_photos')));
+    await t.pump(const Duration(milliseconds: 400));
+    await t.pumpAndSettle();
+    expect(find.textContaining('al menos una categoría'), findsWidgets);
+
+    await t.ensureVisible(find.byKey(const Key('builder_pdf')));
+    await t.tap(find.byKey(const Key('builder_pdf')));
+    await t.pump();
+    expect(pdfSel, isNull, reason: 'no descarga sin filtro');
+    expect(find.text('Elige un filtro'), findsOneWidget);
+    await t.pump(const Duration(seconds: 6));
+    await t.pumpAndSettle();
+
+    // Con una categoría: se puede.
+    await _show(t, find.text('CASCOS'));
+    await t.tap(find.text('CASCOS'));
+    await t.pump(const Duration(milliseconds: 400));
+    await t.pumpAndSettle();
+    await t.ensureVisible(find.byKey(const Key('builder_pdf')));
+    await t.tap(find.byKey(const Key('builder_pdf')));
+    await t.pumpAndSettle();
+    expect(pdfSel!.photos, isTrue);
+    expect(pdfSel!.categories, {1});
+    expect(t.takeException(), isNull);
+  });
 
   testWidgets('muchas opciones: buscador que filtra los chips', (t) async {
     t.view.physicalSize = const Size(360, 640);
@@ -152,6 +234,7 @@ void main() {
       ),
     );
     await t.pumpAndSettle();
+    await _show(t, find.byType(TextField));
     await t.enterText(find.byType(TextField), 'categoria 1');
     await t.pumpAndSettle();
     // "CATEGORIA 1" y "CATEGORIA 10"…"19".

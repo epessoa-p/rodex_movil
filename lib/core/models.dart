@@ -621,6 +621,9 @@ class WorkOrder {
   final double balance;
   final double paidAmount;
   final String? client;
+
+  /// Para abrir la ficha del cliente (null = cliente de paso).
+  final int? clientId;
   final String? clientPhone;
   final String? vehicle;
   final String? mechanic;
@@ -655,6 +658,7 @@ class WorkOrder {
     required this.balance,
     required this.paidAmount,
     this.client,
+    this.clientId,
     this.clientPhone,
     this.vehicle,
     this.mechanic,
@@ -686,6 +690,7 @@ class WorkOrder {
     balance: _toDouble(j['balance']),
     paidAmount: _toDouble(j['paid_amount']),
     client: j['client'] as String?,
+    clientId: (j['client_id'] as num?)?.toInt(),
     clientPhone: j['client_phone'] as String?,
     vehicle: j['vehicle'] as String?,
     mechanic: j['mechanic'] as String?,

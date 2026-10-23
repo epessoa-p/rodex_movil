@@ -87,7 +87,7 @@ void main() {
           overrides: [
             authControllerProvider.overrideWith((ref) => _FakeAuth(ref)),
             workOrdersProvider.overrideWith(
-              (ref) async => [for (var i = 1; i <= 12; i++) _wo(i)],
+              (ref, f) async => [for (var i = 1; i <= 12; i++) _wo(i)],
             ),
             mechanicsFullProvider.overrideWith(
               (ref) async => [

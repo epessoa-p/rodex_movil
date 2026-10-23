@@ -34,7 +34,7 @@ Widget _app(
 }) => ProviderScope(
   overrides: [
     authControllerProvider.overrideWith((ref) => _FakeAuth(ref, perms)),
-    workOrdersProvider.overrideWith((ref) async => <WorkOrder>[]),
+    workOrdersProvider.overrideWith((ref, f) async => <WorkOrder>[]),
     mechanicsFullProvider.overrideWith(
       (ref) async => [
         MechanicFull(

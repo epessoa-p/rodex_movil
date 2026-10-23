@@ -10,8 +10,13 @@ class WorkshopRepository {
   final ApiClient _api;
   WorkshopRepository(this._api);
 
-  Future<List<WorkOrder>> orders({String? status}) async {
-    final data = await _api.get('/work-orders', query: {'status': ?status});
+  /// [status]: un estado, "activas" (sin entregadas) o "por_cobrar".
+  /// [q]: código, cliente, teléfono o vehículo.
+  Future<List<WorkOrder>> orders({String? status, String? q}) async {
+    final data = await _api.get(
+      '/work-orders',
+      query: {'status': ?status, 'q': ?q},
+    );
     return _list(data).map((e) => WorkOrder.fromJson(e)).toList();
   }
 
@@ -354,9 +359,17 @@ final mechanicsFullProvider = FutureProvider<List<MechanicFull>>(
 );
 
 /// Órdenes activas (para la lista del taller).
-final workOrdersProvider = FutureProvider<List<WorkOrder>>(
-  (ref) => ref.read(workshopRepositoryProvider).orders(),
-);
+/// Listado de OTs con filtro: (estado, búsqueda). Estado vacío = todas.
+final workOrdersProvider = FutureProvider.autoDispose
+    .family<List<WorkOrder>, (String, String)>((ref, f) {
+      final (status, q) = f;
+      return ref
+          .read(workshopRepositoryProvider)
+          .orders(
+            status: status.isEmpty ? null : status,
+            q: q.trim().isEmpty ? null : q.trim(),
+          );
+    });
 
 /// Resumen de OTs del día (para la pantalla de inicio).
 final workOrdersSummaryProvider = FutureProvider<WorkOrdersSummary>(

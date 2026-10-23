@@ -40,7 +40,7 @@ void main() {
         ProviderScope(
           overrides: [
             authControllerProvider.overrideWith((ref) => _FakeAuth(ref)),
-            workOrdersProvider.overrideWith((ref) async => <WorkOrder>[]),
+            workOrdersProvider.overrideWith((ref, f) async => <WorkOrder>[]),
             mechanicsFullProvider.overrideWith((ref) async => <MechanicFull>[]),
             agendaDayProvider.overrideWith(
               (ref, date) async => AgendaDay(

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../core/app_toast.dart';
 import '../../core/format.dart';
 
 /// Una opción del armador (categoría, marca o modelo de vehículo).
@@ -54,12 +55,34 @@ class CatalogSelection {
   final Set<int> brands;
   final Set<int> models;
   final bool onlyInStock;
+
+  /// PDF con la foto de cada producto (solo afecta al PDF).
+  final bool photos;
   const CatalogSelection({
     this.categories = const {},
     this.brands = const {},
     this.models = const {},
     this.onlyInStock = false,
+    this.photos = false,
   });
+
+  /// ¿Eligió categoría, marca o modelo? (obligatorio para el PDF con fotos).
+  bool get narrows =>
+      categories.isNotEmpty || brands.isNotEmpty || models.isNotEmpty;
+
+  /// Motivo por el que no se puede bajar el PDF con fotos (null = se puede).
+  String? photoBlock(int? count, int max) {
+    if (!photos) return null;
+    if (!narrows) {
+      return 'Para el PDF con fotos elige al menos una categoría, marca o '
+          'modelo: con todo el catálogo sería muy pesado y lento.';
+    }
+    if (count != null && count > max) {
+      return 'Son $count productos: con fotos el máximo es $max. Elige menos '
+          'o desactiva las fotos.';
+    }
+    return null;
+  }
 
   bool get isEmpty =>
       categories.isEmpty && brands.isEmpty && models.isEmpty && !onlyInStock;
@@ -69,11 +92,13 @@ class CatalogSelection {
     Set<int>? brands,
     Set<int>? models,
     bool? onlyInStock,
+    bool? photos,
   }) => CatalogSelection(
     categories: categories ?? this.categories,
     brands: brands ?? this.brands,
     models: models ?? this.models,
     onlyInStock: onlyInStock ?? this.onlyInStock,
+    photos: photos ?? this.photos,
   );
 
   Map<String, String> get query {
@@ -86,9 +111,10 @@ class CatalogSelection {
     };
   }
 
-  /// La URL del catálogo (página o PDF) con esta selección.
-  String applyTo(String url) {
-    final q = query;
+  /// La URL del catálogo con esta selección. Con [pdf] también lleva las
+  /// fotos (la página web siempre las muestra).
+  String applyTo(String url, {bool pdf = false}) {
+    final q = {...query, if (pdf && photos) 'fotos': '1'};
     if (q.isEmpty) return url;
     // Las comas quedan legibles (el servidor acepta "1,4").
     final qs = q.entries.map((e) => '${e.key}=${e.value}').join('&');
@@ -105,6 +131,9 @@ class CatalogBuilderSheet extends StatefulWidget {
 
   /// Avisar si el PDF tendría más productos que esto (tarda en generarse).
   final int warnAt;
+
+  /// Máximo de productos en el PDF con fotos.
+  final int photoMax;
   final Future<int> Function(CatalogSelection) count;
   final Future<void> Function(CatalogSelection) onPdf;
   final Future<void> Function(CatalogSelection) onShare;
@@ -117,6 +146,7 @@ class CatalogBuilderSheet extends StatefulWidget {
     required this.onPdf,
     required this.onShare,
     this.warnAt = 500,
+    this.photoMax = 300,
   });
 
   @override
@@ -193,6 +223,9 @@ class _CatalogBuilderSheetState extends State<CatalogBuilderSheet> {
         : _count == 1
         ? '1 producto'
         : '${qty(_count!)} productos';
+    final block = _counting
+        ? _sel.photoBlock(null, widget.photoMax)
+        : _sel.photoBlock(_count, widget.photoMax);
     final tooMany = !_counting && (_count ?? 0) > widget.warnAt;
     final none = !_counting && _count == 0;
     final full = ButtonStyle(
@@ -256,6 +289,24 @@ class _CatalogBuilderSheetState extends State<CatalogBuilderSheet> {
                       value: _sel.onlyInStock,
                       onChanged: (v) => _set(_sel.copyWith(onlyInStock: v)),
                     ),
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.black12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: SwitchListTile(
+                        key: const Key('with_photos'),
+                        secondary: const Icon(Icons.photo_library_outlined),
+                        title: const Text('Incluir fotos en el PDF'),
+                        subtitle: Text(
+                          'Elige al menos una categoría, marca o modelo '
+                          '(máx. ${widget.photoMax} productos).',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        value: _sel.photos,
+                        onChanged: (v) => _set(_sel.copyWith(photos: v)),
+                      ),
+                    ),
                     if (o.isEmpty)
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 8),
@@ -308,27 +359,37 @@ class _CatalogBuilderSheetState extends State<CatalogBuilderSheet> {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: (tooMany ? Colors.orange : Colors.blueGrey)
-                            .withValues(alpha: .10),
+                        color:
+                            (block != null
+                                    ? Colors.red
+                                    : tooMany
+                                    ? Colors.orange
+                                    : Colors.blueGrey)
+                                .withValues(alpha: .10),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Row(
                         children: [
                           Icon(
-                            tooMany
+                            block != null
+                                ? Icons.warning_amber_rounded
+                                : tooMany
                                 ? Icons.hourglass_bottom
                                 : Icons.inventory_2_outlined,
                             size: 18,
-                            color: tooMany
+                            color: block != null
+                                ? Colors.red.shade700
+                                : tooMany
                                 ? Colors.orange.shade800
                                 : Colors.black54,
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              tooMany
-                                  ? '$countText: el PDF puede tardar. Conviene filtrar.'
-                                  : countText,
+                              block ??
+                                  (tooMany
+                                      ? '$countText: el PDF puede tardar. Conviene filtrar.'
+                                      : countText),
                               key: const Key('builder_count'),
                               style: const TextStyle(
                                 fontWeight: FontWeight.w600,
@@ -355,7 +416,17 @@ class _CatalogBuilderSheetState extends State<CatalogBuilderSheet> {
                       label: const Text('Descargar PDF'),
                       onPressed: _busy || none
                           ? null
-                          : () => _run(widget.onPdf),
+                          : () {
+                              if (block != null) {
+                                AppToast.error(
+                                  context,
+                                  block,
+                                  title: 'Elige un filtro',
+                                );
+                                return;
+                              }
+                              _run(widget.onPdf);
+                            },
                     ),
                     const SizedBox(height: 8),
                     OutlinedButton.icon(

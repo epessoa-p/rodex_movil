@@ -64,7 +64,7 @@ class _FakeWorkshop extends WorkshopRepository {
   Map<String, dynamic>? sent;
 
   @override
-  Future<List<WorkOrder>> orders({String? status}) async => [
+  Future<List<WorkOrder>> orders({String? status, String? q}) async => [
     WorkOrder.fromJson({
       'id': 9,
       'code': 'OT-00009',
