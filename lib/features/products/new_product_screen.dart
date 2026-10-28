@@ -41,6 +41,7 @@ class _NewProductScreenState extends ConsumerState<NewProductScreen> {
   final _stock = TextEditingController();
   final _minStock = TextEditingController();
   final _description = TextEditingController();
+  final _location = TextEditingController();
 
   String? _unit;
   int? _categoryId;
@@ -83,6 +84,7 @@ class _NewProductScreenState extends ConsumerState<NewProductScreen> {
       _stock,
       _minStock,
       _description,
+      _location,
     ]) {
       c.dispose();
     }
@@ -160,6 +162,8 @@ class _NewProductScreenState extends ConsumerState<NewProductScreen> {
             initialStock: stock > 0 ? stock : null,
             warehouseId: stock > 0 ? _warehouseId : null,
             photoPath: _photo?.path,
+            location: widget.hideInitialStock ? null : _text(_location),
+            locationWarehouseId: _warehouseId,
           );
       if (!mounted) return;
       AppToast.success(context, '«${product.name}» creado.');
@@ -462,6 +466,17 @@ class _NewProductScreenState extends ConsumerState<NewProductScreen> {
               ],
             ),
             if (!widget.hideInitialStock) _warehouseField(cat),
+            if (!widget.hideInitialStock && _warehouseId != null) ...[
+              const SizedBox(height: 10),
+              _text2(
+                _location,
+                'Ubicación en el local',
+                hint: 'Ej. PA5-VI2',
+                helper: cat.warehouses.length > 1
+                    ? 'En el almacén elegido arriba'
+                    : null,
+              ),
+            ],
           ],
         ),
 

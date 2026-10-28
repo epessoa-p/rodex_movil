@@ -384,6 +384,21 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.warehouse_outlined),
               title: Text(w.warehouse),
+              subtitle: w.location == null
+                  ? null
+                  : Row(
+                      children: [
+                        const Icon(Icons.place, size: 14, color: Colors.red),
+                        const SizedBox(width: 2),
+                        Flexible(
+                          child: Text(
+                            w.location!,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ],
+                    ),
               trailing: Text(
                 '${qty(w.qty)} ${d.unit ?? ''}'.trim(),
                 style: TextStyle(

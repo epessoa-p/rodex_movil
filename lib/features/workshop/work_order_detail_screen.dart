@@ -11,6 +11,7 @@ import '../../core/app_toast.dart';
 import '../../core/company_logo.dart';
 import '../../core/format.dart';
 import '../../core/models.dart';
+import '../../core/payment_methods.dart';
 import '../../core/providers.dart';
 import '../../core/upper_case.dart';
 import '../../core/whatsapp.dart';
@@ -251,24 +252,45 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
 
   Future<void> _deliver() async {
     final to = TextEditingController();
+    // Formas de pago de la empresa (con solo efectivo no se muestran).
+    final methods =
+        ref.read(authControllerProvider).me?.company?.paymentMethods ??
+        const ['efectivo'];
+    var method = methods.first;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Entregar y cobrar'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Total a cobrar: ${money(_order!.total)}'),
-            const SizedBox(height: 8),
-            TextField(
-              textCapitalization: TextCapitalization.characters,
-              inputFormatters: upperCaseFormatters,
-              controller: to,
-              decoration: const InputDecoration(
-                labelText: 'Entregado a (opcional)',
+        content: StatefulBuilder(
+          builder: (ctx, setLocal) => Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Total a cobrar: ${money(_order!.total)}'),
+              if (methods.length > 1) ...[
+                const SizedBox(height: 12),
+                const Text(
+                  'Forma de pago',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 6),
+                PaymentMethodChips(
+                  methods: methods,
+                  value: method,
+                  onChanged: (m) => setLocal(() => method = m),
+                ),
+              ],
+              const SizedBox(height: 8),
+              TextField(
+                textCapitalization: TextCapitalization.characters,
+                inputFormatters: upperCaseFormatters,
+                controller: to,
+                decoration: const InputDecoration(
+                  labelText: 'Entregado a (opcional)',
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -287,6 +309,7 @@ class _WorkOrderDetailScreenState extends ConsumerState<WorkOrderDetailScreen> {
       () => _repo.deliver(
         widget.orderId,
         deliveredTo: to.text.trim().isEmpty ? null : to.text.trim(),
+        method: method,
       ),
     );
   }

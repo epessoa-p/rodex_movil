@@ -38,6 +38,8 @@ class _FakePos extends PosRepository {
     String? description,
     int? minStock,
     List<int> motoModelIds = const [],
+    String? location,
+    int? locationWarehouseId,
   }) async {
     sent = {
       'name': name,

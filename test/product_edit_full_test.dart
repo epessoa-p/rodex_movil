@@ -57,6 +57,7 @@ class _FakePos extends PosRepository {
     bool active = true,
     String? code,
     List<int>? motoModelIds,
+    Map<int, String>? locations,
   }) async {
     sent = {'code': code, 'unit': unit, 'models': motoModelIds, 'price': price};
     return _detail();

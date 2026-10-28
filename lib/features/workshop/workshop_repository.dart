@@ -253,10 +253,15 @@ class WorkshopRepository {
     return WorkOrder.fromJson((data as Map<String, dynamic>)['data']);
   }
 
-  Future<WorkOrder> deliver(int orderId, {String? deliveredTo}) async {
+  /// [method]: forma de pago (una de las de la empresa; efectivo por defecto).
+  Future<WorkOrder> deliver(
+    int orderId, {
+    String? deliveredTo,
+    String method = 'efectivo',
+  }) async {
     final data = await _api.post(
       '/work-orders/$orderId/deliver',
-      body: {'delivered_to': ?deliveredTo},
+      body: {'delivered_to': ?deliveredTo, 'method': method},
     );
     return WorkOrder.fromJson((data as Map<String, dynamic>)['data']);
   }

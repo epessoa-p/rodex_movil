@@ -85,7 +85,12 @@ class PosRepository {
     String? description,
     int? minStock,
     List<int> motoModelIds = const [],
+    // Ubicación (ej. PA5-VI2) en [locationWarehouseId].
+    String? location,
+    int? locationWarehouseId,
   }) async {
+    final hasLocation =
+        location != null && location.isNotEmpty && locationWarehouseId != null;
     final fields = <String, dynamic>{
       'name': name,
       'price': price,
@@ -104,9 +109,14 @@ class PosRepository {
     Object body = {
       ...fields,
       'moto_models': ?(motoModelIds.isEmpty ? null : motoModelIds),
+      if (hasLocation) 'locations': {'$locationWarehouseId': location},
     };
     if (photoPath != null) {
       final form = FormData.fromMap(fields);
+      // Multipart: `locations[10]` llega a PHP como arreglo.
+      if (hasLocation) {
+        form.fields.add(MapEntry('locations[$locationWarehouseId]', location));
+      }
       // Multipart: los arreglos van como `moto_models[]` repetido (PHP arma el
       // array con los corchetes; sin ellos solo llegaría el último).
       for (final id in motoModelIds) {
@@ -151,6 +161,8 @@ class PosRepository {
     String? code,
     // null = no tocar los modelos; lista vacía = quitarlos todos.
     List<int>? motoModelIds,
+    // Ubicación por almacén (id → texto; vacío = quitarla). null = no tocar.
+    Map<int, String>? locations,
   }) async {
     final data = await _api.put(
       '/products/$id',
@@ -167,6 +179,8 @@ class PosRepository {
         'category_id': categoryId,
         'brand_id': brandId,
         'active': active,
+        if (locations != null && locations.isNotEmpty)
+          'locations': {for (final e in locations.entries) '${e.key}': e.value},
       },
     );
     return ProductDetail.fromJson((data as Map<String, dynamic>)['data']);

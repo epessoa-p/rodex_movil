@@ -59,6 +59,11 @@ class _ProductEditSheetState extends ConsumerState<ProductEditSheet> {
   late final _description = TextEditingController(
     text: widget.product.description ?? '',
   );
+  // Ubicación por almacén (ej. PA5-VI2), un campo por almacén.
+  late final _locations = {
+    for (final w in widget.product.stockByWarehouse)
+      w.id: TextEditingController(text: w.location ?? ''),
+  };
   late int? _categoryId = widget.product.categoryId;
   late int? _brandId = widget.product.brandId;
   late bool _active = widget.product.active;
@@ -154,6 +159,7 @@ class _ProductEditSheetState extends ConsumerState<ProductEditSheet> {
       _code,
       _minStock,
       _description,
+      ..._locations.values,
     ]) {
       c.dispose();
     }
@@ -203,6 +209,9 @@ class _ProductEditSheetState extends ConsumerState<ProductEditSheet> {
             categoryId: _categoryId,
             brandId: _brandId,
             active: _active,
+            locations: {
+              for (final e in _locations.entries) e.key: e.value.text.trim(),
+            },
           );
       if (!mounted) return;
       AppToast.success(context, 'Producto actualizado.');
@@ -460,6 +469,32 @@ class _ProductEditSheetState extends ConsumerState<ProductEditSheet> {
               onChanged: (v) => setState(() => _models = v),
             ),
             const SizedBox(height: 10),
+            if (_locations.isNotEmpty) ...[
+              const Text(
+                'Ubicación en el local',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 6),
+              for (final w in widget.product.stockByWarehouse) ...[
+                TextField(
+                  controller: _locations[w.id],
+                  textCapitalization: TextCapitalization.characters,
+                  inputFormatters: upperCaseFormatters,
+                  maxLength: 40,
+                  decoration:
+                      dec(
+                        _locations.length > 1
+                            ? 'Ubicación en ${w.warehouse}'
+                            : 'Ubicación',
+                      ).copyWith(
+                        hintText: 'Ej. PA5-VI2',
+                        prefixIcon: const Icon(Icons.place_outlined),
+                        counterText: '',
+                      ),
+                ),
+                const SizedBox(height: 10),
+              ],
+            ],
             TextField(
               controller: _minStock,
               keyboardType: TextInputType.number,

@@ -21,6 +21,12 @@ class Company {
   /// Formas de cobro que acepta la empresa (efectivo siempre, primero).
   final List<String> paymentMethods;
 
+  /// Datos que se ven en cada producto del POS (Mi empresa → POS):
+  /// code, brand, category, models, location, stock.
+  final List<String> posCardFields;
+
+  static const posCardDefault = ['code', 'brand', 'models', 'location'];
+
   Company({
     required this.id,
     required this.name,
@@ -32,6 +38,7 @@ class Company {
     this.themeAccent,
     this.dashboardOrder = 'ventas,taller,compras',
     this.paymentMethods = const ['efectivo'],
+    this.posCardFields = posCardDefault,
   });
 
   /// Módulos en el orden configurado (solo claves válidas).
@@ -58,6 +65,10 @@ class Company {
     paymentMethods: normalizePaymentMethods(
       ((j['payment_methods'] as List?) ?? const []).map((e) => e.toString()),
     ),
+    // Servidor viejo (sin el campo): lo de siempre + ubicación.
+    posCardFields: j['pos_card_fields'] is List
+        ? (j['pos_card_fields'] as List).map((e) => e.toString()).toList()
+        : posCardDefault,
   );
 }
 
@@ -129,6 +140,15 @@ class Product {
   final double price;
   final double currentStock;
   final String? imageUrl;
+  final String? code;
+  final String? brand;
+  final String? category;
+
+  /// Modelos compatibles, en texto ("CG 150, Pulsar 200").
+  final String? modelsText;
+
+  /// Ubicación en el almacén del usuario (ej. "PA5-VI2").
+  final String? location;
 
   Product({
     required this.id,
@@ -139,6 +159,11 @@ class Product {
     required this.price,
     required this.currentStock,
     this.imageUrl,
+    this.code,
+    this.brand,
+    this.category,
+    this.modelsText,
+    this.location,
   });
 
   factory Product.fromJson(Map<String, dynamic> j) => Product(
@@ -152,7 +177,17 @@ class Product {
     imageUrl: (j['image_url'] as String?)?.isNotEmpty == true
         ? j['image_url'] as String
         : null,
+    code: _nz(j['code']),
+    brand: _nz(j['brand']),
+    category: _nz(j['category']),
+    modelsText: _nz(j['models_text']),
+    location: _nz(j['location']),
   );
+}
+
+String? _nz(dynamic v) {
+  final s = v?.toString().trim() ?? '';
+  return s.isEmpty ? null : s;
 }
 
 /// Opción genérica id + nombre (categorías, marcas, almacenes, etc.).
@@ -169,16 +204,21 @@ class WarehouseStock {
   final int id;
   final String warehouse;
   final double qty;
+
+  /// Ubicación del producto en este almacén (ej. "PA5-VI2").
+  final String? location;
   WarehouseStock({
     required this.id,
     required this.warehouse,
     required this.qty,
+    this.location,
   });
 
   factory WarehouseStock.fromJson(Map<String, dynamic> j) => WarehouseStock(
     id: (j['id'] as num?)?.toInt() ?? 0,
     warehouse: (j['warehouse'] ?? '') as String,
     qty: _toDouble(j['qty']),
+    location: _nz(j['location']),
   );
 }
 

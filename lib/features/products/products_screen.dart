@@ -214,6 +214,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     final me = ref.watch(authControllerProvider).me;
     final canCreate = me?.can('products.create') ?? false;
     final canEditPhoto = !picking && (me?.can('products.edit') ?? false);
+    final cardFields = me?.company?.posCardFields ?? Company.posCardDefault;
     return Scaffold(
       appBar: widget.embedded
           ? null
@@ -307,8 +308,12 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                                 ),
                               ),
                         title: Text(p.name),
-                        subtitle: Text(
-                          '${p.sku ?? ''}  ·  Stock: ${qty(p.currentStock)} ${p.unit ?? ''}',
+                        // POS: los datos que eligió la empresa. Inventario:
+                        // los mismos, pero el stock siempre.
+                        subtitle: ProductInfoLines(
+                          product: p,
+                          fields: cardFields,
+                          alwaysStock: !picking,
                         ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -612,6 +617,84 @@ class _Pager extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Datos de un producto en el listado según lo que eligió la empresa
+/// (`posCardFields`): código · marca · categoría · modelos, la ubicación con
+/// su ícono y el stock. "Sin stock" se avisa siempre.
+class ProductInfoLines extends StatelessWidget {
+  final Product product;
+  final List<String> fields;
+
+  /// Inventario: el stock se ve aunque la empresa no lo haya elegido.
+  final bool alwaysStock;
+
+  const ProductInfoLines({
+    super.key,
+    required this.product,
+    required this.fields,
+    this.alwaysStock = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = product;
+    bool on(String f) => fields.contains(f);
+    final parts = <String>[
+      if (on('code')) p.code ?? p.sku ?? '',
+      if (on('brand')) p.brand ?? '',
+      if (on('category')) p.category ?? '',
+      if (on('models')) p.modelsText ?? '',
+    ].where((e) => e.isNotEmpty).toList();
+    final noStock = p.currentStock <= 0;
+    final stock = alwaysStock || on('stock')
+        ? 'Stock: ${qty(p.currentStock)} ${p.unit ?? ''}'.trim()
+        : (noStock ? 'Sin stock' : null);
+    final location = on('location') ? p.location : null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (parts.isNotEmpty)
+          Text(
+            parts.join('  ·  '),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        if (location != null || stock != null)
+          Wrap(
+            spacing: 10,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              if (location != null)
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.place, size: 14, color: Colors.red),
+                    const SizedBox(width: 2),
+                    Flexible(
+                      child: Text(
+                        location,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              if (stock != null)
+                Text(
+                  stock,
+                  style: noStock ? const TextStyle(color: Colors.red) : null,
+                ),
+            ],
+          ),
+      ],
     );
   }
 }

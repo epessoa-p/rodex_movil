@@ -77,6 +77,7 @@ class _FakePos extends PosRepository {
     bool active = true,
     String? code,
     List<int>? motoModelIds,
+    Map<int, String>? locations,
   }) async {
     updates.add({
       'name': name,
